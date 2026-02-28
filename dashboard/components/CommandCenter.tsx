@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import PixelOffice from "./PixelOffice";
+import PixelOffice from "./pixel-office/PixelOffice";
 import AgentChat from "./AgentChat";
 
 type AgentData = {
