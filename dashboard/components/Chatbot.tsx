@@ -6,6 +6,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import AgentAvatar from "@/components/AgentAvatar";
 
 interface Message {
   role: "user" | "assistant";
@@ -34,18 +35,19 @@ function MessageBubble({ message, isStreaming }: { message: Message; isStreaming
       {!isUser && (
         <div style={{
           width: 26, height: 26, borderRadius: "50%",
-          background: "rgba(74,222,128,0.15)",
-          border: "1px solid rgba(74,222,128,0.3)",
+          background: "rgba(0,79,34,0.15)",
+          border: "1px solid rgba(0,79,34,0.3)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 13, flexShrink: 0, marginRight: 8, marginTop: 2,
+          flexShrink: 0, marginRight: 8, marginTop: 2,
+          overflow: "hidden",
         }}>
-          ⚡
+          <AgentAvatar agent="strategist" size={22} />
         </div>
       )}
       <div style={{
         maxWidth: "82%",
-        background: isUser ? "var(--chat-msg-user-bg, rgba(74,222,128,0.12))" : "var(--chat-msg-ai-bg, rgba(255,255,255,0.05))",
-        border: `1px solid ${isUser ? "var(--chat-msg-user-border, rgba(74,222,128,0.25))" : "var(--chat-msg-ai-border, rgba(255,255,255,0.08))"}`,
+        background: isUser ? "var(--chat-msg-user-bg, rgba(0,79,34,0.12))" : "var(--chat-msg-ai-bg, rgba(242,239,237,0.04))",
+        border: `1px solid ${isUser ? "var(--chat-msg-user-border, rgba(0,79,34,0.25))" : "var(--chat-msg-ai-border, rgba(242,239,237,0.08))"}`,
         borderRadius: isUser ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
         padding: "10px 14px",
       }}>
@@ -62,7 +64,7 @@ function MessageBubble({ message, isStreaming }: { message: Message; isStreaming
             <span style={{
               display: "inline-block",
               width: 7, height: 14,
-              background: "#4ade80",
+              background: "#2a8c4a",
               marginLeft: 2,
               verticalAlign: "middle",
               borderRadius: 1,
@@ -199,24 +201,26 @@ export default function Chatbot({ embedded = false }: ChatbotProps) {
 
       {/* ── Floating button (hidden in embedded mode) ────────────────────────── */}
       {!open && !embedded && (
-        <button
-          onClick={() => setOpen(true)}
-          style={{
-            position: "fixed", bottom: 28, right: 28, zIndex: 50,
-            width: 52, height: 52, borderRadius: "50%",
-            background: "rgba(74,222,128,0.15)",
-            border: "1px solid rgba(74,222,128,0.35)",
-            cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 20,
-            boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
-            transition: "all 0.2s",
-          }}
-          className="card-hover"
-          title="Ask the Cultural Strategist"
-        >
-          ⚡
-        </button>
+        <div style={{ position: "fixed", bottom: 20, right: 20, zIndex: 50 }} className="fab-agent-btn">
+          <button
+            onClick={() => setOpen(true)}
+            style={{
+              width: 46, height: 46, borderRadius: "50%",
+              background: "rgba(0,79,34,0.12)",
+              border: "1px solid rgba(0,79,34,0.3)",
+              cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.35)",
+              transition: "all 0.2s",
+              padding: 0,
+              overflow: "hidden",
+            }}
+            className="card-hover"
+          >
+            <AgentAvatar agent="strategist" size={34} />
+          </button>
+          <div className="fab-tooltip">Questions? Ask the Strategist</div>
+        </div>
       )}
 
       {/* ── Chat panel ───────────────────────────────────────────────────────── */}
@@ -229,14 +233,14 @@ export default function Chatbot({ embedded = false }: ChatbotProps) {
             minHeight: 0,
           } : {
             position: "fixed" as const,
-            bottom: 24,
-            right: 24,
+            bottom: 20,
+            right: 20,
             zIndex: 50,
             width: 400,
             height: 580,
           }),
           background: "var(--chat-bg, #1e1e1e)",
-          border: "1px solid var(--chat-border, rgba(74,222,128,0.2))",
+          border: "1px solid var(--chat-border, rgba(0,79,34,0.2))",
           borderRadius: embedded ? 10 : 16,
           boxShadow: embedded ? "none" : "0 8px 48px rgba(0,0,0,0.6)",
           display: "flex", flexDirection: "column",
@@ -253,12 +257,12 @@ export default function Chatbot({ embedded = false }: ChatbotProps) {
           }}>
             <div style={{
               width: 30, height: 30, borderRadius: "50%",
-              background: "rgba(74,222,128,0.12)",
-              border: "1px solid rgba(74,222,128,0.3)",
+              background: "rgba(0,79,34,0.12)",
+              border: "1px solid rgba(0,79,34,0.3)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 14, flexShrink: 0,
+              flexShrink: 0, overflow: "hidden",
             }}>
-              ⚡
+              <AgentAvatar agent="strategist" size={26} />
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--chat-text-primary, rgba(255,255,255,0.9))" }}>
@@ -308,7 +312,15 @@ export default function Chatbot({ embedded = false }: ChatbotProps) {
                 <div style={{
                   textAlign: "center", padding: embedded ? "6px 0 12px" : "8px 0 20px",
                 }}>
-                  <div style={{ fontSize: 28, marginBottom: 8 }}>⚡</div>
+                  <div style={{
+                    width: 48, height: 48, borderRadius: "50%",
+                    background: "rgba(0,79,34,0.12)",
+                    border: "1px solid rgba(0,79,34,0.25)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    margin: "0 auto 8px", overflow: "hidden",
+                  }}>
+                    <AgentAvatar agent="strategist" size={40} />
+                  </div>
                   <p style={{ fontSize: 13, color: "var(--chat-text-secondary, rgba(255,255,255,0.6))", margin: "0 0 4px", fontWeight: 500 }}>
                     Ask me anything about culture
                   </p>
@@ -406,10 +418,10 @@ export default function Chatbot({ embedded = false }: ChatbotProps) {
                 disabled={!input.trim() || streaming}
                 style={{
                   width: 30, height: 30, borderRadius: 8,
-                  background: input.trim() && !streaming ? "rgba(74,222,128,0.2)" : "rgba(255,255,255,0.05)",
-                  border: `1px solid ${input.trim() && !streaming ? "rgba(74,222,128,0.35)" : "rgba(255,255,255,0.08)"}`,
+                  background: input.trim() && !streaming ? "rgba(0,79,34,0.2)" : "rgba(255,255,255,0.05)",
+                  border: `1px solid ${input.trim() && !streaming ? "rgba(0,79,34,0.35)" : "rgba(255,255,255,0.08)"}`,
                   cursor: input.trim() && !streaming ? "pointer" : "default",
-                  color: input.trim() && !streaming ? "#4ade80" : "rgba(255,255,255,0.2)",
+                  color: input.trim() && !streaming ? "#2a8c4a" : "rgba(255,255,255,0.2)",
                   fontSize: 14,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0,
