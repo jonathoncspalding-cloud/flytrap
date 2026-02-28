@@ -1,0 +1,335 @@
+name: Flytrap Agent Autonomy
+
+on:
+  schedule:
+    # Isabel — Weekly office refresh (Mon 10 AM ET / 3 PM UTC)
+    - cron: "0 15 * * 1"
+    # Scout — Weekly source review (Wed 10 AM ET)
+    - cron: "0 15 * * 3"
+    # Strategist — Weekly briefing quality (Thu 10 AM ET)
+    - cron: "0 15 * * 4"
+    # Optimize — Weekly efficiency review (Fri 10 AM ET)
+    - cron: "0 15 * * 5"
+    # Oracle — Bi-monthly calibration (1st & 15th, 10 AM ET)
+    - cron: "0 15 1,15 * *"
+    # Architect — Monthly UI audit (1st of month, 11 AM ET)
+    - cron: "0 16 1 * *"
+
+  # Manual trigger for any agent
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: "Agent to run"
+        required: true
+        type: choice
+        options:
+          - isabel
+          - scout
+          - oracle
+          - optimize
+          - strategist
+          - architect
+
+  # Sentinel reviews agent PRs
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  # ── Isabel: Weekly Office Refresh ─────────────────────────────────────────
+  isabel-weekly-refresh:
+    if: >-
+      (github.event.schedule == '0 15 * * 1') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.agent == 'isabel')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          prompt: |
+            You are Isabel, the interior designer agent. Read your full agent config from .claude/agents/isabel.md and follow its design philosophy.
+
+            This is your weekly office refresh. Your task:
+            1. Read dashboard/components/pixel-office/office-layout.ts — understand the current buildFurnitureList()
+            2. Read dashboard/components/pixel-office/sprites.ts — check available FURNITURE_DEFS
+            3. Make 2-4 small, intentional changes to buildFurnitureList():
+               - Swap a painting position or replace one furniture item with another
+               - Rotate plants to different spots
+               - Add a seasonal accent (move a lamp, add a plant to an empty corner)
+               - Restyle a corner that feels stale
+            4. Run `npx tsc --noEmit` to verify no TypeScript errors
+            5. Describe what you changed and why, in Isabel Ladd's confident voice
+
+            Rules:
+            - Only modify office-layout.ts (furniture placement). Do NOT modify sprites.ts or types.ts.
+            - Only use furniture types that exist in FURNITURE_DEFS
+            - Don't block walkways — check buildWalkableMap logic
+            - Keep changes small and reversible
+          branch_prefix: "agent/isabel/"
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--max-turns 15"
+
+  # ── Scout: Weekly Source Review ───────────────────────────────────────────
+  scout-source-review:
+    if: >-
+      (github.event.schedule == '0 15 * * 3') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.agent == 'scout')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - run: pip install -r requirements.txt
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          prompt: |
+            You are Scout, the source intelligence agent. Read your full agent config from .claude/agents/scout.md.
+
+            This is your weekly source review. Your task:
+            1. Read all collector scripts in scripts/collectors/ — check for issues, stale endpoints, missing error handling
+            2. Run `python scripts/agents/source_health_check.py` to get current source health data
+            3. If you find issues (broken APIs, poor error handling, missing retry logic), fix them
+            4. If a source is consistently failing, add better logging or disable it with a clear comment
+            5. Run affected collector tests if they exist
+
+            Rules:
+            - Only modify files in scripts/collectors/
+            - Don't add new sources without being asked — focus on health of existing ones
+            - Keep changes focused: one fix per file, clear commit messages
+          branch_prefix: "agent/scout/"
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--max-turns 15"
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+
+  # ── Oracle: Bi-monthly Calibration ───────────────────────────────────────
+  oracle-calibration:
+    if: >-
+      (github.event.schedule == '0 15 1,15 * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.agent == 'oracle')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - run: pip install -r requirements.txt
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          prompt: |
+            You are Oracle, the prediction engine agent. Read your full agent config from .claude/agents/oracle.md.
+
+            This is your bi-monthly calibration review. Your task:
+            1. Run `python scripts/agents/prediction_scorecard.py` to get current accuracy data
+            2. Read scripts/processors/signal_processor.py and scripts/processors/moment_forecaster.py
+            3. Analyze prediction accuracy by type (Catalyst, Collision, Pressure, Pattern, Void)
+            4. If any prediction type has hit rate below 30%, propose specific parameter tuning
+            5. If confidence calibration is off (high confidence predictions missing), adjust thresholds
+            6. Run `python -m pytest tests/ -k prediction` if tests exist
+
+            Rules:
+            - Only modify files in scripts/processors/
+            - Parameter tuning only — no architectural changes
+            - Document every threshold change with a comment explaining the calibration data
+            - If data is insufficient for conclusions, say so and skip changes
+          branch_prefix: "agent/oracle/"
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--max-turns 15"
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+
+  # ── Optimize: Weekly Efficiency Review ───────────────────────────────────
+  optimize-efficiency:
+    if: >-
+      (github.event.schedule == '0 15 * * 5') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.agent == 'optimize')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - run: pip install -r requirements.txt
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          prompt: |
+            You are Optimize, the efficiency agent. Read your full agent config from .claude/agents/optimize.md.
+
+            This is your weekly efficiency review. Your task:
+            1. Run `python scripts/agents/operations_report.py` to get current ops data
+            2. Review scripts/run_pipeline.py for performance bottlenecks
+            3. Check .github/workflows/ for redundant steps or missing caching
+            4. If you find concrete savings (reduced API calls, better caching, fewer redundant Notion queries), implement them
+            5. Calculate the estimated savings in tokens/dollars
+
+            Rules:
+            - Only modify pipeline scripts and workflow files
+            - Never reduce data quality for cost savings without flagging the tradeoff
+            - Quantify every change: "saves ~X tokens/run, ~$Y/month"
+            - Small, incremental improvements — no rewrites
+          branch_prefix: "agent/optimize/"
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--max-turns 15"
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+          NOTION_TRENDS_DB: ${{ secrets.NOTION_TRENDS_DB }}
+          NOTION_TENSIONS_DB: ${{ secrets.NOTION_TENSIONS_DB }}
+          NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
+          NOTION_BRIEFING_DB: ${{ secrets.NOTION_BRIEFING_DB }}
+          NOTION_CALENDAR_DB: ${{ secrets.NOTION_CALENDAR_DB }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+
+  # ── Strategist: Weekly Briefing Quality ──────────────────────────────────
+  strategist-briefing-quality:
+    if: >-
+      (github.event.schedule == '0 15 * * 4') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.agent == 'strategist')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - run: pip install -r requirements.txt
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          prompt: |
+            You are Strategist, the cultural intelligence agent. Read your full agent config from .claude/agents/strategist.md.
+
+            This is your weekly briefing quality review. Your task:
+            1. Run `python scripts/agents/briefing_self_eval.py` to get current briefing quality data
+            2. Read scripts/processors/briefing_generator.py — check prompt templates and output formatting
+            3. If briefings are too generic, too long, or missing actionable insights, tune the prompts
+            4. Check client-specific sections (A&W, VLEX, Four Roses, etc.) for relevance
+            5. Improve template clarity or add better examples to the prompt
+
+            Rules:
+            - Only modify scripts/processors/briefing_generator.py
+            - Prompt tuning only — no architectural changes
+            - Test changes by reviewing the prompt diff, not running a full briefing (expensive)
+            - If quality is good, skip changes — don't fix what isn't broken
+          branch_prefix: "agent/strategist/"
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--max-turns 15"
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_BRIEFING_DB: ${{ secrets.NOTION_BRIEFING_DB }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+
+  # ── Architect: Monthly UI Audit ──────────────────────────────────────────
+  architect-ui-review:
+    if: >-
+      (github.event.schedule == '0 16 1 * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.agent == 'architect')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: cd dashboard && npm ci
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          prompt: |
+            You are Architect, the design and UX agent. Read your full agent config from .claude/agents/architect.md.
+
+            This is your monthly UI audit. Your task:
+            1. Run `cd dashboard && npx tsc --noEmit` to check for type errors
+            2. Review dashboard components for consistency issues:
+               - Inconsistent spacing, font sizes, or color usage
+               - Dark mode issues (hardcoded colors instead of CSS variables)
+               - Missing aria labels or accessibility issues
+            3. Fix any issues you find — prioritize dark mode bugs and type errors
+            4. Run `cd dashboard && npm run build` to verify the build passes
+
+            Rules:
+            - Only modify files in dashboard/
+            - Use inline CSS with CSS variables (var(--text-primary), etc.) — no Tailwind
+            - Small, focused fixes — don't redesign components
+            - If the build was already clean, skip changes
+          branch_prefix: "agent/architect/"
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--max-turns 15"
+
+  # ── Sentinel: Auto-review Agent PRs ──────────────────────────────────────
+  sentinel-review:
+    if: >-
+      github.event_name == 'pull_request' &&
+      startsWith(github.head_ref, 'agent/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - run: pip install -r requirements.txt
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          prompt: |
+            You are Sentinel, the oversight and quality agent. Read your full agent config from .claude/agents/sentinel.md.
+
+            You are reviewing an automated agent PR. Your job is to ensure quality and safety.
+
+            Review checklist:
+            1. **Scope check** — Did the agent stay within its allowed files? Flag if it touched files outside its domain.
+            2. **Code quality** — Run `cd dashboard && npx tsc --noEmit` if dashboard files changed. Run `python -m py_compile` on changed Python files.
+            3. **Walkability** (Isabel PRs) — If office-layout.ts changed, verify furniture doesn't block walkways by checking the placement against TILE_MAP.
+            4. **No regressions** — Check that existing functionality isn't broken by the changes.
+            5. **Commit quality** — Are changes small, focused, and well-described?
+
+            Decision:
+            - APPROVE if changes are safe, scoped correctly, and pass checks
+            - REQUEST CHANGES if there are issues — be specific about what needs fixing
+            - Always explain your reasoning
+
+            If this PR is from a Sentinel branch (your own automation), note the conflict of interest and recommend human review.
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--max-turns 10"
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
