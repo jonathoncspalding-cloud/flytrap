@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncState, STAGE_LABELS } from "@/components/SyncProvider";
+import { useSyncState } from "@/components/SyncProvider";
 
 function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -24,11 +24,9 @@ const FRESHNESS_COLORS = {
 
 export default function SyncFooter() {
   const {
-    stage, isRunning, elapsed, freshness, lastSynced, error,
+    stage, stageLabel, progress, isRunning, elapsed, freshness, lastSynced, error,
     briefingExists, isDisabled, runUrl, startSync, startBriefing,
   } = useSyncState();
-
-  const stageLabel = stage ? STAGE_LABELS[stage] ?? stage : null;
 
   return (
     <div className="sidebar-footer" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -58,7 +56,7 @@ export default function SyncFooter() {
         {isRunning ? (
           <>
             <span className="sync-spinner" />
-            <span style={{ fontSize: 11 }}>{stageLabel}</span>
+            <span style={{ fontSize: 11 }}>{stageLabel ?? "Syncing…"}</span>
             <span style={{ fontSize: 10, color: "var(--text-tertiary)", marginLeft: "auto" }}>
               {formatElapsed(elapsed)}
             </span>
@@ -86,6 +84,25 @@ export default function SyncFooter() {
           </>
         )}
       </button>
+
+      {/* Progress bar — shown during sync */}
+      {isRunning && (
+        <div style={{
+          width: "100%",
+          height: 3,
+          background: "rgba(242,239,237,0.06)",
+          borderRadius: 2,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            height: "100%",
+            width: `${Math.max(2, progress)}%`,
+            background: "linear-gradient(90deg, var(--moss-bright), var(--rose))",
+            borderRadius: 2,
+            transition: "width 1s ease-out",
+          }} />
+        </div>
+      )}
 
       {/* Briefing button */}
       <button

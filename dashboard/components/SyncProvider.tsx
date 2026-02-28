@@ -9,6 +9,10 @@ type Freshness = "fresh" | "stale" | "never";
 interface SyncState {
   /** Current pipeline stage */
   stage: SyncStage;
+  /** Human-readable stage label from API (e.g. "Collecting signals…") */
+  stageLabel: string | null;
+  /** Progress percentage 0–100 */
+  progress: number;
   /** Whether sync/briefing is actively running */
   isRunning: boolean;
   /** Elapsed seconds since sync started */
@@ -17,6 +21,8 @@ interface SyncState {
   freshness: Freshness;
   /** ISO timestamp of last successful sync */
   lastSynced: string | null;
+  /** Whether a sync has been completed today */
+  syncedToday: boolean;
   /** Error message if sync failed */
   error: string | null;
   /** Whether today's briefing already exists */
@@ -33,10 +39,13 @@ interface SyncState {
 
 const SyncContext = createContext<SyncState>({
   stage: null,
+  stageLabel: null,
+  progress: 0,
   isRunning: false,
   elapsed: 0,
   freshness: "never",
   lastSynced: null,
+  syncedToday: false,
   error: null,
   briefingExists: false,
   isDisabled: false,
@@ -65,9 +74,22 @@ function computeFreshness(lastSynced: string | null): Freshness {
   return age <= 2 * 60 * 60 * 1000 ? "fresh" : "stale";
 }
 
+function isSyncedToday(lastSynced: string | null): boolean {
+  if (!lastSynced) return false;
+  const syncDate = new Date(lastSynced);
+  const today = new Date();
+  return (
+    syncDate.getFullYear() === today.getFullYear() &&
+    syncDate.getMonth() === today.getMonth() &&
+    syncDate.getDate() === today.getDate()
+  );
+}
+
 export default function SyncProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [stage, setStage] = useState<SyncStage>(null);
+  const [stageLabel, setStageLabel] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +101,35 @@ export default function SyncProvider({ children }: { children: React.ReactNode }
   const runIdRef = useRef<number | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (timerRef.current) clearInterval(timerRef.current);
+    pollRef.current = null;
+    timerRef.current = null;
+    startTimeRef.current = null;
+  }, []);
+
+  // Start polling + elapsed timer
+  const startPolling = useCallback((pollFn: () => Promise<unknown>) => {
+    // Don't double-start
+    if (pollRef.current) return;
+
+    if (!startTimeRef.current) {
+      startTimeRef.current = Date.now();
+    }
+    setElapsed(0);
+
+    // Poll every 5s (GitHub API rate-limit friendly)
+    pollRef.current = setInterval(pollFn, 5000);
+
+    // Elapsed timer every 1s
+    timerRef.current = setInterval(() => {
+      if (startTimeRef.current) {
+        setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+      }
+    }, 1000);
+  }, []);
 
   // Poll sync status
   const pollStatus = useCallback(async () => {
@@ -103,41 +154,43 @@ export default function SyncProvider({ children }: { children: React.ReactNode }
 
       if (data.status === "running") {
         setStage(data.stage);
+        setStageLabel(data.stageLabel ?? null);
+        setProgress(data.progress ?? 0);
         setIsRunning(true);
+        return "running" as const;
       } else if (data.status === "complete") {
         setStage("complete");
+        setStageLabel("Complete");
+        setProgress(100);
         setIsRunning(false);
         setLastSynced(data.timestamp);
         setError(null);
         runIdRef.current = null;
-        // Stop polling
-        if (pollRef.current) clearInterval(pollRef.current);
-        if (timerRef.current) clearInterval(timerRef.current);
-        pollRef.current = null;
-        timerRef.current = null;
-        startTimeRef.current = null;
+        stopPolling();
         // Refresh server data
         router.refresh();
         // Re-check briefing status
         checkBriefingStatus();
+        return "complete" as const;
       } else if (data.status === "error") {
         setStage("error");
+        setStageLabel("Error");
+        setProgress(0);
         setIsRunning(false);
         setError(data.error ?? "Workflow failed");
         runIdRef.current = null;
-        if (pollRef.current) clearInterval(pollRef.current);
-        if (timerRef.current) clearInterval(timerRef.current);
-        pollRef.current = null;
-        timerRef.current = null;
-        startTimeRef.current = null;
+        stopPolling();
+        return "error" as const;
       } else {
         // idle
         if (data.timestamp) setLastSynced(data.timestamp);
+        return "idle" as const;
       }
     } catch {
       // Network error — ignore, will retry
+      return "error" as const;
     }
-  }, [router]);
+  }, [router, stopPolling]);
 
   const checkBriefingStatus = useCallback(async () => {
     try {
@@ -151,32 +204,25 @@ export default function SyncProvider({ children }: { children: React.ReactNode }
     }
   }, []);
 
-  // Initial status check on mount
+  // Initial status check on mount — if a run is already active, start polling
   useEffect(() => {
-    pollStatus();
-    checkBriefingStatus();
-  }, [pollStatus, checkBriefingStatus]);
-
-  // Start polling + elapsed timer
-  const startPolling = useCallback(() => {
-    startTimeRef.current = Date.now();
-    setElapsed(0);
-
-    // Poll every 5s (GitHub API rate-limit friendly)
-    pollRef.current = setInterval(pollStatus, 5000);
-
-    // Elapsed timer every 1s
-    timerRef.current = setInterval(() => {
-      if (startTimeRef.current) {
-        setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    const initCheck = async () => {
+      const status = await pollStatus();
+      if (status === "running") {
+        // An existing run was detected — start polling loop
+        startPolling(pollStatus);
       }
-    }, 1000);
-  }, [pollStatus]);
+    };
+    initCheck();
+    checkBriefingStatus();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const startSync = useCallback(async () => {
     if (isRunning || isDisabled) return;
     setIsRunning(true);
     setStage("queued");
+    setStageLabel("Starting…");
+    setProgress(0);
     setError(null);
     setRunUrl(null);
     try {
@@ -190,18 +236,22 @@ export default function SyncProvider({ children }: { children: React.ReactNode }
         runIdRef.current = data.run_id;
       }
       if (data.runUrl) setRunUrl(data.runUrl);
-      startPolling();
+      startPolling(pollStatus);
     } catch (e: any) {
       setIsRunning(false);
       setStage("error");
+      setStageLabel("Error");
+      setProgress(0);
       setError(e.message);
     }
-  }, [isRunning, isDisabled, startPolling]);
+  }, [isRunning, isDisabled, startPolling, pollStatus]);
 
   const startBriefing = useCallback(async () => {
     if (isRunning || isDisabled || briefingExists) return;
     setIsRunning(true);
     setStage("briefing");
+    setStageLabel("Generating briefing…");
+    setProgress(0);
     setError(null);
     setRunUrl(null);
     try {
@@ -215,13 +265,15 @@ export default function SyncProvider({ children }: { children: React.ReactNode }
         runIdRef.current = data.run_id;
       }
       if (data.runUrl) setRunUrl(data.runUrl);
-      startPolling();
+      startPolling(pollStatus);
     } catch (e: any) {
       setIsRunning(false);
       setStage("error");
+      setStageLabel("Error");
+      setProgress(0);
       setError(e.message);
     }
-  }, [isRunning, isDisabled, briefingExists, startPolling]);
+  }, [isRunning, isDisabled, briefingExists, startPolling, pollStatus]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -232,15 +284,19 @@ export default function SyncProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const freshness = computeFreshness(lastSynced);
+  const syncedToday = isSyncedToday(lastSynced);
 
   return (
     <SyncContext.Provider
       value={{
         stage,
+        stageLabel,
+        progress,
         isRunning,
         elapsed,
         freshness,
         lastSynced,
+        syncedToday,
         error,
         briefingExists,
         isDisabled,
