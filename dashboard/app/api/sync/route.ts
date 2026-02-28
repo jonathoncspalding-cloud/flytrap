@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
   }
 
   // No run_id — check for active runs
-  const res = await ghFetch("/actions/runs?per_page=5&event=repository_dispatch");
+  const res = await ghFetch("/actions/workflows/pipeline.yml/runs?per_page=5");
   if (!res.ok) {
     return NextResponse.json({ status: "error", error: "Failed to list runs" }, { status: 502 });
   }

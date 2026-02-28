@@ -1,7 +1,6 @@
 "use client";
 
 import { useSyncState, STAGE_LABELS } from "@/components/SyncProvider";
-import { ThemeToggle } from "@/components/ThemeProvider";
 
 function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -18,14 +17,14 @@ function formatTime(iso: string): string {
 }
 
 const FRESHNESS_COLORS = {
-  fresh: "#4ade80",
-  stale: "#fbbf24",
+  fresh: "#2a8c4a",
+  stale: "#FF8200",
   never: "var(--text-tertiary)",
 };
 
 export default function SyncFooter() {
   const {
-    stage, isRunning, elapsed, freshness, lastSynced, error,
+    stage, isRunning, elapsed, freshness, lastSynced, syncedToday, error,
     briefingExists, isDisabled, runUrl, startSync, startBriefing,
   } = useSyncState();
 
@@ -36,24 +35,24 @@ export default function SyncFooter() {
       {/* Sync button */}
       <button
         onClick={startSync}
-        disabled={isRunning || isDisabled}
-        title={isDisabled ? "GitHub not configured" : isRunning ? "Sync in progress" : "Collect signals, process trends, forecast moments"}
+        disabled={isRunning || isDisabled || (syncedToday && !error)}
+        title={isDisabled ? "GitHub not configured" : isRunning ? "Sync in progress" : (syncedToday && error) ? "Retry sync (previous attempt had an error)" : syncedToday ? "Already synced today — next sync available tomorrow" : "Collect signals, process trends, forecast moments"}
         style={{
           width: "100%",
           padding: "7px 10px",
           borderRadius: 7,
-          border: `1px solid ${isRunning ? "rgba(74,222,128,0.3)" : "rgba(74,222,128,0.2)"}`,
-          background: isRunning ? "rgba(74,222,128,0.06)" : "transparent",
+          border: `1px solid ${isRunning ? "rgba(232,18,122,0.3)" : "rgba(0,79,34,0.3)"}`,
+          background: isRunning ? "rgba(232,18,122,0.06)" : "transparent",
           color: isDisabled ? "var(--text-tertiary)" : "var(--text-primary)",
           fontSize: 12,
           fontWeight: 600,
-          cursor: isRunning || isDisabled ? "default" : "pointer",
+          cursor: isRunning || isDisabled || (syncedToday && !error) ? "default" : "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           gap: 6,
           transition: "all 0.15s",
-          opacity: isDisabled ? 0.5 : 1,
+          opacity: isDisabled || (syncedToday && !error) ? 0.5 : 1,
         }}
       >
         {isRunning ? (
@@ -78,12 +77,23 @@ export default function SyncFooter() {
           </>
         ) : (
           <>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="23 4 23 10 17 10" />
-              <polyline points="1 20 1 14 7 14" />
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-            </svg>
-            Sync
+            {syncedToday && !error ? (
+              <>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Synced today
+              </>
+            ) : (
+              <>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 4 23 10 17 10" />
+                  <polyline points="1 20 1 14 7 14" />
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Sync
+              </>
+            )}
           </>
         )}
       </button>
@@ -124,12 +134,12 @@ export default function SyncFooter() {
 
       {/* Error message */}
       {error && (
-        <div style={{ fontSize: 10, color: "#ef4444", lineHeight: 1.3, padding: "0 2px" }}>
+        <div style={{ fontSize: 10, color: "#E8127A", lineHeight: 1.3, padding: "0 2px" }}>
           {error}
         </div>
       )}
 
-      {/* Status line + theme toggle + date */}
+      {/* Status line + date */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 4, borderTop: "1px solid var(--border)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{
@@ -142,12 +152,9 @@ export default function SyncFooter() {
             {lastSynced ? `Synced ${formatTime(lastSynced)}` : "Never synced"}
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
-            {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-          </span>
-          <ThemeToggle />
-        </div>
+        <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
+          {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+        </span>
       </div>
     </div>
   );

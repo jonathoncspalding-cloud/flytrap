@@ -397,14 +397,32 @@ def generate_moments(tensions, trends, velocity_summaries, events, collisions, e
     logger.info("Calling Claude for moment predictions...")
     logger.info(f"  Active: {active_count}, Slots: {slots_available}")
 
-    for model in ["claude-sonnet-4-5", "claude-sonnet-4-5"]:
+    max_retries = 2
+    for attempt in range(max_retries):
         try:
+            messages = [{"role": "user", "content": prompt}]
+
+            # On retry, add a brevity instruction after a truncation failure
+            if attempt > 0:
+                logger.info(f"  Retry {attempt}/{max_retries - 1}: requesting shorter response...")
+                messages.append({"role": "assistant", "content": '{"updates": ['})
+                messages[0]["content"] += (
+                    "\n\nIMPORTANT: Your previous response was truncated because it was too long. "
+                    "Keep narratives to 1-2 sentences, watch_for to 3 items max, reasoning to 1 sentence. "
+                    "Generate at most 4 new predictions. Brevity is critical — the response MUST fit within the token limit."
+                )
+
             message = client.messages.create(
-                model=model,
+                model="claude-sonnet-4-5",
                 max_tokens=8192,
-                messages=[{"role": "user", "content": prompt}],
+                messages=messages,
             )
             raw = message.content[0].text.strip()
+            stop_reason = message.stop_reason
+
+            # If we prefilled on retry, prepend the prefill
+            if attempt > 0:
+                raw = '{"updates": [' + raw
 
             # Parse JSON (handle markdown code blocks)
             if raw.startswith("```"):
@@ -412,24 +430,45 @@ def generate_moments(tensions, trends, velocity_summaries, events, collisions, e
                 if raw.startswith("json"):
                     raw = raw[4:]
 
+            # Check if response was truncated (hit max_tokens instead of natural stop)
+            if stop_reason == "max_tokens":
+                logger.warning(f"Claude response truncated (hit max_tokens). Attempt {attempt + 1}/{max_retries}.")
+                # Try repair before retrying
+                repaired = _repair_truncated_json(raw)
+                if repaired:
+                    logger.info("Successfully repaired truncated JSON.")
+                    return repaired
+                # If repair failed and we have retries left, try again
+                if attempt < max_retries - 1:
+                    time.sleep(2)
+                    continue
+                logger.error("JSON repair failed after truncation and no retries left.")
+                return {"updates": [], "new_moments": []}
+
             # Try direct parse
             try:
                 result = json.loads(raw)
                 return result
-            except json.JSONDecodeError:
-                # Try to repair truncated JSON by finding the last complete moment
-                # and closing the arrays/object
-                logger.warning("JSON parse failed, attempting repair...")
+            except json.JSONDecodeError as e:
+                logger.warning(f"JSON parse failed: {e}")
+                # Try repair
                 repaired = _repair_truncated_json(raw)
                 if repaired:
+                    logger.info("Successfully repaired malformed JSON.")
                     return repaired
-                logger.error(f"JSON repair also failed. First 500 chars: {raw[:500]}")
+                # If we have retries left, try again
+                if attempt < max_retries - 1:
+                    logger.warning("Repair failed, will retry with brevity instruction...")
+                    time.sleep(2)
+                    continue
+                logger.error(f"JSON repair failed. First 500 chars: {raw[:500]}")
                 return {"updates": [], "new_moments": []}
 
         except anthropic.APIStatusError as e:
             if e.status_code == 529:
-                logger.warning(f"API overloaded, retrying with {model}...")
+                logger.warning("API overloaded, waiting 10s before retry...")
                 time.sleep(10)
+                continue
             else:
                 raise
         except Exception as e:
@@ -440,33 +479,209 @@ def generate_moments(tensions, trends, velocity_summaries, events, collisions, e
 
 
 def _repair_truncated_json(raw: str):
-    """Attempt to repair truncated JSON from Claude responses."""
-    import re
+    """
+    Attempt to repair truncated JSON from Claude responses.
+
+    Strategies (in order):
+    1. Close unterminated strings, then try closing brackets/braces
+    2. Find the last complete JSON object and close the structure
+    3. Progressive truncation to find a parseable prefix
+    """
+    if not raw or not raw.strip():
+        return None
 
     try:
-        # Strategy 1: Find the last complete object in new_moments array
-        # Look for the pattern where we have complete objects
+        # Strategy 1: Fix unterminated strings then close the structure
+        # Count quotes to see if we have an unterminated string
+        repaired = _close_unterminated_string(raw)
+        if repaired:
+            # Now try closing the JSON structure by finding the last complete object
+            result = _try_close_structure(repaired)
+            if result:
+                logger.info("JSON repaired via unterminated string fix + structure close")
+                return result
+
+        # Strategy 2: Find the last complete object boundary and truncate there
+        # Look for the last "}," or "}" that could end a complete array element
+        result = _truncate_to_last_complete_object(raw)
+        if result:
+            logger.info("JSON repaired via truncation to last complete object")
+            return result
+
+        # Strategy 3: Progressive truncation (original approach but more efficient)
+        # Start from the last "}" and work backwards in larger steps
         last_brace = raw.rfind("}")
         if last_brace == -1:
             return None
 
-        # Try progressively trimming from the end
-        for end_pos in range(len(raw), max(0, len(raw) - 2000), -1):
-            candidate = raw[:end_pos]
-            # Try closing off the JSON structure
-            for suffix in ["]}", "]}}", "]}}",  "]}]}}", "]\n}", "]\n  }\n}"]:
+        # Try at each "}" position working backwards
+        pos = last_brace
+        while pos > 0:
+            candidate = raw[:pos + 1]
+            for suffix in ["", "]}", "\n]}", "\n  ]\n}"]:
                 try:
                     result = json.loads(candidate + suffix)
                     if isinstance(result, dict):
-                        logger.info(f"JSON repaired by truncating at position {end_pos}")
+                        logger.info(f"JSON repaired by truncating at position {pos}")
                         return result
                 except json.JSONDecodeError:
                     continue
+            # Jump to the previous "}"
+            pos = raw.rfind("}", 0, pos)
 
         return None
 
-    except Exception:
+    except Exception as e:
+        logger.debug(f"JSON repair exception: {e}")
         return None
+
+
+def _close_unterminated_string(raw: str) -> str:
+    """
+    If the JSON has an unterminated string (odd number of unescaped quotes),
+    close it with a quote character.
+    """
+    # Count unescaped quotes
+    in_string = False
+    i = 0
+    while i < len(raw):
+        ch = raw[i]
+        if ch == '\\' and in_string:
+            i += 2  # skip escaped character
+            continue
+        if ch == '"':
+            in_string = not in_string
+        i += 1
+
+    if in_string:
+        # We're inside an unterminated string -- close it
+        # Strip any trailing incomplete escape sequence
+        stripped = raw.rstrip('\\')
+        return stripped + '"'
+
+    return raw
+
+
+def _try_close_structure(raw: str):
+    """
+    Try to close a JSON structure by appending combinations of brackets/braces.
+    More targeted than brute force: counts open brackets to determine what's needed.
+    """
+    # Count unclosed brackets/braces (outside of strings)
+    open_braces = 0
+    open_brackets = 0
+    in_string = False
+    i = 0
+    while i < len(raw):
+        ch = raw[i]
+        if ch == '\\' and in_string:
+            i += 2
+            continue
+        if ch == '"':
+            in_string = not in_string
+        elif not in_string:
+            if ch == '{':
+                open_braces += 1
+            elif ch == '}':
+                open_braces -= 1
+            elif ch == '[':
+                open_brackets += 1
+            elif ch == ']':
+                open_brackets -= 1
+        i += 1
+
+    if open_braces < 0 or open_brackets < 0:
+        return None  # More closes than opens -- something is deeply wrong
+
+    # Build the closing suffix
+    # The structure is typically: { "updates": [...], "new_moments": [...] }
+    # So we need to close: any open string, then ] for arrays, then } for objects
+    suffix = "]" * open_brackets + "}" * open_braces
+
+    if not suffix:
+        # Already balanced -- try parsing as-is
+        try:
+            result = json.loads(raw)
+            return result if isinstance(result, dict) else None
+        except json.JSONDecodeError:
+            return None
+
+    # The raw might end mid-value (e.g., after a comma or colon).
+    # Try with and without trimming the trailing partial value.
+    candidates = [raw]
+
+    # Also try stripping a trailing partial key-value or array element
+    # (e.g., raw ends with '  "watch_for": "some text that got cut')
+    # Find the last comma before the end and truncate there
+    last_comma = raw.rfind(",")
+    if last_comma > len(raw) * 0.5:  # Only if comma is in the latter half
+        candidates.append(raw[:last_comma])
+
+    for candidate in candidates:
+        # Recount for this candidate
+        ob, obrk = 0, 0
+        in_s = False
+        j = 0
+        while j < len(candidate):
+            c = candidate[j]
+            if c == '\\' and in_s:
+                j += 2
+                continue
+            if c == '"':
+                in_s = not in_s
+            elif not in_s:
+                if c == '{':
+                    ob += 1
+                elif c == '}':
+                    ob -= 1
+                elif c == '[':
+                    obrk += 1
+                elif c == ']':
+                    obrk -= 1
+            j += 1
+
+        if in_s:
+            candidate = candidate.rstrip('\\') + '"'
+            # Don't recount -- the quote just closes the string
+
+        close = "]" * max(0, obrk) + "}" * max(0, ob)
+        try:
+            result = json.loads(candidate + close)
+            if isinstance(result, dict):
+                return result
+        except json.JSONDecodeError:
+            continue
+
+    return None
+
+
+def _truncate_to_last_complete_object(raw: str):
+    """
+    Find the last complete JSON object in an array context and close the structure.
+    Looks for '},' or '}]' patterns that indicate a complete array element.
+    """
+    import re
+
+    # Find all positions where a complete object ends ("},")
+    # These are reliable truncation points
+    pattern = re.compile(r'\}\s*,')
+    matches = list(pattern.finditer(raw))
+
+    # Try from the last match backwards
+    for match in reversed(matches):
+        # Truncate right after the "}"
+        candidate = raw[:match.start() + 1]
+
+        # Try closing the structure
+        for suffix in ["]}", "\n  ]\n}", "\n]\n}"]:
+            try:
+                result = json.loads(candidate + suffix)
+                if isinstance(result, dict):
+                    return result
+            except json.JSONDecodeError:
+                continue
+
+    return None
 
 
 # ── Notion write operations ───────────────────────────────────────────────────
