@@ -24,7 +24,7 @@ const FRESHNESS_COLORS = {
 
 export default function SyncFooter() {
   const {
-    stage, isRunning, elapsed, freshness, lastSynced, syncedToday, error,
+    stage, isRunning, elapsed, freshness, lastSynced, error,
     briefingExists, isDisabled, runUrl, startSync, startBriefing,
   } = useSyncState();
 
@@ -35,8 +35,8 @@ export default function SyncFooter() {
       {/* Sync button */}
       <button
         onClick={startSync}
-        disabled={isRunning || isDisabled || (syncedToday && !error)}
-        title={isDisabled ? "GitHub not configured" : isRunning ? "Sync in progress" : (syncedToday && error) ? "Retry sync (previous attempt had an error)" : syncedToday ? "Already synced today — next sync available tomorrow" : "Collect signals, process trends, forecast moments"}
+        disabled={isRunning || isDisabled}
+        title={isDisabled ? "GitHub not configured" : isRunning ? "Sync in progress" : "Collect signals, process trends, forecast moments"}
         style={{
           width: "100%",
           padding: "7px 10px",
@@ -46,13 +46,13 @@ export default function SyncFooter() {
           color: isDisabled ? "var(--text-tertiary)" : "var(--text-primary)",
           fontSize: 12,
           fontWeight: 600,
-          cursor: isRunning || isDisabled || (syncedToday && !error) ? "default" : "pointer",
+          cursor: isRunning || isDisabled ? "default" : "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           gap: 6,
           transition: "all 0.15s",
-          opacity: isDisabled || (syncedToday && !error) ? 0.5 : 1,
+          opacity: isDisabled ? 0.5 : 1,
         }}
       >
         {isRunning ? (
@@ -77,23 +77,12 @@ export default function SyncFooter() {
           </>
         ) : (
           <>
-            {syncedToday && !error ? (
-              <>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                Synced today
-              </>
-            ) : (
-              <>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="23 4 23 10 17 10" />
-                  <polyline points="1 20 1 14 7 14" />
-                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-                </svg>
-                Sync
-              </>
-            )}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+            Sync
           </>
         )}
       </button>
