@@ -81,15 +81,17 @@ const BASE_ZOOM = 2;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 5;
 
-// Floor colors per zone type
+// Floor colors per zone type — Cornett brand palette
+// Sunset #FF8200, Moss #004F22, Rose #E8127A, Birch #F2EFED, Black #000000
 const FLOOR_COLORS: Record<FloorType, { a: string; b: string }> = {
-  wood: { a: "#8B6914", b: "#7a5c12" },
-  tile: { a: "#c8c0b0", b: "#b8b0a0" },
-  carpet: { a: "#3a5a7a", b: "#344f6c" },
+  wood: { a: "#8a6210", b: "#7a570e" },
+  tile: { a: "#c4a882", b: "#b89b78" },
+  carpet: { a: "#2d4a3a", b: "#253f32" },
+  library: { a: "#1a3828", b: "#152e21" },
 };
 
-const WALL_COLOR = "#2a2a44";
-const WALL_ACCENT = "#3a3a5c";
+const WALL_COLOR = "#0a2812";
+const WALL_ACCENT = "#0d3318";
 
 // ── Component ───────────────────────────────────────────────────────────────
 

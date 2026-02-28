@@ -468,6 +468,28 @@ export const FURNITURE_DEFS: Record<string, FurnitureDef> = {
     solid: true,
   },
 
+  // Venus flytrap in terracotta pot (1×2) — Cornett mascot plant
+  flytrap: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 8, row: 30 },
+      { dx: 0, dy: 1, col: 8, row: 31 },
+    ],
+    solid: true,
+  },
+
+  // Venus flytrap variant B — single head, smaller (1×2)
+  flytrapB: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 9, row: 30 },
+      { dx: 0, dy: 1, col: 9, row: 31 },
+    ],
+    solid: true,
+  },
+
   // Rug/mat (2×1)
   rug: {
     widthTiles: 2,

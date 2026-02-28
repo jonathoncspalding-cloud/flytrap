@@ -39,7 +39,7 @@ export interface CharacterAppearance {
 
 // ── Floor / room zones ──────────────────────────────────────────────────────
 
-export type FloorType = "wood" | "tile" | "carpet";
+export type FloorType = "wood" | "tile" | "carpet" | "library";
 
 export interface FloorZone {
   x: number;
