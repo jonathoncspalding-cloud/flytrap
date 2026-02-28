@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import SyncProvider from "@/components/SyncProvider";
 import Sidebar from "@/components/Sidebar";
+import FeedbackWidget from "@/components/FeedbackWidget";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {children}
               </main>
             </div>
+            <FeedbackWidget />
           </SyncProvider>
         </ThemeProvider>
       </body>
