@@ -7,6 +7,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import AgentAvatar from "@/components/AgentAvatar";
+import { useFloatingPanel } from "@/components/FloatingPanels";
 
 interface Message {
   role: "user" | "assistant";
@@ -84,7 +85,8 @@ interface ChatbotProps {
 }
 
 export default function Chatbot({ embedded = false }: ChatbotProps) {
-  const [open, setOpen] = useState(embedded);
+  const { activePanel, openPanel, closePanel } = useFloatingPanel();
+  const open = embedded || activePanel === "chat";
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -200,10 +202,10 @@ export default function Chatbot({ embedded = false }: ChatbotProps) {
       `}</style>
 
       {/* ── Floating button (hidden in embedded mode) ────────────────────────── */}
-      {!open && !embedded && (
+      {!open && !embedded && activePanel === null && (
         <div style={{ position: "fixed", bottom: 20, right: 20, zIndex: 50 }} className="fab-agent-btn">
           <button
-            onClick={() => setOpen(true)}
+            onClick={() => openPanel("chat")}
             style={{
               width: 46, height: 46, borderRadius: "50%",
               background: "rgba(0,79,34,0.12)",
@@ -288,7 +290,7 @@ export default function Chatbot({ embedded = false }: ChatbotProps) {
               )}
               {!embedded && (
                 <button
-                  onClick={() => setOpen(false)}
+                  onClick={() => closePanel()}
                   style={{
                     background: "none", border: "none", cursor: "pointer",
                     color: "rgba(255,255,255,0.4)", fontSize: 18, lineHeight: 1,

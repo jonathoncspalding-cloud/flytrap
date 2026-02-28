@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import AgentAvatar from "@/components/AgentAvatar";
+import { useFloatingPanel } from "@/components/FloatingPanels";
 
 const PAGE_MAP: Record<string, string> = {
   "/": "Home",
@@ -35,7 +37,8 @@ function detectPage(pathname: string): string {
 }
 
 export default function FeedbackWidget() {
-  const [open, setOpen] = useState(false);
+  const { activePanel, openPanel, closePanel } = useFloatingPanel();
+  const open = activePanel === "feedback";
   const [category, setCategory] = useState("other");
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -47,7 +50,7 @@ export default function FeedbackWidget() {
     if (!open) return;
     function handleClick(e: MouseEvent) {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setOpen(false);
+        closePanel();
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -75,7 +78,7 @@ export default function FeedbackWidget() {
       setCategory("other");
       setTimeout(() => {
         setStatus("idle");
-        setOpen(false);
+        closePanel();
       }, 1500);
     } catch {
       setStatus("error");
@@ -83,14 +86,17 @@ export default function FeedbackWidget() {
     }
   }
 
+  // Hide entirely when another panel (chat) is active
+  if (activePanel !== null && activePanel !== "feedback") return null;
+
   return (
-    <div style={{ position: "fixed", bottom: 20, right: 20, zIndex: 9999 }} ref={panelRef}>
+    <div style={{ position: "fixed", bottom: 20, right: 76, zIndex: 9999 }} ref={panelRef}>
       {/* Panel */}
       {open && (
         <div
           style={{
             position: "absolute",
-            bottom: 52,
+            bottom: 56,
             right: 0,
             width: 300,
             background: "var(--surface)",
@@ -180,10 +186,10 @@ export default function FeedbackWidget() {
                 border: "none",
                 cursor: !message.trim() || status === "sending" ? "not-allowed" : "pointer",
                 background:
-                  status === "sent" ? "#22c55e" :
-                  status === "error" ? "#ef4444" :
+                  status === "sent" ? "#2a8c4a" :
+                  status === "error" ? "#E8127A" :
                   !message.trim() ? "var(--border)" :
-                  "linear-gradient(135deg, #4ade80, #22c55e)",
+                  "linear-gradient(135deg, #3da65a, #2a8c4a)",
                 color:
                   status === "sent" || status === "error" || message.trim()
                     ? "#fff"
@@ -201,37 +207,37 @@ export default function FeedbackWidget() {
       )}
 
       {/* FAB */}
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          width: 42,
-          height: 42,
-          borderRadius: "50%",
-          border: "1px solid var(--border)",
-          background: open ? "var(--surface-raised, var(--surface))" : "var(--surface)",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.2)",
-          transition: "transform 0.15s ease, background 0.15s ease",
-          transform: open ? "rotate(45deg)" : "none",
-        }}
-        title="Send feedback"
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <div className="fab-agent-btn">
+        <button
+          onClick={() => open ? closePanel() : openPanel("feedback")}
+          style={{
+            width: 46,
+            height: 46,
+            borderRadius: "50%",
+            border: open ? "1px solid rgba(232,18,122,0.3)" : "1px solid var(--border)",
+            background: open ? "rgba(232,18,122,0.12)" : "var(--surface)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.35)",
+            transition: "all 0.2s",
+            padding: 0,
+            overflow: "hidden",
+          }}
+          className="card-hover"
+        >
           {open ? (
-            <>
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           ) : (
-            <>
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </>
+            <AgentAvatar agent="architect" size={34} />
           )}
-        </svg>
-      </button>
+        </button>
+        {!open && <div className="fab-tooltip">Feedback? Tell the Architect</div>}
+      </div>
     </div>
   );
 }
