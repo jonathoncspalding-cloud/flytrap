@@ -1,0 +1,20 @@
+# Core
+anthropic>=0.40.0
+notion-client>=2.2.1
+python-dotenv>=1.0.0
+
+# Data collection
+pytrends>=4.9.2
+praw>=7.7.1
+feedparser>=6.0.11
+requests>=2.31.0
+beautifulsoup4>=4.12.3
+lxml>=5.1.0
+
+# Scheduling / utilities
+schedule>=1.2.1
+python-dateutil>=2.9.0
+pytz>=2024.1
+
+# Data handling
+pandas>=2.2.0

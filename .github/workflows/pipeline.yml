@@ -1,0 +1,95 @@
+name: Flytrap Pipeline
+
+on:
+  # Daily full pipeline at 7 AM ET (noon UTC)
+  schedule:
+    - cron: "0 12 * * *"
+  # 6-hourly collection runs (no briefing)
+    - cron: "0 6,18,0 * * *"
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "Pipeline stage to run"
+        required: false
+        default: "full"
+        type: choice
+        options:
+          - full
+          - collect
+          - process
+          - brief
+          - sync
+  # Dashboard trigger via API
+  repository_dispatch:
+    types: [run-pipeline]
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Determine pipeline stage
+        id: stage
+        run: |
+          HOUR=$(date -u +%H)
+          INPUT="${{ github.event.inputs.stage }}"
+          DISPATCH_MODE="${{ github.event.client_payload.mode }}"
+
+          if [ -n "$DISPATCH_MODE" ]; then
+            # Triggered from dashboard via repository_dispatch
+            if [ "$DISPATCH_MODE" = "briefing" ]; then
+              echo "args=--brief" >> $GITHUB_OUTPUT
+            else
+              echo "args=--sync" >> $GITHUB_OUTPUT
+            fi
+          elif [ "$INPUT" = "collect" ]; then
+            echo "args=--collect" >> $GITHUB_OUTPUT
+          elif [ "$INPUT" = "process" ]; then
+            echo "args=--process" >> $GITHUB_OUTPUT
+          elif [ "$INPUT" = "brief" ]; then
+            echo "args=--brief" >> $GITHUB_OUTPUT
+          elif [ "$INPUT" = "sync" ]; then
+            echo "args=--sync" >> $GITHUB_OUTPUT
+          elif [ "$HOUR" = "12" ]; then
+            echo "args=" >> $GITHUB_OUTPUT
+          else
+            echo "args=--no-brief" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_PARENT_PAGE_ID: ${{ secrets.NOTION_PARENT_PAGE_ID }}
+          NOTION_TRENDS_DB: ${{ secrets.NOTION_TRENDS_DB }}
+          NOTION_TENSIONS_DB: ${{ secrets.NOTION_TENSIONS_DB }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+          NOTION_CALENDAR_DB: ${{ secrets.NOTION_CALENDAR_DB }}
+          NOTION_BRIEFING_DB: ${{ secrets.NOTION_BRIEFING_DB }}
+          NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          cd scripts
+          python run_pipeline.py ${{ steps.stage.outputs.args }}
+
+      - name: Upload pipeline log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-log-${{ github.run_id }}
+          path: pipeline.log
+          retention-days: 14
