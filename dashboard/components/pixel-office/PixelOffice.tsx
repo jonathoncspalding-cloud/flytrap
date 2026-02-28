@@ -30,9 +30,50 @@ import {
 import {
   createGameLoop,
   updateCharacter,
+  stopCharacter,
   buildRenderList,
   tileCenter,
 } from "./engine";
+
+// ── Agent Greetings ─────────────────────────────────────────────────────────
+
+const AGENT_GREETINGS: Record<string, { emoji: string; role: string; greeting: string }> = {
+  sentinel: {
+    emoji: "👁️",
+    role: "Oversight & QA",
+    greeting: "Eyes up. I'm watching everything so you don't have to.",
+  },
+  scout: {
+    emoji: "🔭",
+    role: "Source Intelligence",
+    greeting: "Psst! You won't BELIEVE what I just found on Reddit...",
+  },
+  oracle: {
+    emoji: "🧠",
+    role: "Prediction Engine",
+    greeting: "Ah... I sensed you'd click on me. The patterns suggested it.",
+  },
+  architect: {
+    emoji: "🎨",
+    role: "UX & Design",
+    greeting: "OMG hi!! Wait till you see what I've been sketching!",
+  },
+  optimize: {
+    emoji: "⚡",
+    role: "Efficiency & Ops",
+    greeting: "Fun fact: you took 3.2 seconds to click me. I timed it.",
+  },
+  strategist: {
+    emoji: "📝",
+    role: "Cultural Intelligence",
+    greeting: "Good timing. I was just synthesizing today's cultural signals.",
+  },
+  isabel: {
+    emoji: "🎨",
+    role: "Interior Designer",
+    greeting: "Darling! This office needs MORE COLOR. Help me redecorate?",
+  },
+};
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -71,11 +112,47 @@ export default function PixelOffice({
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [hoveredAgent, setHoveredAgent] = useState<string | null>(null);
+  const [greetingAgent, setGreetingAgent] = useState<string | null>(null);
+  const [greetingPos, setGreetingPos] = useState<{ x: number; y: number } | null>(null);
   const selectedRef = useRef(selectedAgent);
   const hoveredRef = useRef(hoveredAgent);
 
   selectedRef.current = selectedAgent;
   hoveredRef.current = hoveredAgent;
+
+  // Trigger greeting when selectedAgent changes (from any source: canvas click or terminal list)
+  useEffect(() => {
+    if (!selectedAgent) {
+      setGreetingAgent(null);
+      setGreetingPos(null);
+      return;
+    }
+    const s = stateRef.current;
+    const canvas = canvasRef.current;
+    if (!s || !canvas) return;
+
+    const char = s.characters.find((c) => c.id === selectedAgent);
+    if (!char) return;
+
+    stopCharacter(char);
+    setGreetingAgent(selectedAgent);
+
+    const rect = canvas.getBoundingClientRect();
+    const z = s.zoom;
+    const scaleX = rect.width / (WORLD_W * z);
+    const scaleY = rect.height / (WORLD_H * z);
+    setGreetingPos({
+      x: char.pos.x * z * scaleX,
+      y: (char.pos.y - 32) * z * scaleY,
+    });
+
+    // Auto-dismiss after 6 seconds
+    const timer = setTimeout(() => {
+      setGreetingAgent(null);
+      setGreetingPos(null);
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [selectedAgent]);
 
   // ── Load sprite sheets + initialize ───────────────────────────────────
 
@@ -461,7 +538,12 @@ export default function PixelOffice({
     const w = worldFromEvent(e);
     if (!w) return;
     const id = hitTest(w.x, w.y);
-    if (id) onSelectAgent(id);
+    if (id) {
+      onSelectAgent(id);
+    } else {
+      setGreetingAgent(null);
+      setGreetingPos(null);
+    }
   }
 
   function handleMove(e: React.MouseEvent) {
@@ -489,6 +571,12 @@ export default function PixelOffice({
 
   return (
     <div style={{ position: "relative", width: "100%", background: "#0c0f1a" }}>
+      <style>{`
+        @keyframes greetFadeIn {
+          from { opacity: 0; transform: translate(-50%, -90%); }
+          to { opacity: 1; transform: translate(-50%, -100%); }
+        }
+      `}</style>
       {loading && (
         <div
           style={{
@@ -518,6 +606,48 @@ export default function PixelOffice({
           imageRendering: "pixelated",
         }}
       />
+      {/* Greeting Popup */}
+      {greetingAgent && greetingPos && AGENT_GREETINGS[greetingAgent] && (
+        <div
+          style={{
+            position: "absolute",
+            left: greetingPos.x,
+            top: greetingPos.y,
+            transform: "translate(-50%, -100%)",
+            background: "rgba(13, 17, 23, 0.95)",
+            border: `1px solid ${agents.find((a) => a.id === greetingAgent)?.color || "#666"}40`,
+            borderLeft: `3px solid ${agents.find((a) => a.id === greetingAgent)?.color || "#666"}`,
+            borderRadius: 8,
+            padding: "10px 14px",
+            maxWidth: 220,
+            pointerEvents: "none",
+            zIndex: 10,
+            animation: "greetFadeIn 0.3s ease-out",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: 14 }}>{AGENT_GREETINGS[greetingAgent].emoji}</span>
+            <span style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: agents.find((a) => a.id === greetingAgent)?.color || "#fff",
+            }}>
+              {agents.find((a) => a.id === greetingAgent)?.label}
+            </span>
+            <span style={{ fontSize: 9, color: "#8b949e" }}>
+              {AGENT_GREETINGS[greetingAgent].role}
+            </span>
+          </div>
+          <div style={{
+            fontSize: 11,
+            color: "#e6edf3",
+            lineHeight: 1.5,
+            fontStyle: "italic",
+          }}>
+            &ldquo;{AGENT_GREETINGS[greetingAgent].greeting}&rdquo;
+          </div>
+        </div>
+      )}
       {/* Vignette */}
       <div
         style={{
@@ -556,6 +686,7 @@ function createCharacter(
     idleTimer: 1 + Math.random() * 3,
     bubble: null,
     bubbleTimer: 0,
+    greetTimer: 0,
     isActive: agent.isActive,
     status: agent.status,
   };

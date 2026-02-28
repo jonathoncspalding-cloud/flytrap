@@ -86,6 +86,7 @@ export interface Character {
   idleTimer: number;
   bubble: string | null;
   bubbleTimer: number;
+  greetTimer: number;
   isActive: boolean;
   status: string;
 }

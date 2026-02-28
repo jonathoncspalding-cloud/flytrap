@@ -164,12 +164,12 @@ export function getCharacterFrame(
 // ── Agent Appearance Assignments ────────────────────────────────────────────
 
 export const AGENT_APPEARANCES: Record<string, CharacterAppearance> = {
-  sentinel: { skinRow: 0, hairRow: 7, outfitIndex: 0 },
+  sentinel: { skinRow: 3, hairRow: 7, outfitIndex: 0 },
   scout: { skinRow: 2, hairRow: 0, outfitIndex: 1 },
   oracle: { skinRow: 0, hairRow: 1, outfitIndex: 2 },
   architect: { skinRow: 4, hairRow: 3, outfitIndex: 3 },
   optimize: { skinRow: 1, hairRow: 6, outfitIndex: 4 },
-  strategist: { skinRow: 3, hairRow: 5, outfitIndex: 5 },
+  strategist: { skinRow: 5, hairRow: 5, outfitIndex: 5 },
   isabel: { skinRow: 4, hairRow: 2, outfitIndex: 6 },
 };
 

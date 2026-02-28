@@ -171,6 +171,18 @@ function moveAlongPath(char: Character, dt: number): void {
   }
 }
 
+// ── Stop Character (on click) ────────────────────────────────────────────────
+
+export function stopCharacter(char: Character): void {
+  char.state = "idle";
+  char.path = [];
+  char.facing = "down";
+  char.animFrame = 1; // standing frame
+  char.animTimer = 0;
+  char.greetTimer = 6;
+  char.idleTimer = 10; // stay still while greeting shows
+}
+
 // ── Character FSM Update ────────────────────────────────────────────────────
 
 export function updateCharacter(
@@ -178,6 +190,20 @@ export function updateCharacter(
   dt: number,
   walkable: boolean[][]
 ): void {
+  // Greeting timer — keep character still while greeting popup shows
+  if (char.greetTimer > 0) {
+    char.greetTimer -= dt;
+    if (char.greetTimer <= 0) {
+      char.greetTimer = 0;
+    }
+    // Still decay bubble timer during greeting
+    if (char.bubble && char.bubbleTimer > 0) {
+      char.bubbleTimer -= dt;
+      if (char.bubbleTimer <= 0) char.bubble = null;
+    }
+    return; // skip FSM while greeting is active
+  }
+
   switch (char.state) {
     case "idle": {
       char.idleTimer -= dt;
