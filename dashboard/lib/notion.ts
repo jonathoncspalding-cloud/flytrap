@@ -630,6 +630,67 @@ export async function getAllMoments(): Promise<CulturalMoment[]> {
     });
 }
 
+// ── Agent Activity ────────────────────────────────────────────────────────
+
+const AGENT_ACTIVITY_DB = process.env.NOTION_AGENT_ACTIVITY_DB;
+
+export type AgentName = "sentinel" | "scout" | "oracle" | "architect" | "optimize" | "strategist";
+export type AgentReportType = "health_check" | "scorecard" | "operations" | "integrity" | "self_eval" | "synthesis" | "proposal" | "task";
+
+export interface AgentActivity {
+  id: string;
+  title: string;
+  agent: AgentName;
+  type: AgentReportType;
+  status: string;
+  priority: string;
+  summary: string;
+  details: string;
+  date: string | null;
+}
+
+function parseAgentActivity(p: any): AgentActivity {
+  const props = p.properties;
+  return {
+    id: p.id,
+    title: titleText(props),
+    agent: (selectName(props.Agent) || "sentinel") as AgentName,
+    type: (selectName(props.Type) || "task") as AgentReportType,
+    status: selectName(props.Status),
+    priority: selectName(props.Priority),
+    summary: richText(props.Summary),
+    details: richText(props.Details),
+    date: dateStart(props.Date),
+  };
+}
+
+export async function getAgentActivity(limit = 30): Promise<AgentActivity[]> {
+  if (!AGENT_ACTIVITY_DB) return [];
+
+  const pages = await queryAll(AGENT_ACTIVITY_DB, undefined, { noStore: true });
+
+  return pages
+    .map(parseAgentActivity)
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
+    .slice(0, limit);
+}
+
+export async function getLatestAgentReport(agent: AgentName): Promise<AgentActivity | null> {
+  if (!AGENT_ACTIVITY_DB) return null;
+
+  const pages = await queryAll(
+    AGENT_ACTIVITY_DB,
+    { property: "Agent", select: { equals: agent } },
+    { noStore: true }
+  );
+
+  const sorted = pages
+    .map(parseAgentActivity)
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+
+  return sorted[0] ?? null;
+}
+
 export async function getResearchInsights(limit = 6): Promise<Evidence[]> {
   const cutoff = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000)
     .toISOString()
