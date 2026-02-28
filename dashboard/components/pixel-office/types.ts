@@ -1,4 +1,4 @@
-// ── Pixel Office Types ──────────────────────────────────────────────────────
+// ── Shared types for the pixel office ────────────────────────────────────────
 
 export type Direction = "down" | "up" | "left" | "right";
 export type CharState = "idle" | "walk" | "type";
@@ -8,42 +8,79 @@ export interface Vec2 {
   y: number;
 }
 
-/** Props passed from CommandCenter (unchanged from current interface) */
-export interface AgentData {
-  id: string;
-  label: string;
-  emoji: string;
-  color: string;
-  status: string;
-  isActive: boolean;
+// ── Sprite sheet system ─────────────────────────────────────────────────────
+
+export interface SpriteSheet {
+  img: HTMLImageElement;
+  cellW: number;
+  cellH: number;
+  cols: number;
+  rows: number;
 }
 
-/** Per-agent color palette resolved from agent.color */
-export interface CharacterPalette {
-  skin: string;
-  hair: string;
-  shirt: string;
-  pants: string;
-  shoes: string;
-  accent: string;
+export interface SpriteSheets {
+  tileset: SpriteSheet;
+  characterModel: SpriteSheet;
+  hairs: SpriteSheet;
+  outfits: SpriteSheet[]; // outfit1..6
+  suits: SpriteSheet;
+  shadow: SpriteSheet;
 }
 
-/** 2D pixel array — hex color strings, '' = transparent */
-export type SpriteFrame = string[][];
+/** Character appearance config for compositing body + hair + outfit layers */
+export interface CharacterAppearance {
+  /** Row in character-model.png (0-5 = skin tones light→dark) */
+  skinRow: number;
+  /** Row in hairs.png (0-7 = hair styles) */
+  hairRow: number;
+  /** Which outfit file (0-5 = outfit1.png through outfit6.png) */
+  outfitIndex: number;
+}
 
-/** Template using single-char keys resolved against a palette */
-export type SpriteTemplate = string[][];
+// ── Floor / room zones ──────────────────────────────────────────────────────
 
-/** Runtime character state for the game engine */
+export type FloorType = "wood" | "tile" | "carpet";
+
+export interface FloorZone {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  type: FloorType;
+}
+
+// ── Furniture ───────────────────────────────────────────────────────────────
+
+export interface FurnitureTile {
+  dx: number;
+  dy: number;
+  col: number;
+  row: number;
+}
+
+export interface FurnitureItem {
+  type: string;
+  tileX: number;
+  tileY: number;
+  widthTiles: number;
+  heightTiles: number;
+  tiles: FurnitureTile[];
+  solid: boolean;
+  wallMounted?: boolean;
+}
+
+// ── Characters ──────────────────────────────────────────────────────────────
+
 export interface Character {
   id: string;
   label: string;
-  palette: CharacterPalette;
+  color: string;
+  appearance: CharacterAppearance;
   state: CharState;
   facing: Direction;
-  pos: Vec2; // pixel coords (sub-tile for smooth interpolation)
-  path: Vec2[]; // remaining path (tile coords)
-  deskTile: Vec2; // assigned seat tile
+  pos: Vec2;
+  path: Vec2[];
+  deskTile: Vec2;
   animFrame: number;
   animTimer: number;
   idleTimer: number;
@@ -53,18 +90,20 @@ export interface Character {
   status: string;
 }
 
-/** Static furniture placed in the office */
-export interface FurnitureItem {
-  type: string;
-  tileX: number;
-  tileY: number;
-  sprite: SpriteFrame;
-  widthTiles: number;
-  heightTiles: number;
-}
+// ── Renderable (for z-sorting) ──────────────────────────────────────────────
 
-/** A z-sortable renderable entity */
 export interface Renderable {
   bottomY: number;
-  draw: (ctx: CanvasRenderingContext2D, zoom: number) => void;
+  draw: (ctx: CanvasRenderingContext2D, z: number) => void;
+}
+
+// ── Agent data from parent ──────────────────────────────────────────────────
+
+export interface AgentData {
+  id: string;
+  label: string;
+  emoji: string;
+  color: string;
+  status: string;
+  isActive: boolean;
 }

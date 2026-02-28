@@ -1,583 +1,506 @@
-// ── Pixel Art Sprite Data ────────────────────────────────────────────────────
-// All sprites are original pixel art. No external assets.
-// Format: 2D string arrays. '' = transparent, hex string = color.
-// Character templates use keys: H=hair, K=skin, S=shirt, A=accent, P=pants, O=shoes, W=white(eye), E=eye(dark)
+// ── Sprite Sheet Loader & Compositing System ────────────────────────────────
+// Loads PNG sprite sheets and composites character frames from body + hair + outfit layers.
+// Furniture tiles are referenced by (col, row) coordinates in the office tileset.
 
-import type { SpriteFrame, SpriteTemplate, CharacterPalette } from "./types";
+import type {
+  SpriteSheet,
+  SpriteSheets,
+  CharacterAppearance,
+  Direction,
+  FurnitureTile,
+} from "./types";
 
-// ── Color Helpers ───────────────────────────────────────────────────────────
+// ── Sheet Loading ───────────────────────────────────────────────────────────
 
-function hexToHsl(hex: string): [number, number, number] {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const max = Math.max(r, g, b),
-    min = Math.min(r, g, b);
-  let h = 0,
-    s = 0;
-  const l = (max + min) / 2;
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-    else if (max === g) h = ((b - r) / d + 2) / 6;
-    else h = ((r - g) / d + 4) / 6;
-  }
-  return [h * 360, s * 100, l * 100];
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load: ${url}`));
+    img.src = url;
+  });
 }
 
-function hslToHex(h: number, s: number, l: number): string {
-  h /= 360;
-  s /= 100;
-  l /= 100;
-  const hue2rgb = (p: number, q: number, t: number) => {
-    if (t < 0) t += 1;
-    if (t > 1) t -= 1;
-    if (t < 1 / 6) return p + (q - p) * 6 * t;
-    if (t < 1 / 2) return q;
-    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-    return p;
-  };
-  let r: number, g: number, b: number;
-  if (s === 0) {
-    r = g = b = l;
-  } else {
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    r = hue2rgb(p, q, h + 1 / 3);
-    g = hue2rgb(p, q, h);
-    b = hue2rgb(p, q, h - 1 / 3);
-  }
-  const toHex = (v: number) =>
-    Math.round(v * 255)
-      .toString(16)
-      .padStart(2, "0");
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-}
-
-function darken(hex: string, amount: number): string {
-  const [h, s, l] = hexToHsl(hex);
-  return hslToHex(h, s, Math.max(0, l - amount * 100));
-}
-
-// ── Palette Builder ─────────────────────────────────────────────────────────
-
-export function buildPalette(agentColor: string): CharacterPalette {
+function makeSheet(
+  img: HTMLImageElement,
+  cellW: number,
+  cellH: number
+): SpriteSheet {
   return {
-    skin: "#f4c89a",
-    hair: darken(agentColor, 0.25),
-    shirt: agentColor,
-    pants: "#374151",
-    shoes: "#1f2937",
-    accent: darken(agentColor, 0.15),
+    img,
+    cellW,
+    cellH,
+    cols: Math.floor(img.width / cellW),
+    rows: Math.floor(img.height / cellH),
   };
 }
 
-// ── Template Resolution ─────────────────────────────────────────────────────
+export async function loadAllSheets(): Promise<SpriteSheets> {
+  const [
+    tileset,
+    characterModel,
+    hairs,
+    o1,
+    o2,
+    o3,
+    o4,
+    o5,
+    o6,
+    o7,
+    suits,
+    shadow,
+  ] = await Promise.all([
+    loadImage("/sprites/tileset.png"),
+    loadImage("/sprites/character-model.png"),
+    loadImage("/sprites/hairs.png"),
+    loadImage("/sprites/outfit1.png"),
+    loadImage("/sprites/outfit2.png"),
+    loadImage("/sprites/outfit3.png"),
+    loadImage("/sprites/outfit4.png"),
+    loadImage("/sprites/outfit5.png"),
+    loadImage("/sprites/outfit6.png"),
+    loadImage("/sprites/outfit7.png"),
+    loadImage("/sprites/suits.png"),
+    loadImage("/sprites/shadow.png"),
+  ]);
 
-const TEMPLATE_MAP: Record<string, keyof CharacterPalette | null> = {
-  H: "hair",
-  K: "skin",
-  S: "shirt",
-  A: "accent",
-  P: "pants",
-  O: "shoes",
-  W: null, // white
-  E: null, // eye dark
-  "": null, // transparent
-};
-
-export function resolveTemplate(
-  tmpl: SpriteTemplate,
-  palette: CharacterPalette
-): SpriteFrame {
-  return tmpl.map((row) =>
-    row.map((key) => {
-      if (key === "") return "";
-      if (key === "W") return "#ffffff";
-      if (key === "E") return "#1a1a2e";
-      const prop = TEMPLATE_MAP[key];
-      return prop ? palette[prop] : key; // pass through hex colors
-    })
-  );
+  return {
+    tileset: makeSheet(tileset, 16, 16),
+    characterModel: makeSheet(characterModel, 32, 32),
+    hairs: makeSheet(hairs, 32, 32),
+    outfits: [o1, o2, o3, o4, o5, o6, o7].map((img) => makeSheet(img, 32, 32)),
+    suits: makeSheet(suits, 32, 32),
+    shadow: makeSheet(shadow, 32, 32),
+  };
 }
 
-// ── Sprite Flipping ─────────────────────────────────────────────────────────
+// ── Character Frame Compositing ─────────────────────────────────────────────
 
-function flipH(tmpl: SpriteTemplate): SpriteTemplate {
-  return tmpl.map((row) => [...row].reverse());
-}
+/**
+ * MetroCity sprite sheets use RPG Maker layout:
+ * - 24 columns × N rows of 32×32 cells
+ * - Each row has 2 character blocks (cols 0-11 and 12-23)
+ * - Within each 12-col block: 4 directions × 3 walk frames
+ *   - Cols 0-2: Down, Cols 3-5: Left, Cols 6-8: Right, Cols 9-11: Up
+ *   - Frame 0: left foot, Frame 1: standing, Frame 2: right foot
+ */
 
-// ── Character Templates (16×16) ─────────────────────────────────────────────
-// Template key shorthand constants
-const _ = ""; // transparent
-const H = "H"; // hair
-const K = "K"; // skin
-const S = "S"; // shirt
-const A = "A"; // accent
-const P = "P"; // pants
-const O = "O"; // shoes
-const W = "W"; // white (eye)
-const E = "E"; // eye (dark)
-
-// ── Walk Down frames (facing viewer) ────────────────────────────────────────
-const WALK_DOWN_0: SpriteTemplate = [
-  [_, _, _, _, _, H, H, H, H, H, _, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, K, W, E, K, K, W, E, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, _, K, K, K, K, K, _, _, _, _, _, _],
-  [_, _, _, _, _, _, S, S, S, _, _, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, A, S, S, S, S, S, A, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, P, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, _, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, _, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, O, O, _, O, O, _, _, _, _, _, _],
-  [_, _, _, _, _, O, O, _, O, O, _, _, _, _, _, _],
-];
-
-const WALK_DOWN_1: SpriteTemplate = [
-  [_, _, _, _, _, H, H, H, H, H, _, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, K, W, E, K, K, W, E, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, _, K, K, K, K, K, _, _, _, _, _, _],
-  [_, _, _, _, _, _, S, S, S, _, _, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, A, S, S, S, S, S, A, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, P, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, _, P, P, P, _, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, _, _, P, _, _, _, _, _, _],
-  [_, _, _, _, O, O, _, _, _, O, O, _, _, _, _, _],
-  [_, _, _, _, O, _, _, _, _, _, O, _, _, _, _, _],
-];
-
-const WALK_DOWN_2: SpriteTemplate = WALK_DOWN_0; // neutral stance repeated
-
-const WALK_DOWN_3: SpriteTemplate = [
-  [_, _, _, _, _, H, H, H, H, H, _, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, K, W, E, K, K, W, E, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, _, K, K, K, K, K, _, _, _, _, _, _],
-  [_, _, _, _, _, _, S, S, S, _, _, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, A, S, S, S, S, S, A, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, P, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, P, _, P, P, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, P, _, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, O, O, _, _, O, O, _, _, _, _, _],
-  [_, _, _, _, _, O, _, _, _, _, O, _, _, _, _, _],
-];
-
-// ── Walk Up frames (facing away) ────────────────────────────────────────────
-const WALK_UP_0: SpriteTemplate = [
-  [_, _, _, _, _, H, H, H, H, H, _, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, _, K, K, K, K, K, _, _, _, _, _, _],
-  [_, _, _, _, _, _, S, S, S, _, _, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, A, S, S, S, S, S, A, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, P, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, _, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, _, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, O, O, _, O, O, _, _, _, _, _, _],
-  [_, _, _, _, _, O, O, _, O, O, _, _, _, _, _, _],
-];
-
-const WALK_UP_1: SpriteTemplate = [
-  [_, _, _, _, _, H, H, H, H, H, _, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, _, K, K, K, K, K, _, _, _, _, _, _],
-  [_, _, _, _, _, _, S, S, S, _, _, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, A, S, S, S, S, S, A, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, P, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, _, P, P, P, _, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, _, _, P, _, _, _, _, _, _],
-  [_, _, _, _, O, O, _, _, _, O, O, _, _, _, _, _],
-  [_, _, _, _, O, _, _, _, _, _, O, _, _, _, _, _],
-];
-
-const WALK_UP_2: SpriteTemplate = WALK_UP_0;
-
-const WALK_UP_3: SpriteTemplate = [
-  [_, _, _, _, _, H, H, H, H, H, _, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, _, K, K, K, K, K, _, _, _, _, _, _],
-  [_, _, _, _, _, _, S, S, S, _, _, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, A, S, S, S, S, S, A, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, P, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, P, _, P, P, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, P, _, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, O, O, _, _, O, O, _, _, _, _, _],
-  [_, _, _, _, _, O, _, _, _, _, O, _, _, _, _, _],
-];
-
-// ── Walk Right frames (profile view) ────────────────────────────────────────
-const WALK_RIGHT_0: SpriteTemplate = [
-  [_, _, _, _, _, _, H, H, H, H, _, _, _, _, _, _],
-  [_, _, _, _, _, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, _, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, _, K, K, K, K, K, H, _, _, _, _, _],
-  [_, _, _, _, _, K, K, W, E, K, _, _, _, _, _, _],
-  [_, _, _, _, _, K, K, K, K, K, _, _, _, _, _, _],
-  [_, _, _, _, _, _, K, K, K, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, S, S, S, _, _, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, A, _, _, _, _, _],
-  [_, _, _, _, _, _, S, S, S, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, P, P, P, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, P, _, P, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, P, _, P, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, O, _, O, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, O, _, O, _, _, _, _, _, _, _],
-];
-
-const WALK_RIGHT_1: SpriteTemplate = [
-  [_, _, _, _, _, _, H, H, H, H, _, _, _, _, _, _],
-  [_, _, _, _, _, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, _, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, _, K, K, K, K, K, H, _, _, _, _, _],
-  [_, _, _, _, _, K, K, W, E, K, _, _, _, _, _, _],
-  [_, _, _, _, _, K, K, K, K, K, _, _, _, _, _, _],
-  [_, _, _, _, _, _, K, K, K, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, S, S, S, _, _, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, A, _, _, _, _, _],
-  [_, _, _, _, _, _, S, S, S, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, P, P, P, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, P, P, _, _, _, _, _, _, _, _],
-  [_, _, _, _, _, P, _, _, P, _, _, _, _, _, _, _],
-  [_, _, _, _, O, _, _, _, _, O, _, _, _, _, _, _],
-  [_, _, _, _, O, _, _, _, _, _, _, _, _, _, _, _],
-];
-
-const WALK_RIGHT_2: SpriteTemplate = WALK_RIGHT_0;
-
-const WALK_RIGHT_3: SpriteTemplate = [
-  [_, _, _, _, _, _, H, H, H, H, _, _, _, _, _, _],
-  [_, _, _, _, _, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, _, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, _, K, K, K, K, K, H, _, _, _, _, _],
-  [_, _, _, _, _, K, K, W, E, K, _, _, _, _, _, _],
-  [_, _, _, _, _, K, K, K, K, K, _, _, _, _, _, _],
-  [_, _, _, _, _, _, K, K, K, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, S, S, S, _, _, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, A, _, _, _, _, _],
-  [_, _, _, _, _, _, S, S, S, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, P, P, P, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, _, P, P, _, _, _, _, _, _, _],
-  [_, _, _, _, _, _, P, _, _, P, _, _, _, _, _, _],
-  [_, _, _, _, _, _, _, _, _, O, O, _, _, _, _, _],
-  [_, _, _, _, _, _, _, _, _, _, O, _, _, _, _, _],
-];
-
-// Left = flipped right
-const WALK_LEFT_0 = flipH(WALK_RIGHT_0);
-const WALK_LEFT_1 = flipH(WALK_RIGHT_1);
-const WALK_LEFT_2 = flipH(WALK_RIGHT_2);
-const WALK_LEFT_3 = flipH(WALK_RIGHT_3);
-
-// ── Type frames (facing up, at desk) ────────────────────────────────────────
-const TYPE_0: SpriteTemplate = [
-  [_, _, _, _, _, H, H, H, H, H, _, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, _, K, K, K, K, K, _, _, _, _, _, _],
-  [_, _, _, _, _, _, S, S, S, _, _, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, A, A, S, S, S, S, S, A, A, _, _, _, _],
-  [_, _, _, A, _, S, S, S, S, S, _, A, _, _, _, _],
-  [_, _, _, _, _, P, P, P, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, _, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, _, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, O, O, _, O, O, _, _, _, _, _, _],
-  [_, _, _, _, _, O, O, _, O, O, _, _, _, _, _, _],
-];
-
-const TYPE_1: SpriteTemplate = [
-  [_, _, _, _, _, H, H, H, H, H, _, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, H, H, H, H, H, H, H, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, K, K, K, K, K, K, K, _, _, _, _, _],
-  [_, _, _, _, _, K, K, K, K, K, _, _, _, _, _, _],
-  [_, _, _, _, _, _, S, S, S, _, _, _, _, _, _, _],
-  [_, _, _, _, _, S, S, S, S, S, _, _, _, _, _, _],
-  [_, _, _, _, A, S, S, S, S, S, A, _, _, _, _, _],
-  [_, _, A, A, _, S, S, S, S, S, _, A, A, _, _, _],
-  [_, _, _, _, _, P, P, P, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, _, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, P, P, _, P, P, _, _, _, _, _, _],
-  [_, _, _, _, _, O, O, _, O, O, _, _, _, _, _, _],
-  [_, _, _, _, _, O, O, _, O, O, _, _, _, _, _, _],
-];
-
-// ── Collected Walk Templates ────────────────────────────────────────────────
-
-export const WALK_TEMPLATES: Record<string, SpriteTemplate[]> = {
-  down: [WALK_DOWN_0, WALK_DOWN_1, WALK_DOWN_2, WALK_DOWN_3],
-  up: [WALK_UP_0, WALK_UP_1, WALK_UP_2, WALK_UP_3],
-  right: [WALK_RIGHT_0, WALK_RIGHT_1, WALK_RIGHT_2, WALK_RIGHT_3],
-  left: [WALK_LEFT_0, WALK_LEFT_1, WALK_LEFT_2, WALK_LEFT_3],
+const DIR_COL_OFFSET: Record<Direction, number> = {
+  down: 0,
+  left: 3,
+  right: 6,
+  up: 9,
 };
 
-export const TYPE_TEMPLATES: SpriteTemplate[] = [TYPE_0, TYPE_1];
+/** Convert direction + walk frame (0-2) to column index */
+function charCol(dir: Direction, frame: number): number {
+  return DIR_COL_OFFSET[dir] + Math.min(frame, 2);
+}
 
-// ── Furniture Sprites (fixed colors) ────────────────────────────────────────
-
-// Desk: 32×16 (2 tiles wide × 1 tile tall)
-const DK = "#5c3d2e"; // dark wood
-const DL = "#7a5540"; // light wood
-const DE = "#4a2f22"; // edge
-
-export const DESK_SPRITE: SpriteFrame = (() => {
-  const s: SpriteFrame = Array.from({ length: 16 }, () =>
-    new Array(32).fill("")
-  );
-  // Surface
-  for (let y = 2; y < 10; y++)
-    for (let x = 1; x < 31; x++) s[y][x] = y < 4 ? DL : DK;
-  // Front edge
-  for (let y = 10; y < 13; y++)
-    for (let x = 1; x < 31; x++) s[y][x] = DE;
-  // Legs
-  for (let y = 13; y < 16; y++) {
-    s[y][2] = DE;
-    s[y][3] = DE;
-    s[y][28] = DE;
-    s[y][29] = DE;
-  }
-  return s;
-})();
-
-// Chair: 16×16
-export const CHAIR_SPRITE: SpriteFrame = (() => {
-  const s: SpriteFrame = Array.from({ length: 16 }, () =>
-    new Array(16).fill("")
-  );
-  // Seat
-  for (let y = 8; y < 12; y++)
-    for (let x = 4; x < 12; x++) s[y][x] = "#374151";
-  // Backrest
-  for (let y = 3; y < 9; y++)
-    for (let x = 5; x < 11; x++) s[y][x] = "#4b5563";
-  // Legs
-  s[12][5] = "#6b7280";
-  s[12][10] = "#6b7280";
-  s[13][4] = "#6b7280";
-  s[13][11] = "#6b7280";
-  return s;
-})();
-
-// PC Monitor: 16×16
-export const PC_SPRITE: SpriteFrame = (() => {
-  const s: SpriteFrame = Array.from({ length: 16 }, () =>
-    new Array(16).fill("")
-  );
-  // Screen frame
-  for (let y = 1; y < 10; y++)
-    for (let x = 3; x < 13; x++) s[y][x] = "#1f2937";
-  // Screen (glow)
-  for (let y = 2; y < 9; y++)
-    for (let x = 4; x < 12; x++) s[y][x] = "#1e3a5f";
-  // Screen highlight
-  for (let y = 2; y < 5; y++)
-    for (let x = 4; x < 8; x++) s[y][x] = "#264d73";
-  // Stand
-  s[10][7] = "#4b5563";
-  s[10][8] = "#4b5563";
-  s[11][6] = "#4b5563";
-  s[11][7] = "#4b5563";
-  s[11][8] = "#4b5563";
-  s[11][9] = "#4b5563";
-  return s;
-})();
-
-// Plant: 16×24 (draws above its tile)
-export const PLANT_SPRITE: SpriteFrame = (() => {
-  const s: SpriteFrame = Array.from({ length: 24 }, () =>
-    new Array(16).fill("")
-  );
-  const G1 = "#22c55e",
-    G2 = "#16a34a",
-    G3 = "#15803d";
-  const PT = "#92400e",
-    PB = "#78350f";
-  // Leaves
-  for (let y = 2; y < 12; y++)
-    for (let x = 3; x < 13; x++) {
-      if (Math.abs(x - 8) + Math.abs(y - 6) < 7) s[y][x] = G1;
-    }
-  for (let y = 3; y < 10; y++)
-    for (let x = 5; x < 11; x++) s[y][x] = G2;
-  s[4][7] = G3;
-  s[5][8] = G3;
-  s[6][6] = G3;
-  // Stem
-  s[12][7] = G3;
-  s[12][8] = G3;
-  s[13][7] = G3;
-  s[13][8] = G3;
-  // Pot
-  for (let y = 14; y < 20; y++)
-    for (let x = 5; x < 11; x++) s[y][x] = y < 16 ? PT : PB;
-  // Pot rim
-  for (let x = 4; x < 12; x++) s[14][x] = PT;
-  return s;
-})();
-
-// Bookshelf: 16×32 (draws above its tile, 2 tiles tall)
-export const BOOKSHELF_SPRITE: SpriteFrame = (() => {
-  const s: SpriteFrame = Array.from({ length: 32 }, () =>
-    new Array(16).fill("")
-  );
-  const WD = "#5c4033",
-    SH = "#7a5540";
-  // Frame
-  for (let y = 0; y < 32; y++) {
-    s[y][1] = WD;
-    s[y][14] = WD;
-  }
-  // Top
-  for (let x = 1; x < 15; x++) s[0][x] = WD;
-  // Shelves
-  for (const sy of [0, 8, 16, 24, 31]) {
-    for (let x = 1; x < 15; x++) s[sy][x] = SH;
-  }
-  // Books (rows of colored spines)
-  const bookColors = ["#ef4444", "#3b82f6", "#22c55e", "#fbbf24", "#a855f7"];
-  for (const [rowStart, rowEnd] of [
-    [1, 8],
-    [9, 16],
-    [17, 24],
-    [25, 31],
-  ] as [number, number][]) {
-    for (let x = 2; x < 14; x++) {
-      const c = bookColors[(x + rowStart) % bookColors.length];
-      for (let y = rowStart + 1; y < rowEnd; y++) s[y][x] = c;
-    }
-  }
-  return s;
-})();
-
-// Cooler: 16×24
-export const COOLER_SPRITE: SpriteFrame = (() => {
-  const s: SpriteFrame = Array.from({ length: 24 }, () =>
-    new Array(16).fill("")
-  );
-  // Jug (top)
-  for (let y = 2; y < 10; y++)
-    for (let x = 5; x < 11; x++) s[y][x] = "#bfdbfe";
-  for (let y = 3; y < 8; y++)
-    for (let x = 6; x < 10; x++) s[y][x] = "#93c5fd";
-  // Body
-  for (let y = 10; y < 22; y++)
-    for (let x = 4; x < 12; x++) s[y][x] = "#e5e7eb";
-  // Front panel
-  for (let y = 14; y < 18; y++)
-    for (let x = 5; x < 11; x++) s[y][x] = "#d1d5db";
-  // Spigot
-  s[18][7] = "#6b7280";
-  s[18][8] = "#6b7280";
-  // Legs
-  s[22][5] = "#6b7280";
-  s[22][10] = "#6b7280";
-  s[23][5] = "#6b7280";
-  s[23][10] = "#6b7280";
-  return s;
-})();
-
-// Lamp: 16×16
-export const LAMP_SPRITE: SpriteFrame = (() => {
-  const s: SpriteFrame = Array.from({ length: 16 }, () =>
-    new Array(16).fill("")
-  );
-  // Shade
-  for (let y = 1; y < 6; y++)
-    for (let x = 4; x < 12; x++) s[y][x] = "#fbbf24";
-  // Glow highlight
-  s[2][6] = "#fde68a";
-  s[2][7] = "#fde68a";
-  s[3][7] = "#fde68a";
-  // Pole
-  for (let y = 6; y < 14; y++) {
-    s[y][7] = "#9ca3af";
-    s[y][8] = "#9ca3af";
-  }
-  // Base
-  for (let x = 5; x < 11; x++) {
-    s[14][x] = "#6b7280";
-    s[15][x] = "#6b7280";
-  }
-  return s;
-})();
-
-// ── Sprite Cache (OffscreenCanvas at zoom) ──────────────────────────────────
-
-const cache = new Map<string, HTMLCanvasElement>();
+const charSpriteCache = new Map<string, HTMLCanvasElement>();
 
 export function clearSpriteCache(): void {
-  cache.clear();
+  charSpriteCache.clear();
 }
 
-export function getCachedSprite(
-  key: string,
-  sprite: SpriteFrame,
-  zoom: number
+/**
+ * Composite a character frame from body + outfit + hair layers.
+ * Returns a cached 32×32 canvas (at 1x, will be scaled during draw).
+ */
+export function getCharacterFrame(
+  sheets: SpriteSheets,
+  appearance: CharacterAppearance,
+  dir: Direction,
+  frame: number
 ): HTMLCanvasElement {
-  const cacheKey = `${key}_${zoom}`;
-  const existing = cache.get(cacheKey);
+  const col = charCol(dir, frame);
+  const key = `char_${appearance.skinRow}_${appearance.hairRow}_${appearance.outfitIndex}_${col}`;
+  const existing = charSpriteCache.get(key);
   if (existing) return existing;
 
-  const h = sprite.length;
-  const w = sprite[0].length;
   const canvas = document.createElement("canvas");
-  canvas.width = w * zoom;
-  canvas.height = h * zoom;
+  canvas.width = 32;
+  canvas.height = 32;
   const ctx = canvas.getContext("2d")!;
 
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const c = sprite[y][x];
-      if (!c) continue;
-      ctx.fillStyle = c;
-      ctx.fillRect(x * zoom, y * zoom, zoom, zoom);
-    }
+  // Layer 1: Body (from character-model.png)
+  const bodySheet = sheets.characterModel;
+  ctx.drawImage(
+    bodySheet.img,
+    col * 32,
+    appearance.skinRow * 32,
+    32,
+    32,
+    0,
+    0,
+    32,
+    32
+  );
+
+  // Layer 2: Outfit
+  const outfitSheet = sheets.outfits[appearance.outfitIndex];
+  if (outfitSheet) {
+    ctx.drawImage(outfitSheet.img, col * 32, 0, 32, 32, 0, 0, 32, 32);
   }
 
-  cache.set(cacheKey, canvas);
+  // Layer 3: Hair (from hairs.png)
+  const hairSheet = sheets.hairs;
+  ctx.drawImage(
+    hairSheet.img,
+    col * 32,
+    appearance.hairRow * 32,
+    32,
+    32,
+    0,
+    0,
+    32,
+    32
+  );
+
+  charSpriteCache.set(key, canvas);
   return canvas;
+}
+
+// ── Agent Appearance Assignments ────────────────────────────────────────────
+
+export const AGENT_APPEARANCES: Record<string, CharacterAppearance> = {
+  sentinel: { skinRow: 0, hairRow: 7, outfitIndex: 0 },
+  scout: { skinRow: 2, hairRow: 0, outfitIndex: 1 },
+  oracle: { skinRow: 0, hairRow: 1, outfitIndex: 2 },
+  architect: { skinRow: 4, hairRow: 3, outfitIndex: 3 },
+  optimize: { skinRow: 1, hairRow: 6, outfitIndex: 4 },
+  strategist: { skinRow: 3, hairRow: 5, outfitIndex: 5 },
+  isabel: { skinRow: 4, hairRow: 2, outfitIndex: 6 },
+};
+
+// ── Furniture Tile Catalog ──────────────────────────────────────────────────
+// Coordinates reference the office tileset (16×16 grid, 16 cols × 32 rows)
+
+export interface FurnitureDef {
+  widthTiles: number;
+  heightTiles: number;
+  tiles: FurnitureTile[];
+  solid: boolean;
+  wallMounted?: boolean;
+}
+
+export const FURNITURE_DEFS: Record<string, FurnitureDef> = {
+  // Brown desk (2×2 tiles)
+  desk: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 2, row: 0 },
+      { dx: 1, dy: 0, col: 3, row: 0 },
+      { dx: 0, dy: 1, col: 2, row: 1 },
+      { dx: 1, dy: 1, col: 3, row: 1 },
+    ],
+    solid: true,
+  },
+
+  // Large wood desk variant (2×2)
+  deskWood: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 4, row: 0 },
+      { dx: 1, dy: 0, col: 5, row: 0 },
+      { dx: 0, dy: 1, col: 4, row: 1 },
+      { dx: 1, dy: 1, col: 5, row: 1 },
+    ],
+    solid: true,
+  },
+
+  // Pink/maroon chair (1×1)
+  chair: {
+    widthTiles: 1,
+    heightTiles: 1,
+    tiles: [{ dx: 0, dy: 0, col: 0, row: 16 }],
+    solid: false,
+  },
+
+  // Office chair variant
+  chairGray: {
+    widthTiles: 1,
+    heightTiles: 1,
+    tiles: [{ dx: 0, dy: 0, col: 4, row: 16 }],
+    solid: false,
+  },
+
+  // PC/Computer (2×2)
+  pc: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 10, row: 24 },
+      { dx: 1, dy: 0, col: 11, row: 24 },
+      { dx: 0, dy: 1, col: 10, row: 25 },
+      { dx: 1, dy: 1, col: 11, row: 25 },
+    ],
+    solid: true,
+  },
+
+  // Desktop monitor (1×1, sits on desk)
+  monitor: {
+    widthTiles: 1,
+    heightTiles: 1,
+    tiles: [{ dx: 0, dy: 0, col: 12, row: 22 }],
+    solid: false,
+  },
+
+  // Bookshelf with colored spines (2×2)
+  bookshelf: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 14, row: 4 },
+      { dx: 1, dy: 0, col: 15, row: 4 },
+      { dx: 0, dy: 1, col: 14, row: 5 },
+      { dx: 1, dy: 1, col: 15, row: 5 },
+    ],
+    solid: true,
+  },
+
+  // Tall bookcase (2×2)
+  bookcase: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 12, row: 12 },
+      { dx: 1, dy: 0, col: 13, row: 12 },
+      { dx: 0, dy: 1, col: 12, row: 13 },
+      { dx: 1, dy: 1, col: 13, row: 13 },
+    ],
+    solid: true,
+  },
+
+  // Plant (1×2 tall)
+  plant: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 2, row: 28 },
+      { dx: 0, dy: 1, col: 2, row: 29 },
+    ],
+    solid: true,
+  },
+
+  // Plant variant
+  plantB: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 4, row: 28 },
+      { dx: 0, dy: 1, col: 4, row: 29 },
+    ],
+    solid: true,
+  },
+
+  // Wall clock (1×2)
+  clock: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 0, row: 22 },
+      { dx: 0, dy: 1, col: 0, row: 23 },
+    ],
+    solid: false,
+    wallMounted: true,
+  },
+
+  // Landscape painting (2×2)
+  painting: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 4, row: 24 },
+      { dx: 1, dy: 0, col: 5, row: 24 },
+      { dx: 0, dy: 1, col: 4, row: 25 },
+      { dx: 1, dy: 1, col: 5, row: 25 },
+    ],
+    solid: false,
+    wallMounted: true,
+  },
+
+  // Chart/whiteboard (2×2)
+  whiteboard: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 2, row: 26 },
+      { dx: 1, dy: 0, col: 3, row: 26 },
+      { dx: 0, dy: 1, col: 2, row: 27 },
+      { dx: 1, dy: 1, col: 3, row: 27 },
+    ],
+    solid: false,
+    wallMounted: true,
+  },
+
+  // Vending machine (2×2)
+  vending: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 14, row: 16 },
+      { dx: 1, dy: 0, col: 15, row: 16 },
+      { dx: 0, dy: 1, col: 14, row: 17 },
+      { dx: 1, dy: 1, col: 15, row: 17 },
+    ],
+    solid: true,
+  },
+
+  // Water cooler (1×2)
+  cooler: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 8, row: 16 },
+      { dx: 0, dy: 1, col: 8, row: 17 },
+    ],
+    solid: true,
+  },
+
+  // Long counter (2×2)
+  counter: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 4, row: 18 },
+      { dx: 1, dy: 0, col: 5, row: 18 },
+      { dx: 0, dy: 1, col: 4, row: 19 },
+      { dx: 1, dy: 1, col: 5, row: 19 },
+    ],
+    solid: true,
+  },
+
+  // Gray counter variant
+  counterGray: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 6, row: 18 },
+      { dx: 1, dy: 0, col: 7, row: 18 },
+      { dx: 0, dy: 1, col: 6, row: 19 },
+      { dx: 1, dy: 1, col: 7, row: 19 },
+    ],
+    solid: true,
+  },
+
+  // Window (2×2)
+  window: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 4, row: 20 },
+      { dx: 1, dy: 0, col: 5, row: 20 },
+      { dx: 0, dy: 1, col: 4, row: 21 },
+      { dx: 1, dy: 1, col: 5, row: 21 },
+    ],
+    solid: false,
+    wallMounted: true,
+  },
+
+  // Filing cabinet (2×2)
+  cabinet: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 12, row: 8 },
+      { dx: 1, dy: 0, col: 13, row: 8 },
+      { dx: 0, dy: 1, col: 12, row: 9 },
+      { dx: 1, dy: 1, col: 13, row: 9 },
+    ],
+    solid: true,
+  },
+
+  // Couch section (2×2)
+  couch: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 0, row: 16 },
+      { dx: 1, dy: 0, col: 1, row: 16 },
+      { dx: 0, dy: 1, col: 0, row: 17 },
+      { dx: 1, dy: 1, col: 1, row: 17 },
+    ],
+    solid: true,
+  },
+
+  // Printer (2×2)
+  printer: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 10, row: 26 },
+      { dx: 1, dy: 0, col: 11, row: 26 },
+      { dx: 0, dy: 1, col: 10, row: 27 },
+      { dx: 1, dy: 1, col: 11, row: 27 },
+    ],
+    solid: true,
+  },
+
+  // Coffee cup (1×1)
+  cup: {
+    widthTiles: 1,
+    heightTiles: 1,
+    tiles: [{ dx: 0, dy: 0, col: 6, row: 16 }],
+    solid: false,
+  },
+
+  // Lamp (1×1)
+  lamp: {
+    widthTiles: 1,
+    heightTiles: 1,
+    tiles: [{ dx: 0, dy: 0, col: 14, row: 20 }],
+    solid: false,
+  },
+
+  // Boxes (2×2)
+  boxes: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 10, row: 28 },
+      { dx: 1, dy: 0, col: 11, row: 28 },
+      { dx: 0, dy: 1, col: 10, row: 29 },
+      { dx: 1, dy: 1, col: 11, row: 29 },
+    ],
+    solid: true,
+  },
+
+  // Rug/mat (2×1)
+  rug: {
+    widthTiles: 2,
+    heightTiles: 1,
+    tiles: [
+      { dx: 0, dy: 0, col: 0, row: 30 },
+      { dx: 1, dy: 0, col: 1, row: 30 },
+    ],
+    solid: false,
+  },
+};
+
+// ── Tileset Draw Helpers ────────────────────────────────────────────────────
+
+/** Draw a single 16×16 tile from the tileset onto the canvas */
+export function drawTilesetTile(
+  ctx: CanvasRenderingContext2D,
+  sheet: SpriteSheet,
+  col: number,
+  row: number,
+  destX: number,
+  destY: number,
+  zoom: number
+): void {
+  ctx.drawImage(
+    sheet.img,
+    col * 16,
+    row * 16,
+    16,
+    16,
+    destX,
+    destY,
+    16 * zoom,
+    16 * zoom
+  );
 }

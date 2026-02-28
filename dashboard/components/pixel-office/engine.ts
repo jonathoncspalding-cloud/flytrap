@@ -167,7 +167,7 @@ function moveAlongPath(char: Character, dt: number): void {
   char.animTimer += dt;
   if (char.animTimer >= WALK_FRAME_DUR) {
     char.animTimer -= WALK_FRAME_DUR;
-    char.animFrame = (char.animFrame + 1) % 4;
+    char.animFrame = (char.animFrame + 1) % 3;
   }
 }
 
