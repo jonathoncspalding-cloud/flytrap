@@ -63,4 +63,5 @@ htmlcov/
 .vercel
 
 # Claude
-.claude/
+.claude/*
+!.claude/agents/

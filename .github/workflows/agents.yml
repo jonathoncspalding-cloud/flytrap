@@ -1,0 +1,199 @@
+name: Flytrap Agent Tasks
+
+on:
+  schedule:
+    # Sentinel: Daily integrity check at 8 AM ET (1 PM UTC)
+    - cron: "0 13 * * *"
+    # Weekly reports: Sundays at 9 AM ET (2 PM UTC)
+    - cron: "0 14 * * 0"
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Agent task to run"
+        required: true
+        type: choice
+        options:
+          - all-weekly
+          - integrity-check
+          - source-health
+          - prediction-scorecard
+          - operations-report
+          - briefing-eval
+          - sentinel-synthesis
+
+jobs:
+  # Daily: Sentinel integrity check
+  daily-integrity:
+    if: github.event.schedule == '0 13 * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'integrity-check')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - run: pip install -r requirements.txt
+      - name: Sentinel — Data Integrity Check
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+          NOTION_TRENDS_DB: ${{ secrets.NOTION_TRENDS_DB }}
+          NOTION_TENSIONS_DB: ${{ secrets.NOTION_TENSIONS_DB }}
+          NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+        run: python scripts/agents/data_integrity_check.py
+
+  # Weekly: All agent reports
+  weekly-reports:
+    if: github.event.schedule == '0 14 * * 0' || (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'all-weekly')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - run: pip install -r requirements.txt
+
+      - name: Scout — Source Health Check
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+        run: python scripts/agents/source_health_check.py
+
+      - name: Oracle — Prediction Scorecard
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+        run: python scripts/agents/prediction_scorecard.py
+
+      - name: Optimize — Operations Report
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+          NOTION_TRENDS_DB: ${{ secrets.NOTION_TRENDS_DB }}
+          NOTION_TENSIONS_DB: ${{ secrets.NOTION_TENSIONS_DB }}
+          NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
+          NOTION_BRIEFING_DB: ${{ secrets.NOTION_BRIEFING_DB }}
+          NOTION_CALENDAR_DB: ${{ secrets.NOTION_CALENDAR_DB }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+        run: python scripts/agents/operations_report.py
+
+      - name: Strategist — Briefing Self-Eval
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_BRIEFING_DB: ${{ secrets.NOTION_BRIEFING_DB }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+        run: python scripts/agents/briefing_self_eval.py
+
+      - name: Sentinel — Weekly Synthesis
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+          NOTION_TRENDS_DB: ${{ secrets.NOTION_TRENDS_DB }}
+          NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+        run: python scripts/agents/sentinel_synthesis.py
+
+  # Individual agent tasks (manual trigger only)
+  source-health:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'source-health'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - run: pip install -r requirements.txt
+      - name: Scout — Source Health Check
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+        run: python scripts/agents/source_health_check.py
+
+  prediction-scorecard:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'prediction-scorecard'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - run: pip install -r requirements.txt
+      - name: Oracle — Prediction Scorecard
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+        run: python scripts/agents/prediction_scorecard.py
+
+  operations-report:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'operations-report'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - run: pip install -r requirements.txt
+      - name: Optimize — Operations Report
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+          NOTION_TRENDS_DB: ${{ secrets.NOTION_TRENDS_DB }}
+          NOTION_TENSIONS_DB: ${{ secrets.NOTION_TENSIONS_DB }}
+          NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
+          NOTION_BRIEFING_DB: ${{ secrets.NOTION_BRIEFING_DB }}
+          NOTION_CALENDAR_DB: ${{ secrets.NOTION_CALENDAR_DB }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+        run: python scripts/agents/operations_report.py
+
+  briefing-eval:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'briefing-eval'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - run: pip install -r requirements.txt
+      - name: Strategist — Briefing Self-Eval
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_BRIEFING_DB: ${{ secrets.NOTION_BRIEFING_DB }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+        run: python scripts/agents/briefing_self_eval.py
+
+  sentinel-synthesis:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'sentinel-synthesis'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - run: pip install -r requirements.txt
+      - name: Sentinel — Weekly Synthesis
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+          NOTION_TRENDS_DB: ${{ secrets.NOTION_TRENDS_DB }}
+          NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+        run: python scripts/agents/sentinel_synthesis.py
