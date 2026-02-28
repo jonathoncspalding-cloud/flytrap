@@ -1,4 +1,5 @@
 import { getAgentActivity, getTrends, getAllMoments, AgentActivity, AgentName } from "@/lib/notion";
+import CommandCenter from "@/components/CommandCenter";
 
 export const revalidate = 0; // Always fresh
 
@@ -99,6 +100,22 @@ export default async function AgentsPage() {
           color={priorityCounts.critical > 0 ? "#ef4444" : priorityCounts.high > 0 ? "#f97316" : "#4ade80"}
         />
       </div>
+
+      {/* Pixel Office + Agent Chat */}
+      <CommandCenter
+        agents={AGENTS.map((agent) => {
+          const latest = latestByAgent.get(agent.name);
+          const isActive = latest ? latest.date === new Date().toISOString().split("T")[0] : false;
+          return {
+            id: agent.name,
+            label: agent.label,
+            emoji: agent.emoji,
+            color: agent.color,
+            status: latest?.summary?.slice(0, 40) ?? "idle",
+            isActive,
+          };
+        })}
+      />
 
       {/* Agent Cards */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>

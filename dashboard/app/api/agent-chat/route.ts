@@ -1,0 +1,108 @@
+/**
+ * /api/agent-chat — Agent-specific chat endpoint.
+ * Each agent has its own personality and domain knowledge.
+ * Streams Claude responses with cultural context + agent system prompt.
+ */
+
+import Anthropic from "@anthropic-ai/sdk";
+import { getTrends, getTensions, getLatestBriefings } from "@/lib/notion";
+import { AGENT_PROMPTS, AgentId } from "@/lib/agent-prompts";
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
+const VALID_AGENTS = new Set<AgentId>(["sentinel", "scout", "oracle", "architect", "optimize", "strategist"]);
+
+async function buildContext(): Promise<string> {
+  const [trends, tensions, briefings] = await Promise.all([
+    getTrends(),
+    getTensions(),
+    getLatestBriefings(1),
+  ]);
+
+  const trendsText = trends
+    .slice(0, 15)
+    .map((t) => `- ${t.name} [${t.type}] CPS:${t.cps} (${t.status})`)
+    .join("\n") || "(no trends)";
+
+  const tensionsText = tensions
+    .slice(0, 10)
+    .map((t) => `- ${t.name} (weight: ${t.weight}/10)`)
+    .join("\n") || "(no tensions)";
+
+  const briefingSnippet = briefings[0]
+    ? `Latest briefing (${briefings[0].date}): ${briefings[0].content.slice(0, 400)}…`
+    : "(no briefing yet)";
+
+  return `\n\nCURRENT SYSTEM STATE:\n\nTrends (top 15 by CPS):\n${trendsText}\n\nTensions:\n${tensionsText}\n\n${briefingSnippet}`;
+}
+
+export async function POST(req: Request) {
+  const body = await req.json();
+  const { messages, agent } = body;
+
+  if (!messages || !Array.isArray(messages)) {
+    return new Response("Invalid request: messages required", { status: 400 });
+  }
+
+  if (!agent || !VALID_AGENTS.has(agent as AgentId)) {
+    return new Response(`Invalid agent: ${agent}`, { status: 400 });
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return new Response("ANTHROPIC_API_KEY not configured", { status: 500 });
+  }
+
+  const [agentPrompt, context] = await Promise.all([
+    Promise.resolve(AGENT_PROMPTS[agent as AgentId]),
+    buildContext(),
+  ]);
+
+  const systemPrompt = agentPrompt + context;
+  const client = new Anthropic({ apiKey });
+  const encoder = new TextEncoder();
+
+  const readable = new ReadableStream({
+    async start(controller) {
+      try {
+        const stream = client.messages.stream({
+          model: "claude-sonnet-4-5",
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: messages.map((m: { role: string; content: string }) => ({
+            role: m.role as "user" | "assistant",
+            content: m.content,
+          })),
+        });
+
+        for await (const event of stream) {
+          if (
+            event.type === "content_block_delta" &&
+            event.delta.type === "text_delta"
+          ) {
+            const data = JSON.stringify({ text: event.delta.text });
+            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+          }
+        }
+
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`)
+        );
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}
