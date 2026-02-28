@@ -11,7 +11,7 @@ import { AGENT_PROMPTS, AgentId } from "@/lib/agent-prompts";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const VALID_AGENTS = new Set<AgentId>(["sentinel", "scout", "oracle", "architect", "optimize", "strategist"]);
+const VALID_AGENTS = new Set<AgentId>(["sentinel", "scout", "oracle", "architect", "optimize", "strategist", "isabel"]);
 
 async function buildContext(): Promise<string> {
   const [trends, tensions, briefings] = await Promise.all([
@@ -40,6 +40,12 @@ async function buildContext(): Promise<string> {
 export async function POST(req: Request) {
   const body = await req.json();
   const { messages, agent } = body;
+
+  // Guard against oversized payloads (base64 images)
+  const payloadSize = JSON.stringify(messages).length;
+  if (payloadSize > 10 * 1024 * 1024) {
+    return new Response("Payload too large", { status: 413 });
+  }
 
   if (!messages || !Array.isArray(messages)) {
     return new Response("Invalid request: messages required", { status: 400 });
@@ -70,10 +76,11 @@ export async function POST(req: Request) {
           model: "claude-sonnet-4-5",
           max_tokens: 1024,
           system: systemPrompt,
-          messages: messages.map((m: { role: string; content: string }) => ({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          messages: messages.map((m: any) => ({
             role: m.role as "user" | "assistant",
             content: m.content,
-          })),
+          })) as Anthropic.MessageParam[],
         });
 
         for await (const event of stream) {

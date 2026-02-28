@@ -4,6 +4,20 @@ import { useState, useRef, useEffect } from "react";
 
 type Message = { role: "user" | "assistant"; content: string };
 
+type Attachment = {
+  id: string;
+  file: File;
+  type: "image" | "text";
+  preview: string;
+  base64?: string;
+  textContent?: string;
+  mediaType?: string;
+};
+
+type ApiContentBlock =
+  | { type: "text"; text: string }
+  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
+
 const AGENT_META: Record<string, { emoji: string; label: string; color: string }> = {
   sentinel: { emoji: "👁️", label: "Sentinel", color: "#f87171" },
   scout: { emoji: "🔭", label: "Scout", color: "#4ade80" },
@@ -13,6 +27,30 @@ const AGENT_META: Record<string, { emoji: string; label: string; color: string }
   strategist: { emoji: "📝", label: "Strategist", color: "#a78bfa" },
   isabel: { emoji: "🎨", label: "Isabel", color: "#2dd4bf" },
 };
+
+const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+const ACCEPTED_TEXT_EXTS = [".txt", ".csv", ".json", ".md"];
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_TEXT_SIZE = 100 * 1024;
+const MAX_ATTACHMENTS = 3;
+
+function resizeImage(file: File, maxDim = 1024): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL(file.type);
+      URL.revokeObjectURL(img.src);
+      resolve(dataUrl.split(",")[1]);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
 
 export default function AgentChat({
   agent,
@@ -24,34 +62,132 @@ export default function AgentChat({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [messageAttachments, setMessageAttachments] = useState<Map<number, Attachment[]>>(new Map());
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const meta = AGENT_META[agent] ?? { emoji: "?", label: agent, color: "#6b7280" };
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [messages]);
 
-  // Reset messages when agent changes
   useEffect(() => {
     setMessages([]);
     setInput("");
+    setAttachments([]);
+    setMessageAttachments(new Map());
   }, [agent]);
+
+  async function handleFiles(files: FileList) {
+    const newAttachments: Attachment[] = [];
+
+    for (const file of Array.from(files)) {
+      if (attachments.length + newAttachments.length >= MAX_ATTACHMENTS) break;
+
+      const isImage = ACCEPTED_IMAGE_TYPES.includes(file.type);
+      const isText = ACCEPTED_TEXT_EXTS.some((ext) => file.name.toLowerCase().endsWith(ext));
+      if (!isImage && !isText) continue;
+      if (isImage && file.size > MAX_IMAGE_SIZE) continue;
+      if (isText && file.size > MAX_TEXT_SIZE) continue;
+
+      const att: Attachment = {
+        id: crypto.randomUUID(),
+        file,
+        type: isImage ? "image" : "text",
+        preview: "",
+      };
+
+      if (isImage) {
+        const base64 = await resizeImage(file);
+        att.base64 = base64;
+        att.mediaType = file.type;
+        att.preview = `data:${file.type};base64,${base64}`;
+      } else {
+        const text = await file.text();
+        att.textContent = text;
+        att.preview = text.slice(0, 200);
+      }
+
+      newAttachments.push(att);
+    }
+
+    setAttachments((prev) => [...prev, ...newAttachments]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function removeAttachment(id: string) {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  }
 
   async function send() {
     const text = input.trim();
-    if (!text || streaming) return;
-    setInput("");
+    if ((!text && attachments.length === 0) || streaming) return;
 
-    const userMsg: Message = { role: "user", content: text };
+    // Build API content blocks for this message
+    const contentBlocks: ApiContentBlock[] = [];
+
+    for (const att of attachments) {
+      if (att.type === "image" && att.base64 && att.mediaType) {
+        contentBlocks.push({
+          type: "image",
+          source: { type: "base64", media_type: att.mediaType, data: att.base64 },
+        });
+      }
+    }
+
+    for (const att of attachments) {
+      if (att.type === "text" && att.textContent) {
+        contentBlocks.push({
+          type: "text",
+          text: `[File: ${att.file.name}]\n${att.textContent}`,
+        });
+      }
+    }
+
+    if (text) {
+      contentBlocks.push({ type: "text", text });
+    }
+
+    // Display content
+    const displayContent = [
+      ...attachments.map((a) =>
+        a.type === "image" ? `[Image: ${a.file.name}]` : `[File: ${a.file.name}]`
+      ),
+      text,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const currentAttachments = [...attachments];
+    const userMsg: Message = { role: "user", content: displayContent };
     const newMessages = [...messages, userMsg];
+    const msgIndex = newMessages.length - 1;
+
+    setMessageAttachments((prev) => {
+      const next = new Map(prev);
+      if (currentAttachments.length > 0) next.set(msgIndex, currentAttachments);
+      return next;
+    });
+
     setMessages([...newMessages, { role: "assistant", content: "" }]);
+    setInput("");
+    setAttachments([]);
     setStreaming(true);
+
+    // Build API messages: prior messages as plain strings, latest with content blocks
+    const apiMessages = newMessages.map((m, i) => {
+      if (i === newMessages.length - 1 && m.role === "user" && contentBlocks.length > 0) {
+        return { role: m.role, content: contentBlocks };
+      }
+      return { role: m.role, content: m.content };
+    });
 
     try {
       const res = await fetch("/api/agent-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages, agent }),
+        body: JSON.stringify({ messages: apiMessages, agent }),
       });
 
       if (!res.ok) {
@@ -115,6 +251,8 @@ export default function AgentChat({
 
     setStreaming(false);
   }
+
+  const canSend = (input.trim() || attachments.length > 0) && !streaming;
 
   return (
     <div style={{
@@ -180,6 +318,8 @@ export default function AgentChat({
             </p>
             <p style={{ margin: 0, lineHeight: 1.5 }}>
               Ask about their domain, request analysis, or get recommendations.
+              <br />
+              You can attach images or files with 📎
             </p>
           </div>
         )}
@@ -206,6 +346,19 @@ export default function AgentChat({
               whiteSpace: "pre-wrap",
               wordBreak: "break-word",
             }}>
+              {/* Inline image thumbnails for sent user messages */}
+              {msg.role === "user" && messageAttachments.get(i)?.some((a) => a.type === "image") && (
+                <div style={{ display: "flex", gap: 4, marginBottom: 6, flexWrap: "wrap" }}>
+                  {messageAttachments.get(i)?.filter((a) => a.type === "image").map((a) => (
+                    <img
+                      key={a.id}
+                      src={a.preview}
+                      alt={a.file.name}
+                      style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 4 }}
+                    />
+                  ))}
+                </div>
+              )}
               {msg.content}
               {streaming && i === messages.length - 1 && msg.role === "assistant" && (
                 <span style={{
@@ -222,6 +375,65 @@ export default function AgentChat({
         ))}
       </div>
 
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/png,image/jpeg,image/gif,image/webp,.txt,.csv,.json,.md"
+        onChange={(e) => e.target.files && handleFiles(e.target.files)}
+        style={{ display: "none" }}
+      />
+
+      {/* Attachment preview strip */}
+      {attachments.length > 0 && (
+        <div style={{
+          padding: "6px 14px",
+          display: "flex",
+          gap: 6,
+          overflowX: "auto",
+          borderTop: "1px solid var(--border)",
+          flexShrink: 0,
+        }}>
+          {attachments.map((att) => (
+            <div key={att.id} style={{
+              position: "relative",
+              width: 48, height: 48,
+              borderRadius: 6,
+              border: "1px solid var(--border)",
+              overflow: "hidden",
+              flexShrink: 0,
+              background: "var(--bg)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}>
+              {att.type === "image" ? (
+                <img src={att.preview} alt={att.file.name} style={{
+                  width: "100%", height: "100%", objectFit: "cover",
+                }} />
+              ) : (
+                <span style={{ fontSize: 9, color: "var(--text-tertiary)", padding: 2, textAlign: "center" }}>
+                  {att.file.name.split(".").pop()?.toUpperCase()}
+                </span>
+              )}
+              <button
+                onClick={() => removeAttachment(att.id)}
+                style={{
+                  position: "absolute", top: -2, right: -2,
+                  width: 16, height: 16, borderRadius: "50%",
+                  background: "#ef4444", border: "none", color: "#fff",
+                  fontSize: 10, cursor: "pointer", lineHeight: "16px",
+                  padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Input */}
       <div style={{
         padding: "10px 14px",
@@ -230,6 +442,28 @@ export default function AgentChat({
         gap: 8,
         flexShrink: 0,
       }}>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={streaming || attachments.length >= MAX_ATTACHMENTS}
+          title={attachments.length >= MAX_ATTACHMENTS ? `Max ${MAX_ATTACHMENTS} attachments` : "Attach file"}
+          style={{
+            padding: "8px",
+            fontSize: 16,
+            background: "none",
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            cursor: streaming || attachments.length >= MAX_ATTACHMENTS ? "not-allowed" : "pointer",
+            color: attachments.length > 0 ? meta.color : "var(--text-tertiary)",
+            transition: "color 0.15s ease",
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 36, height: 36,
+          }}
+        >
+          📎
+        </button>
         <input
           type="text"
           value={input}
@@ -251,16 +485,16 @@ export default function AgentChat({
         />
         <button
           onClick={send}
-          disabled={!input.trim() || streaming}
+          disabled={!canSend}
           style={{
             padding: "8px 14px",
             fontSize: 12,
             fontWeight: 600,
             borderRadius: 6,
             border: "none",
-            cursor: !input.trim() || streaming ? "not-allowed" : "pointer",
-            background: input.trim() && !streaming ? meta.color : "var(--border)",
-            color: input.trim() && !streaming ? "#fff" : "var(--text-tertiary)",
+            cursor: canSend ? "pointer" : "not-allowed",
+            background: canSend ? meta.color : "var(--border)",
+            color: canSend ? "#fff" : "var(--text-tertiary)",
             transition: "all 0.15s ease",
           }}
         >
