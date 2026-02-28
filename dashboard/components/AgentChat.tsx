@@ -11,6 +11,7 @@ const AGENT_META: Record<string, { emoji: string; label: string; color: string }
   architect: { emoji: "🎨", label: "Architect", color: "#f472b6" },
   optimize: { emoji: "⚡", label: "Optimize", color: "#fbbf24" },
   strategist: { emoji: "📝", label: "Strategist", color: "#a78bfa" },
+  isabel: { emoji: "🎨", label: "Isabel", color: "#2dd4bf" },
 };
 
 export default function AgentChat({

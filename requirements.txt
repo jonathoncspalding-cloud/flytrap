@@ -18,3 +18,6 @@ pytz>=2024.1
 
 # Data handling
 pandas>=2.2.0
+
+# Epistemic framework
+empirica>=1.5.9

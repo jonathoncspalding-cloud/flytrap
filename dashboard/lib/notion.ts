@@ -634,7 +634,7 @@ export async function getAllMoments(): Promise<CulturalMoment[]> {
 
 const AGENT_ACTIVITY_DB = process.env.NOTION_AGENT_ACTIVITY_DB;
 
-export type AgentName = "sentinel" | "scout" | "oracle" | "architect" | "optimize" | "strategist";
+export type AgentName = "sentinel" | "scout" | "oracle" | "architect" | "optimize" | "strategist" | "isabel";
 export type AgentReportType = "health_check" | "scorecard" | "operations" | "integrity" | "self_eval" | "synthesis" | "proposal" | "task";
 
 export interface AgentActivity {

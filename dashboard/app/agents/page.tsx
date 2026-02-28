@@ -10,6 +10,7 @@ const AGENTS: { name: AgentName; emoji: string; label: string; role: string; col
   { name: "architect", emoji: "\ud83c\udfa8", label: "Architect", role: "UX/UI & Feedback", color: "#f472b6" },
   { name: "optimize", emoji: "\u26a1", label: "Optimize", role: "Efficiency & Ops", color: "#fbbf24" },
   { name: "strategist", emoji: "\ud83d\udcdd", label: "Strategist", role: "Cultural Intelligence", color: "#a78bfa" },
+  { name: "isabel", emoji: "\ud83c\udfa8", label: "Isabel", role: "Interior Designer", color: "#2dd4bf" },
 ];
 
 const PRIORITY_COLORS: Record<string, string> = {
