@@ -500,6 +500,226 @@ export const FURNITURE_DEFS: Record<string, FurnitureDef> = {
     ],
     solid: false,
   },
+
+  // Trash bin (1×1)
+  bin: {
+    widthTiles: 1,
+    heightTiles: 1,
+    tiles: [{ dx: 0, dy: 0, col: 8, row: 17 }],
+    solid: false,
+  },
+
+  // Stool (1×1)
+  stool: {
+    widthTiles: 1,
+    heightTiles: 1,
+    tiles: [{ dx: 0, dy: 0, col: 0, row: 18 }],
+    solid: false,
+  },
+
+  // Fridge (1×2)
+  fridge: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 13, row: 16 },
+      { dx: 0, dy: 1, col: 13, row: 17 },
+    ],
+    solid: true,
+  },
+
+  // Telephone (1×2, wall-mounted)
+  telephone: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 12, row: 19 },
+      { dx: 0, dy: 1, col: 12, row: 20 },
+    ],
+    solid: false,
+    wallMounted: true,
+  },
+
+  // Cushioned chair facing left (1×1)
+  chairLeft: {
+    widthTiles: 1,
+    heightTiles: 1,
+    tiles: [{ dx: 0, dy: 0, col: 3, row: 16 }],
+    solid: false,
+  },
+
+  // Cushioned chair facing right (1×1)
+  chairRight: {
+    widthTiles: 1,
+    heightTiles: 1,
+    tiles: [{ dx: 0, dy: 0, col: 2, row: 16 }],
+    solid: false,
+  },
+
+  // Large cushioned chair/couch facing left (1×2) — reuse couch sprite
+  couchLeft: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 0, row: 16 },
+      { dx: 1, dy: 0, col: 1, row: 16 },
+      { dx: 0, dy: 1, col: 0, row: 17 },
+      { dx: 1, dy: 1, col: 1, row: 17 },
+    ],
+    solid: true,
+  },
+
+  // Large cushioned chair/couch facing right (1×2) — reuse couch sprite
+  couchRight: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 0, row: 16 },
+      { dx: 1, dy: 0, col: 1, row: 16 },
+      { dx: 0, dy: 1, col: 0, row: 17 },
+      { dx: 1, dy: 1, col: 1, row: 17 },
+    ],
+    solid: true,
+  },
+
+  // Coffee table (2×1)
+  coffeeTable: {
+    widthTiles: 2,
+    heightTiles: 1,
+    tiles: [
+      { dx: 0, dy: 0, col: 4, row: 18 },
+      { dx: 1, dy: 0, col: 5, row: 18 },
+    ],
+    solid: true,
+  },
+
+  // Laptop facing left (1×2)
+  laptop: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 11, row: 24 },
+      { dx: 0, dy: 1, col: 11, row: 25 },
+    ],
+    solid: false,
+  },
+
+  // Laptop from back (1×2)
+  laptopBack: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 12, row: 24 },
+      { dx: 0, dy: 1, col: 12, row: 25 },
+    ],
+    solid: false,
+  },
+
+  // Large wood table (2×4)
+  tableLarge: {
+    widthTiles: 2,
+    heightTiles: 4,
+    tiles: [
+      { dx: 0, dy: 0, col: 4, row: 0 },
+      { dx: 1, dy: 0, col: 5, row: 0 },
+      { dx: 0, dy: 1, col: 4, row: 1 },
+      { dx: 1, dy: 1, col: 5, row: 1 },
+      { dx: 0, dy: 2, col: 4, row: 0 },
+      { dx: 1, dy: 2, col: 5, row: 0 },
+      { dx: 0, dy: 3, col: 4, row: 1 },
+      { dx: 1, dy: 3, col: 5, row: 1 },
+    ],
+    solid: true,
+  },
+
+  // Landscape painting variant B (2×2, wall-mounted)
+  paintingB: {
+    widthTiles: 2,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 2, row: 24 },
+      { dx: 1, dy: 0, col: 3, row: 24 },
+      { dx: 0, dy: 1, col: 2, row: 25 },
+      { dx: 1, dy: 1, col: 3, row: 25 },
+    ],
+    solid: false,
+    wallMounted: true,
+  },
+
+  // White plant variant C (1×2) — reuse plant sprite
+  plantC: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 2, row: 28 },
+      { dx: 0, dy: 1, col: 2, row: 29 },
+    ],
+    solid: true,
+  },
+
+  // White plant variant D (1×2)
+  plantD: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 4, row: 28 },
+      { dx: 0, dy: 1, col: 4, row: 29 },
+    ],
+    solid: true,
+  },
+
+  // Plant variant E (1×2)
+  plantE: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 6, row: 28 },
+      { dx: 0, dy: 1, col: 6, row: 29 },
+    ],
+    solid: true,
+  },
+
+  // Single book (1×1)
+  book: {
+    widthTiles: 1,
+    heightTiles: 1,
+    tiles: [{ dx: 0, dy: 0, col: 9, row: 21 }],
+    solid: false,
+  },
+
+  // Paper stack (1×2)
+  paper: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 14, row: 24 },
+      { dx: 0, dy: 1, col: 14, row: 25 },
+    ],
+    solid: false,
+  },
+
+  // Server rack (1×2)
+  server: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 8, row: 26 },
+      { dx: 0, dy: 1, col: 8, row: 27 },
+    ],
+    solid: true,
+  },
+
+  // Colored wall clock (1×2, wall-mounted)
+  clockColor: {
+    widthTiles: 1,
+    heightTiles: 2,
+    tiles: [
+      { dx: 0, dy: 0, col: 0, row: 22 },
+      { dx: 0, dy: 1, col: 0, row: 23 },
+    ],
+    solid: false,
+    wallMounted: true,
+  },
 };
 
 // ── Tileset Draw Helpers ────────────────────────────────────────────────────

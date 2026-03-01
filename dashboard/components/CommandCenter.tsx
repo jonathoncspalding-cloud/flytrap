@@ -15,7 +15,6 @@ type AgentData = {
 
 export default function CommandCenter({ agents }: { agents: AgentData[] }) {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
-  const selected = agents.find((a) => a.id === selectedAgent);
 
   return (
     <div>
@@ -52,36 +51,41 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
         </span>
       </div>
 
-      {/* Side-by-side: Office (left) + Terminal (right) */}
+      {/* Office with terminal overlay */}
       <div
         style={{
-          display: "flex",
-          flexWrap: "wrap",
+          position: "relative",
           border: "1px solid var(--border)",
           borderRadius: 10,
           overflow: "hidden",
           background: "#0c0f1a",
         }}
       >
-        {/* Pixel Office canvas */}
-        <div style={{ flex: "1 1 400px", minWidth: 0 }}>
-          <PixelOffice
-            agents={agents}
-            selectedAgent={selectedAgent}
-            onSelectAgent={(id) =>
-              setSelectedAgent(selectedAgent === id ? null : id)
-            }
-          />
-        </div>
+        {/* Pixel Office canvas — full width */}
+        <PixelOffice
+          agents={agents}
+          selectedAgent={selectedAgent}
+          onSelectAgent={(id) =>
+            setSelectedAgent(selectedAgent === id ? null : id)
+          }
+        />
 
-        {/* Terminal / Chat panel */}
+        {/* Terminal overlay — upper right */}
         <div
           style={{
-            flex: "0 0 320px",
-            maxWidth: 380,
-            borderLeft: "1px solid var(--border)",
+            position: "absolute",
+            top: 8,
+            right: 8,
+            width: 280,
+            maxHeight: "calc(100% - 16px)",
+            borderRadius: 8,
+            border: "1px solid #21262d",
+            background: "rgba(13, 17, 23, 0.92)",
+            backdropFilter: "blur(8px)",
             display: "flex",
             flexDirection: "column",
+            overflow: "hidden",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
           }}
         >
           {selectedAgent ? (
@@ -95,10 +99,10 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
                 flex: 1,
                 display: "flex",
                 flexDirection: "column",
-                padding: 16,
+                padding: 12,
                 fontFamily: "monospace",
-                background: "#0d1117",
                 color: "#8b949e",
+                overflow: "auto",
               }}
             >
               {/* Terminal header */}
@@ -107,35 +111,35 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  marginBottom: 16,
-                  paddingBottom: 12,
+                  marginBottom: 12,
+                  paddingBottom: 8,
                   borderBottom: "1px solid #21262d",
                 }}
               >
-                <span style={{ fontSize: 18 }}>🤖</span>
+                <span style={{ fontSize: 14 }}>🤖</span>
                 <div>
                   <div
                     style={{
-                      fontSize: 13,
+                      fontSize: 11,
                       fontWeight: 700,
                       color: "#e6edf3",
                     }}
                   >
                     Flytrap Agent Terminal
                   </div>
-                  <div style={{ fontSize: 10, color: "#8b949e" }}>
-                    6 agents online
+                  <div style={{ fontSize: 9, color: "#8b949e" }}>
+                    {agents.filter((a) => a.isActive).length} agents online
                   </div>
                 </div>
               </div>
 
               {/* Idle state */}
-              <div style={{ fontSize: 12, lineHeight: 1.8 }}>
-                <div style={{ color: "#7ee787" }}>
-                  {">"} Select an agent to start chatting
+              <div style={{ fontSize: 11, lineHeight: 1.7 }}>
+                <div style={{ color: "#2a8c4a", fontSize: 10 }}>
+                  {">"} Select an agent to chat
                 </div>
-                <div style={{ marginTop: 12 }}>
-                  Available agents:
+                <div style={{ marginTop: 8, fontSize: 10, color: "#484f58" }}>
+                  Available:
                 </div>
                 {agents.map((a) => (
                   <div
@@ -143,7 +147,8 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
                     onClick={() => setSelectedAgent(a.id)}
                     style={{
                       cursor: "pointer",
-                      padding: "2px 0",
+                      padding: "1px 0",
+                      fontSize: 11,
                       color: a.isActive ? "#e6edf3" : "#8b949e",
                     }}
                     onMouseEnter={(e) =>
@@ -157,8 +162,8 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
                   >
                     {a.emoji} {a.label}{" "}
                     {a.isActive && (
-                      <span style={{ color: "#4ade80", fontSize: 10 }}>
-                        ● active
+                      <span style={{ color: "#2a8c4a", fontSize: 9 }}>
+                        ●
                       </span>
                     )}
                   </div>
@@ -167,10 +172,10 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
 
               <div
                 style={{
-                  marginTop: "auto",
-                  paddingTop: 12,
+                  marginTop: 8,
+                  paddingTop: 8,
                   borderTop: "1px solid #21262d",
-                  fontSize: 10,
+                  fontSize: 9,
                   color: "#484f58",
                 }}
               >

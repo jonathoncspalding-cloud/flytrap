@@ -4,19 +4,19 @@ import CommandCenter from "@/components/CommandCenter";
 export const revalidate = 0; // Always fresh
 
 const AGENTS: { name: AgentName; emoji: string; label: string; role: string; color: string }[] = [
-  { name: "sentinel", emoji: "\ud83d\udc41\ufe0f", label: "Sentinel", role: "Manager & QA", color: "#f87171" },
-  { name: "scout", emoji: "\ud83d\udd2d", label: "Scout", role: "Source Intelligence", color: "#4ade80" },
-  { name: "oracle", emoji: "\ud83e\udde0", label: "Oracle", role: "Prediction Engine", color: "#818cf8" },
+  { name: "sentinel", emoji: "\ud83d\udc41\ufe0f", label: "Sentinel", role: "Manager & QA", color: "#E8127A" },
+  { name: "scout", emoji: "\ud83d\udd2d", label: "Scout", role: "Source Intelligence", color: "#2a8c4a" },
+  { name: "oracle", emoji: "\ud83e\udde0", label: "Oracle", role: "Prediction Engine", color: "rgba(232,18,122,0.7)" },
   { name: "architect", emoji: "\ud83c\udfa8", label: "Architect", role: "UX/UI & Feedback", color: "#f472b6" },
-  { name: "optimize", emoji: "\u26a1", label: "Optimize", role: "Efficiency & Ops", color: "#fbbf24" },
+  { name: "optimize", emoji: "\u26a1", label: "Optimize", role: "Efficiency & Ops", color: "#FF8200" },
   { name: "strategist", emoji: "\ud83d\udcdd", label: "Strategist", role: "Cultural Intelligence", color: "#a78bfa" },
   { name: "isabel", emoji: "\ud83c\udfa8", label: "Isabel", role: "Interior Designer", color: "#2dd4bf" },
 ];
 
 const PRIORITY_COLORS: Record<string, string> = {
-  critical: "#ef4444",
-  high: "#f97316",
-  medium: "#fbbf24",
+  critical: "#E8127A",
+  high: "#FF8200",
+  medium: "#FF8200",
   low: "#6b7280",
 };
 
@@ -84,24 +84,6 @@ export default async function AgentsPage() {
         </div>
       </div>
 
-      {/* System Health Bar */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-        gap: 10,
-        marginBottom: 24,
-      }}>
-        <StatCard label="Trends" value={activeTrends.length} color="#4ade80" />
-        <StatCard label="Predictions" value={activeMoments.length} sublabel={forming.length > 0 ? `${forming.length} forming` : undefined} color="#818cf8" />
-        <StatCard label="Agent Reports" value={activity.length} color="#fbbf24" />
-        <StatCard
-          label="Alerts"
-          value={priorityCounts.critical + priorityCounts.high}
-          sublabel={priorityCounts.critical > 0 ? `${priorityCounts.critical} critical` : undefined}
-          color={priorityCounts.critical > 0 ? "#ef4444" : priorityCounts.high > 0 ? "#f97316" : "#4ade80"}
-        />
-      </div>
-
       {/* Pixel Office + Agent Chat */}
       <CommandCenter
         agents={AGENTS.map((agent) => {
@@ -117,27 +99,6 @@ export default async function AgentsPage() {
           };
         })}
       />
-
-      {/* Agent Cards */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <div style={{ width: 3, height: 14, borderRadius: 2, background: "var(--text-tertiary)", flexShrink: 0 }} />
-        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-          Agent Status
-        </span>
-      </div>
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-        gap: 12,
-        marginBottom: 32,
-      }}>
-        {AGENTS.map((agent) => {
-          const latest = latestByAgent.get(agent.name);
-          return (
-            <AgentCard key={agent.name} agent={agent} latest={latest ?? null} />
-          );
-        })}
-      </div>
 
       {/* Recent Activity Feed */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -299,7 +260,7 @@ function AgentCard({ agent, latest }: {
             {isActive && (
               <span style={{
                 width: 6, height: 6, borderRadius: "50%",
-                background: "#4ade80",
+                background: "#2a8c4a",
                 display: "inline-block",
               }} className="pulse-dot" />
             )}
