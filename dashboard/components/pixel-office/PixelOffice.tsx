@@ -34,6 +34,15 @@ import {
   buildRenderList,
   tileCenter,
 } from "./engine";
+import {
+  loadTileAssets,
+  hasTileAssets,
+  drawFloors,
+  drawWallBases,
+  buildWallRenderables,
+  clearTileCache,
+} from "./tile-renderer";
+import { WALL_HSB } from "./office-layout";
 
 // ── Agent Greetings ─────────────────────────────────────────────────────────
 
@@ -90,8 +99,9 @@ const FLOOR_COLORS: Record<FloorType, { a: string; b: string }> = {
   library: { a: "#1a3828", b: "#152e21" },
 };
 
-const WALL_COLOR = "#0a2812";
-const WALL_ACCENT = "#0d3318";
+const WALL_COLOR = "#1e2738";
+const WALL_COLOR_B = "#242e42";
+const WALL_ACCENT = "#354560";
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -162,7 +172,10 @@ export default function PixelOffice({
     let cancelled = false;
 
     async function init() {
-      const sheets = await loadAllSheets();
+      const [sheets] = await Promise.all([
+        loadAllSheets(),
+        loadTileAssets().catch((e) => console.warn("Tile assets not loaded:", e)),
+      ]);
       if (cancelled) return;
       sheetsRef.current = sheets;
 
@@ -251,14 +264,19 @@ export default function PixelOffice({
     // 1. Floor + Walls
     drawFloorAndWalls(ctx, z);
 
-    // 2. Z-sorted scene
+    // 2. Z-sorted scene (walls + furniture + characters)
+    const wallRenderables = hasTileAssets() ? buildWallRenderables(z, WALL_HSB) : [];
     const renderList = buildRenderList(
       s.characters,
       s.furniture,
       (c, char, zoom) => drawCharacter(c, char, zoom, sheets),
       (c, item, zoom) => drawFurniture(c, item, zoom, sheets)
     );
-    for (const item of renderList) {
+    // Merge wall renderables into the z-sorted list
+    const allRenderables = [...wallRenderables, ...renderList].sort(
+      (a, b) => a.bottomY - b.bottomY
+    );
+    for (const item of allRenderables) {
       item.draw(ctx, z);
     }
 
@@ -308,66 +326,29 @@ export default function PixelOffice({
   // ── Draw Helpers ──────────────────────────────────────────────────────
 
   function drawFloorAndWalls(ctx: CanvasRenderingContext2D, z: number) {
-    // First draw all walls
-    for (let y = 0; y < GRID_ROWS; y++) {
-      for (let x = 0; x < GRID_COLS; x++) {
-        if (TILE_MAP[y][x] === 1) {
-          ctx.fillStyle = WALL_COLOR;
-          ctx.fillRect(x * TILE_SIZE * z, y * TILE_SIZE * z, TILE_SIZE * z, TILE_SIZE * z);
-          // Baseboard accent on bottom edge of wall tiles adjacent to floor below
-          if (y + 1 < GRID_ROWS && TILE_MAP[y + 1]?.[x] === 0) {
-            ctx.fillStyle = WALL_ACCENT;
-            ctx.fillRect(
-              x * TILE_SIZE * z,
-              (y + 1) * TILE_SIZE * z - 2 * z,
-              TILE_SIZE * z,
-              2 * z
-            );
+    if (hasTileAssets()) {
+      // New renderer: sprite-based walls + colorized floor patterns
+      drawWallBases(ctx, z, WALL_HSB);
+      drawFloors(ctx, z);
+    } else {
+      // Fallback: flat colored rectangles (old renderer)
+      for (let y = 0; y < GRID_ROWS; y++) {
+        for (let x = 0; x < GRID_COLS; x++) {
+          if (TILE_MAP[y][x] === 0) {
+            ctx.fillStyle = (x + y) % 2 === 0 ? WALL_COLOR : WALL_COLOR_B;
+            ctx.fillRect(x * TILE_SIZE * z, y * TILE_SIZE * z, TILE_SIZE * z, TILE_SIZE * z);
+          } else {
+            let floorType: FloorType = "wood";
+            for (const zone of FLOOR_ZONES) {
+              if (x >= zone.x && x < zone.x + zone.w && y >= zone.y && y < zone.y + zone.h) {
+                floorType = zone.type;
+                break;
+              }
+            }
+            const colors = FLOOR_COLORS[floorType];
+            ctx.fillStyle = (x + y) % 2 === 0 ? colors.a : colors.b;
+            ctx.fillRect(x * TILE_SIZE * z, y * TILE_SIZE * z, TILE_SIZE * z, TILE_SIZE * z);
           }
-        }
-      }
-    }
-
-    // Build a zone lookup for floor tiles
-    for (let y = 0; y < GRID_ROWS; y++) {
-      for (let x = 0; x < GRID_COLS; x++) {
-        if (TILE_MAP[y][x] !== 0) continue;
-
-        // Find which zone this tile belongs to
-        let floorType: FloorType = "wood"; // default
-        for (const zone of FLOOR_ZONES) {
-          if (
-            x >= zone.x &&
-            x < zone.x + zone.w &&
-            y >= zone.y &&
-            y < zone.y + zone.h
-          ) {
-            floorType = zone.type;
-            break;
-          }
-        }
-
-        const colors = FLOOR_COLORS[floorType];
-        ctx.fillStyle = (x + y) % 2 === 0 ? colors.a : colors.b;
-        ctx.fillRect(
-          x * TILE_SIZE * z,
-          y * TILE_SIZE * z,
-          TILE_SIZE * z,
-          TILE_SIZE * z
-        );
-
-        // Add subtle detail lines for wood floor
-        if (floorType === "wood") {
-          ctx.fillStyle = "rgba(0,0,0,0.08)";
-          ctx.fillRect(x * TILE_SIZE * z, y * TILE_SIZE * z + 4 * z, TILE_SIZE * z, z);
-          ctx.fillRect(x * TILE_SIZE * z, y * TILE_SIZE * z + 11 * z, TILE_SIZE * z, z);
-        }
-
-        // Add subtle diamond pattern for tile floor
-        if (floorType === "tile") {
-          ctx.fillStyle = "rgba(0,0,0,0.05)";
-          ctx.fillRect(x * TILE_SIZE * z + 7 * z, y * TILE_SIZE * z, z, TILE_SIZE * z);
-          ctx.fillRect(x * TILE_SIZE * z, y * TILE_SIZE * z + 7 * z, TILE_SIZE * z, z);
         }
       }
     }
@@ -567,6 +548,7 @@ export default function PixelOffice({
     );
     s.zoom = next;
     clearSpriteCache();
+    clearTileCache();
   }
 
   // ── JSX ───────────────────────────────────────────────────────────────
