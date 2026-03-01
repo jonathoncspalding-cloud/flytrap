@@ -19,7 +19,7 @@ The system is US-first by default. Global stories only surface when they demonst
 ## Architecture Overview
 
 ```
-Sources (7 collectors)
+Sources (9 collectors)
     ↓
 Evidence Log (Notion DB)
     ↓
@@ -60,7 +60,7 @@ These API routes shell out to the local Python pipeline. They only work when the
 
 ```
 Sync (default):
-  1. Collection    — All 7 collectors gather fresh signals (free, no AI)
+  1. Collection    — All 9 collectors gather fresh signals (free, no AI)
   2. Processing    — Claude scores signals, creates/updates trends, detects collisions
   3. Moments       — Claude reviews landscape, updates/creates moment predictions
   ✗ Tensions      — SKIPPED (weekly only — see below)
@@ -136,7 +136,7 @@ python3 scripts/run_pipeline.py --moments    # Moment forecasting only
 
 # Phase 1: Sources
 
-How data enters the system. Seven automated collectors plus a calendar collector run on each pipeline execution.
+How data enters the system. Nine automated collectors plus a calendar collector run on each pipeline execution.
 
 ## Current Collector Stack
 
@@ -160,11 +160,11 @@ How data enters the system. Seven automated collectors plus a calendar collector
 ### 2. RSS Collector
 - **File:** `scripts/collectors/rss_collector.py`
 - **Method:** feedparser (Python library)
-- **Coverage:** 45 feeds across culture, entertainment, fashion, design, food, tech, business, advertising, news, research, newsletters, sports/gaming, and international
+- **Coverage:** 74 feeds across US national news, culture, entertainment, fashion, design, food, tech, business, advertising, research, newsletters, sports/gaming, and international
 - **Thresholds:** MAX_AGE_HOURS = 48, MAX_ITEMS_PER_FEED = 10
 - **Rate limit:** 0.5s between feeds
 - **Research feeds** (Pew, Think With Google, YouGov, etc.) tagged with `source_platform: "Research"` for separate treatment on the Insights page
-- **Maps to sources.md:** Category B (Breaking News). Sources.md lists ~25 RSS feeds across B1-B4. Our stack covers 45 feeds — broader in culture, fashion, design, and research verticals. Key overlap: NYT, NPR, CNN, BBC, Verge, TechCrunch, Wired, ESPN, Variety, Hollywood Reporter, Billboard. Sources.md recommends some we don't have yet: PBS NewsHour, ABC News, CBS News, NBC News, Axios, CNBC, MarketWatch, Ars Technica, Ad Age, Adweek, TMZ, Guardian World.
+- **Maps to sources.md:** Category B (Breaking News). Sources.md lists ~25 RSS feeds across B1-B4. Our stack covers 74 feeds — broader in culture, fashion, design, and research verticals. Key overlap: NYT (Homepage + Arts/Style/Tech), NPR, BBC World, Guardian World, Verge, TechCrunch, Wired, ESPN, Variety, Hollywood Reporter, Billboard, CNBC, MarketWatch, Axios, Ad Age, Adweek. Remaining gaps (low priority): PBS NewsHour, ABC/CBS/NBC News, Ars Technica, TMZ. CNN RSS is broken (SSL errors, stale content).
 
 ### 3. Wikipedia Trending
 - **File:** `scripts/collectors/wikipedia_trending.py`
@@ -219,30 +219,60 @@ How data enters the system. Seven automated collectors plus a calendar collector
 - **Extraction:** Claude (haiku) parses feed content for structured events with name, date, categories, potency (20-80), notes
 - **Thresholds:** LOOKAHEAD_DAYS = 90, MAX_EVENTS_PER_RUN = 40, DEDUP_THRESHOLD = 0.75 (fuzzy name matching)
 - **Validation:** Date in window, valid categories (15 options), potency clamped [20, 80], name ≥ 3 chars
-- **Maps to sources.md:** Partially maps to Category F (Futures). Sources.md envisions calendar entries from prediction markets (Polymarket, Kalshi, Manifold). Our calendar collector instead pulls from entertainment/news RSS. The two approaches are complementary — ours captures known events, prediction markets would add high-stakes moments with probability signals.
+- **Maps to sources.md:** Partially maps to Category F (Futures). Sources.md envisions calendar entries from prediction markets (Polymarket, Kalshi, Manifold). Our calendar collector pulls from entertainment/news RSS — complementary to the Polymarket collector (§9) which adds high-stakes moments with probability signals.
+
+### 9. Polymarket Collector
+- **File:** `scripts/collectors/polymarket_collector.py`
+- **Method:** Polymarket Gamma API (public, no auth, free)
+- **Endpoint:** `gamma-api.polymarket.com/events` (active, not closed, sorted by volume)
+- **Coverage:** Two signal types per sources.md §F:
+  - **Attention Anchors:** High-volume events with upcoming resolution dates (scheduled moments that concentrate attention — elections, Fed decisions, verdicts, awards)
+  - **Volatility Radar:** Markets with ≥5% price move in 24 hours (early warning that probability is shifting — "something is brewing")
+- **Thresholds:** MIN_VOLUME_24H = $50,000; MIN_PRICE_CHANGE = 5%; MAX_SIGNALS = 30; MAX_LOOKAHEAD_DAYS = 90
+- **Noise filters:** Crypto price bets, esports, tweet counting, and other non-cultural markets are excluded (~9% of Polymarket events)
+- **Rate limit:** Single API call per run (no pagination needed for top 100 events)
+- **Maps to sources.md:** Category F1 (Futures — Prediction Markets). Direct implementation of the Polymarket integration spec. Sources.md also recommends Kalshi (F1, medium priority) and Manifold (F1, low priority) for redundancy — not yet implemented.
+
+### 10. Trends24 Collector (X/Twitter US Trends)
+- **File:** `scripts/collectors/trends24_collector.py`
+- **Method:** HTTP GET + HTML parsing of Trends24.in (public X/Twitter trend aggregator)
+- **Endpoint:** `trends24.in/united-states/`
+- **Coverage:** Top 50 unique US trending topics from X/Twitter, drawn from 24 hourly time blocks (~230+ unique trends per day available, top 50 returned)
+- **Thresholds:** MAX_TRENDS = 50 (most recent first)
+- **Rate limit:** Single request per run (~1 second)
+- **No auth required:** Public page, no API key, no Cloudflare, server-rendered HTML
+- **Maintenance:** HTML parsing via regex on `trend-name > a` CSS structure. If Trends24 changes their DOM, the `_parse_trends()` regex needs updating — this is auto-approved per Scout standing orders and should be fixed without user approval.
+- **Maps to sources.md:** Category A1 (Social Seeds — X Trends US). Direct implementation of the Trends24 integration. Sources.md recommends embed/link-out but we machine-ingest for pipeline integration.
 
 ## Sources.md Gap Analysis
 
 What sources.md recommends that we haven't implemented yet:
 
+### Recently Implemented (closed gaps)
+
+| Source | Category | Status | Notes |
+|--------|----------|--------|-------|
+| **Polymarket** | F1 (Futures) | ✅ Done | Prediction market attention anchors + volatility radar. 30 signals/run. |
+| **NPR, NYT Homepage, ESPN, Billboard** | B1/B3 (Breaking News) | ✅ Done | Core US breaking news and entertainment RSS feeds added. |
+| **CNBC, MarketWatch** | B2 (Business) | ✅ Done | Financial/business news coverage gap closed. |
+| **BBC World, Guardian World** | B4 (Global) | ✅ Done | Global feeds for Breakthrough Gate inputs. |
+| **Trends24 (X/Twitter)** | A1 (Social Seeds) | ✅ Done | 50 US trends per run via HTML parsing. Auto-fix if structure changes. |
+| **Ad Age, Adweek** | B2 (Media) | ✅ Already had | Industry advertising/marketing RSS was already in place. |
+| **Axios** | B1 (Breaking News) | ✅ Already had | Was already in RSS collector. |
+
 ### Not Yet Implemented
 
 | Source | Category | Priority | Notes |
 |--------|----------|----------|-------|
-| **Polymarket** | F1 (Futures) | High | Prediction market data for attention anchors and volatility radar. Would add timing intelligence and scenario branching. |
-| **Kalshi** | F1 (Futures) | Medium | Second prediction market source for redundancy. |
+| **Kalshi** | F1 (Futures) | Medium | Second prediction market source for redundancy. Polymarket covers the primary need. |
 | **Manifold Markets** | F1 (Futures) | Low | Third prediction market, smaller but more diverse questions. |
-| **Trends24 (X/Twitter)** | A1 (Social Seeds) | High | US Twitter/X trending topics. Currently no X/Twitter coverage in our stack. |
-| **TikTok Creative Center** | A2 (Social Seeds) | Medium | Trending hashtags, songs, creators, videos. Designed as embed/link-out, not machine-ingested. |
-| **PBS NewsHour RSS** | B1 (Breaking News) | Low | Additional US news source. |
-| **ABC/CBS/NBC News RSS** | B1 (Breaking News) | Low | Additional US national news. We have CNN, NPR, NYT already. |
-| **Axios RSS** | B1 (Breaking News) | Medium | Concise news format, good for signal detection. |
-| **CNBC / MarketWatch** | B2 (Business) | Medium | Financial/business news coverage gap. |
-| **Ars Technica** | B2 (Tech) | Low | Additional tech coverage. We have Verge, TechCrunch, Wired. |
-| **Ad Age / Adweek RSS** | B2 (Media) | Medium | Industry-specific for brand strategy angle. |
-| **TMZ RSS** | B3 (Entertainment) | Low | Celebrity/gossip signal. |
-| **GDELT clustering** | B5 (Clustering) | Low | Global event database for advanced clustering. Our clustering uses Claude instead. |
-| **Wikipedia per-entity hourly tracking** | D2 (Curiosity) | Medium | Hourly spike detection for candidate entities. We do daily top-level only. |
+| **TikTok Creative Center** | A2 (Social Seeds) | Low | Embed/link-out only, not machine-ingestible. Dashboard panel, not a collector. |
+| **PBS NewsHour RSS** | B1 (Breaking News) | Low | Marginal value — NPR + NYT + CNN cover US breaking news. |
+| **ABC/CBS/NBC News RSS** | B1 (Breaking News) | Low | Diminishing returns given existing news coverage. |
+| **Ars Technica** | B2 (Tech) | Low | We have Verge, TechCrunch, Wired — 3 deep tech sources. |
+| **TMZ RSS** | B3 (Entertainment) | Low | Celebrity/gossip — People + Fauxmoi (Reddit) cover this. |
+| **GDELT clustering** | B5 (Clustering) | Low | Claude handles clustering. |
+| **Wikipedia per-entity hourly tracking** | D2 (Curiosity) | Medium | Hourly spike detection for candidate entities. Would improve signal quality. |
 
 ### What We Have That sources.md Doesn't Cover
 
@@ -253,13 +283,11 @@ What sources.md recommends that we haven't implemented yet:
 | **Research feeds** (Pew, YouGov, etc.) | Research/Insights | Academic and research signals — unique to our stack |
 | **Culture/Fashion/Design RSS** (Dazed, i-D, Dezeen, etc.) | Culture | Niche culture verticals not in sources.md |
 
-### Implementation Priority for Gap Closure
+### Implementation Priority for Remaining Gaps
 
-1. **Prediction Markets (Polymarket)** — Highest impact. Adds timing intelligence, attention anchors, scenario branching. See sources.md §F for full integration design.
-2. **X/Twitter via Trends24** — Major social platform gap. Could be embed/link-out initially.
-3. **Ad Age + Adweek RSS** — Direct industry relevance for brand strategy use case.
-4. **Wikipedia per-entity spike detection** — Improves curiosity/intent signal quality significantly.
-5. **Additional news RSS (Axios, CNBC)** — Incremental improvement to breaking news coverage.
+1. **Wikipedia per-entity spike detection** — Improves curiosity/intent signal quality. Medium effort.
+2. **Kalshi** — Prediction market redundancy. Low effort (same pattern as Polymarket).
+3. **Everything else** — Low priority, diminishing returns.
 
 ### Global Breakthrough Gate (from sources.md)
 
@@ -297,7 +325,7 @@ Tensions run automatically when ≥7 days since last evaluation (checked at pipe
 
 ## Stage 1: Signal Collection
 
-All 7 collectors run and write to the Evidence Log (Notion). Calendar collector writes directly to the Calendar DB. Each signal has a normalized shape:
+All 9 collectors run and write to the Evidence Log (Notion). Calendar collector writes directly to the Calendar DB. Each signal has a normalized shape:
 
 ```
 title           — Source-prefixed headline

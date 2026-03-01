@@ -15,6 +15,18 @@ logger = logging.getLogger(__name__)
 
 # Curated RSS feeds — culture, entertainment, food, fashion, sports, tech, advertising
 RSS_FEEDS = [
+    # ── US National News (breaking news backbone) ────────────────────────────
+    {"url": "https://feeds.npr.org/1001/rss.xml", "label": "NPR News", "category": "News"},
+    # CNN RSS is dead (SSL errors + stale content) — NPR + NYT + BBC cover breaking news
+    {"url": "http://feeds.nytimes.com/nyt/rss/HomePage", "label": "NYT Homepage", "category": "News"},
+    {"url": "https://www.espn.com/espn/rss/news", "label": "ESPN", "category": "Sports"},
+    {"url": "https://www.billboard.com/feed/", "label": "Billboard", "category": "Music"},
+    # ── Business & finance ──────────────────────────────────────────────────
+    {"url": "https://www.cnbc.com/id/100003114/device/rss/rss.html", "label": "CNBC", "category": "Business"},
+    {"url": "https://feeds.marketwatch.com/marketwatch/topstories/", "label": "MarketWatch", "category": "Business"},
+    # ── Global (for Global Breakthrough Gate) ───────────────────────────────
+    {"url": "https://feeds.bbci.co.uk/news/world/rss.xml", "label": "BBC World", "category": "News"},
+    {"url": "https://www.theguardian.com/world/rss", "label": "Guardian World", "category": "News"},
     # ── Culture & society ────────────────────────────────────────────────────
     {"url": "https://www.theatlantic.com/feed/all/", "label": "The Atlantic", "category": "Culture"},
     {"url": "https://www.vox.com/rss/index.xml", "label": "Vox", "category": "Culture"},
