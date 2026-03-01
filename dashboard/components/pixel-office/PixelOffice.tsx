@@ -582,7 +582,6 @@ export default function PixelOffice({
         height={WORLD_H * BASE_ZOOM}
         onClick={handleClick}
         onMouseMove={handleMove}
-        onWheel={handleWheel}
         style={{
           width: "100%",
           height: "auto",

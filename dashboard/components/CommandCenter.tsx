@@ -58,16 +58,15 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
           gap: 0,
           border: "1px solid var(--border)",
           borderRadius: 10,
-          overflow: "hidden",
           background: "#0c0f1a",
+          clipPath: "inset(0 round 10px)",
         }}
       >
         {/* Pixel Office — capped width */}
         <div
           style={{
-            maxWidth: 550,
+            maxWidth: 650,
             flexShrink: 0,
-            overflow: "hidden",
           }}
         >
           <PixelOffice
@@ -83,7 +82,7 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
         <div
           style={{
             flex: 1,
-            minWidth: 250,
+            minWidth: 200,
             borderLeft: "1px solid #21262d",
             background: "rgba(13, 17, 23, 0.95)",
             display: "flex",
