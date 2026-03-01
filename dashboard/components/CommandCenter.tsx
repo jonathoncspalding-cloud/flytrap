@@ -51,25 +51,23 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
         </span>
       </div>
 
-      {/* Office with chat overlay */}
+      {/* Office + Chat side by side */}
       <div
         style={{
-          position: "relative",
+          display: "flex",
+          gap: 0,
           border: "1px solid var(--border)",
           borderRadius: 10,
           overflow: "hidden",
           background: "#0c0f1a",
-          height: 400,
         }}
       >
-        {/* Pixel Office canvas — scaled to fit container */}
+        {/* Pixel Office — capped width */}
         <div
           style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            maxWidth: 550,
+            flexShrink: 0,
+            overflow: "hidden",
           }}
         >
           <PixelOffice
@@ -81,17 +79,13 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
           />
         </div>
 
-        {/* Chat panel — fills right side */}
+        {/* Chat panel — fills remaining space */}
         <div
           style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            width: 300,
-            height: "100%",
+            flex: 1,
+            minWidth: 250,
             borderLeft: "1px solid #21262d",
             background: "rgba(13, 17, 23, 0.95)",
-            backdropFilter: "blur(8px)",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
@@ -108,7 +102,7 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
                 flex: 1,
                 display: "flex",
                 flexDirection: "column",
-                padding: 12,
+                padding: 16,
                 fontFamily: "monospace",
                 color: "#8b949e",
                 overflow: "auto",
@@ -181,7 +175,7 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
 
               <div
                 style={{
-                  marginTop: 8,
+                  marginTop: "auto",
                   paddingTop: 8,
                   borderTop: "1px solid #21262d",
                   fontSize: 9,
