@@ -466,7 +466,7 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
                 logger.error(f"Error on signal '{signal['title'][:50]}': {e}")
 
         if i + batch_size < len(signals):
-            time.sleep(2)
+            time.sleep(0.5)
 
     # ── Evidence threshold: decide which new trends to create ─────────────────
     logger.info(f"\nEvaluating {len(pending_new_trends)} new trend candidates "
@@ -527,23 +527,20 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
     else:
         save_collisions([])  # Clear stale collision file
 
-    # ── CPS Sparkline updates ─────────────────────────────────────────────────
+    # ── CPS Sparkline + Linked Tensions updates (single pass) ────────────────
     if touched_trends and not dry_run:
-        logger.info(f"\nUpdating CPS sparklines for {len(touched_trends)} trend(s)...")
+        trend_name_to_id = {t["name"]: t["id"] for t in trends}
+        logger.info(f"\nUpdating sparklines + linked tensions for {len(touched_trends)} trend(s)...")
         for trend_id, (trend_name, cps) in touched_trends.items():
             update_cps_sparkline(trend_id, trend_name, cps)
+            tension_names = trend_tensions_map.get(trend_name)
+            if tension_names:
+                update_linked_tensions(trend_id, trend_name, tension_names, tension_map)
             time.sleep(0.35)  # Stay within Notion rate limits
-
-    # ── Linked Tensions updates ───────────────────────────────────────────────
-    # This is the step that populates tension detail pages with linked trends.
-    # trend_tensions_map: trend_name → set of tension names seen this run
-    if trend_tensions_map and not dry_run:
-        logger.info(f"\nUpdating Linked Tensions for {len(trend_tensions_map)} trend(s)...")
-        # Build trend_name → id lookup from our in-memory trends list
-        trend_name_to_id = {t["name"]: t["id"] for t in trends}
+        # Handle any trends with tension updates but not in touched_trends
         for trend_name, tension_names in trend_tensions_map.items():
             trend_id = trend_name_to_id.get(trend_name)
-            if trend_id and tension_names:
+            if trend_id and trend_id not in touched_trends and tension_names:
                 update_linked_tensions(trend_id, trend_name, tension_names, tension_map)
                 time.sleep(0.35)
 

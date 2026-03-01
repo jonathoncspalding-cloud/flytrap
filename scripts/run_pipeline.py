@@ -71,22 +71,23 @@ def write_sync_state(stage: str, status: str = "running", error: str | None = No
     os.replace(tmp, SYNC_STATE_PATH)
 
 
-def run_collection() -> dict:
-    """Run all data collectors, write to Evidence Log, and update calendar."""
+def run_collection(skip_calendar: bool = False) -> dict:
+    """Run all data collectors, write to Evidence Log, and optionally update calendar."""
     from processors.signal_writer import run_all_collectors
     logger.info("=== STAGE 1: Signal Collection ===")
     summary = run_all_collectors()
     logger.info(f"Collection complete: {summary}")
 
-    # Also run calendar auto-collector to populate upcoming events
-    try:
-        from collectors.calendar_collector import collect as collect_calendar
-        logger.info("=== STAGE 1b: Calendar Auto-Collection ===")
-        cal_summary = collect_calendar()
-        logger.info(f"Calendar collection complete: {cal_summary}")
-        summary["calendar"] = cal_summary
-    except Exception as e:
-        logger.warning(f"Calendar collection failed (non-fatal): {e}")
+    # Calendar auto-collector — skipped in sync mode (events don't change intraday)
+    if not skip_calendar:
+        try:
+            from collectors.calendar_collector import collect as collect_calendar
+            logger.info("=== STAGE 1b: Calendar Auto-Collection ===")
+            cal_summary = collect_calendar()
+            logger.info(f"Calendar collection complete: {cal_summary}")
+            summary["calendar"] = cal_summary
+        except Exception as e:
+            logger.warning(f"Calendar collection failed (non-fatal): {e}")
 
     return summary
 
@@ -95,7 +96,7 @@ def run_processing() -> dict:
     """Run Claude signal processing on unprocessed Evidence Log entries."""
     from processors.signal_processor import run as process
     logger.info("=== STAGE 2: Signal Processing ===")
-    result = process(hours=24, batch_size=10)
+    result = process(hours=24, batch_size=15)
     logger.info(f"Processing complete: {result}")
     return result
 
@@ -155,7 +156,7 @@ def main():
         # Dashboard sync: collect → process → moments (no tensions, no briefing)
         try:
             update_state("collecting")
-            results["collection"] = run_collection()
+            results["collection"] = run_collection(skip_calendar=True)
 
             update_state("processing")
             results["processing"] = run_processing()

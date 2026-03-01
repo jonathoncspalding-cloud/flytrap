@@ -87,9 +87,12 @@ def _get_posts_public(subreddit: str, limit: int = 10, sort: str = "hot") -> lis
     try:
         resp = requests.get(url, headers=headers, params={"limit": limit}, timeout=10)
         if resp.status_code == 429:
-            logger.warning(f"Reddit rate limit hit for r/{subreddit}, sleeping 10s")
-            time.sleep(10)
-            return []
+            logger.warning(f"Reddit rate limit hit for r/{subreddit}, retrying in 5s")
+            time.sleep(5)
+            resp = requests.get(url, headers=headers, params={"limit": limit}, timeout=10)
+            if resp.status_code == 429:
+                logger.warning(f"Reddit rate limit hit again for r/{subreddit}, skipping")
+                return []
         resp.raise_for_status()
         data = resp.json()
         return data["data"]["children"]
@@ -178,9 +181,9 @@ def collect() -> list:
                 if formatted["_score"] >= MIN_UPVOTES:
                     formatted.pop("_score")
                     signals.append(formatted)
-            # Rate limiting for public API: ~1 req/2s
+            # Rate limiting for public API: ~1 req/s (retry-on-429 handles bursts)
             if i < len(SUBREDDITS) - 1:
-                time.sleep(2)
+                time.sleep(1)
 
     logger.info(f"Reddit: collected {len(signals)} signals")
     return signals

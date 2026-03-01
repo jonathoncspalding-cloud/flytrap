@@ -37,10 +37,19 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
+
+      - name: Cache venv
+        uses: actions/cache@v4
+        id: cache-venv
+        with:
+          path: venv
+          key: venv-${{ hashFiles('requirements.txt') }}
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
 
       - name: Determine pipeline stage
         id: stage
@@ -83,8 +92,7 @@ jobs:
           NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
-          cd scripts
-          python run_pipeline.py ${{ steps.stage.outputs.args }}
+          source venv/bin/activate && cd scripts && python run_pipeline.py ${{ steps.stage.outputs.args }}
 
       - name: Upload pipeline log
         if: always()

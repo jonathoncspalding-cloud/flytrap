@@ -108,9 +108,10 @@ def write_signals(signals: list, source_label: str = "") -> int:
 
 def run_all_collectors() -> dict:
     """
-    Run all data collectors and write their signals to Notion.
+    Run all data collectors in parallel, then write their signals to Notion sequentially.
     Returns summary dict with counts per source.
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     from collectors import (
         reddit_collector,
         rss_collector,
@@ -119,72 +120,50 @@ def run_all_collectors() -> dict:
         hn_collector,
         bluesky_collector,
         youtube_collector,
+        polymarket_collector,
+        trends24_collector,
     )
 
+    collectors = [
+        ("reddit",        reddit_collector.collect),
+        ("rss",           rss_collector.collect),
+        ("wikipedia",     wikipedia_trending.collect),
+        ("google_trends", google_trends.collect),
+        ("hacker_news",   hn_collector.collect),
+        ("bluesky",       bluesky_collector.collect),
+        ("youtube",       youtube_collector.collect),
+        ("polymarket",    polymarket_collector.collect),
+        ("x_twitter",     trends24_collector.collect),
+    ]
+
+    # Label mapping for write_signals log output
+    write_labels = {
+        "reddit": "Reddit", "rss": "RSS", "wikipedia": "Wikipedia",
+        "google_trends": "Google Trends", "hacker_news": "HN",
+        "bluesky": "Bluesky", "youtube": "YouTube",
+        "polymarket": "Polymarket", "x_twitter": "Trends24",
+    }
+
     summary = {}
+    raw_results = {}
 
-    # Reddit
-    try:
-        logger.info("Running Reddit collector...")
-        reddit_signals = reddit_collector.collect()
-        summary["reddit"] = write_signals(reddit_signals, "Reddit")
-    except Exception as e:
-        logger.error(f"Reddit collector failed: {e}")
-        summary["reddit"] = 0
+    # Phase 1: Collect in parallel
+    logger.info(f"Running {len(collectors)} collectors in parallel...")
+    with ThreadPoolExecutor(max_workers=len(collectors)) as pool:
+        futures = {pool.submit(fn): name for name, fn in collectors}
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                raw_results[name] = future.result()
+            except Exception as e:
+                logger.warning(f"{name} collector failed: {e}")
+                raw_results[name] = []
 
-    # RSS (expanded: news + research + newsletters)
-    try:
-        logger.info("Running RSS collector...")
-        rss_signals = rss_collector.collect()
-        summary["rss"] = write_signals(rss_signals, "RSS")
-    except Exception as e:
-        logger.error(f"RSS collector failed: {e}")
-        summary["rss"] = 0
-
-    # Wikipedia
-    try:
-        logger.info("Running Wikipedia collector...")
-        wiki_signals = wikipedia_trending.collect()
-        summary["wikipedia"] = write_signals(wiki_signals, "Wikipedia")
-    except Exception as e:
-        logger.error(f"Wikipedia collector failed: {e}")
-        summary["wikipedia"] = 0
-
-    # Google Trends
-    try:
-        logger.info("Running Google Trends collector...")
-        gt_signals = google_trends.collect()
-        summary["google_trends"] = write_signals(gt_signals, "Google Trends")
-    except Exception as e:
-        logger.error(f"Google Trends collector failed: {e}")
-        summary["google_trends"] = 0
-
-    # Hacker News (free Algolia API, no auth)
-    try:
-        logger.info("Running Hacker News collector...")
-        hn_signals = hn_collector.collect()
-        summary["hacker_news"] = write_signals(hn_signals, "HN")
-    except Exception as e:
-        logger.error(f"Hacker News collector failed: {e}")
-        summary["hacker_news"] = 0
-
-    # Bluesky (public API, no auth)
-    try:
-        logger.info("Running Bluesky collector...")
-        bsky_signals = bluesky_collector.collect()
-        summary["bluesky"] = write_signals(bsky_signals, "Bluesky")
-    except Exception as e:
-        logger.error(f"Bluesky collector failed: {e}")
-        summary["bluesky"] = 0
-
-    # YouTube (requires YOUTUBE_API_KEY in .env — gracefully skips if absent)
-    try:
-        logger.info("Running YouTube collector...")
-        yt_signals = youtube_collector.collect()
-        summary["youtube"] = write_signals(yt_signals, "YouTube")
-    except Exception as e:
-        logger.error(f"YouTube collector failed: {e}")
-        summary["youtube"] = 0
+    # Phase 2: Write to Notion sequentially (respects rate limits)
+    for name, signals in raw_results.items():
+        label = write_labels.get(name, name)
+        count = write_signals(signals, label)
+        summary[name] = count
 
     total = sum(summary.values())
     logger.info(f"Total signals written: {total} — {summary}")
