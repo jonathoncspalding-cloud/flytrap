@@ -1,21 +1,26 @@
 // ── Tile Renderer — Sprite-based walls + colorized floors ────────────────────
 // Loads walls.png (auto-tiling 16×32 wall sprites) and floor-patterns.png
-// (grayscale 16×16 patterns), colorizes them at render time, caches results.
+// (grayscale 16×16 patterns), colorizes them per-tile from layout tileColors.
 // Walls participate in z-sorting with furniture for proper occlusion.
 
-import type { Renderable, FurnitureItem, FloorZone } from "./types";
-import { TILE_SIZE, TILE_MAP, GRID_COLS, GRID_ROWS, FLOOR_ZONES, getFloorColor } from "./office-layout";
-import type { FloorColor } from "./office-layout";
+import type { Renderable, FloorColor } from "./types";
+import {
+  TILE_SIZE,
+  TILE_MAP,
+  GRID_COLS,
+  GRID_ROWS,
+  getTileColor,
+  isFloor,
+  isWall,
+  getFloorPatternIndex,
+} from "./office-layout";
 
 // ── Sprite data types ───────────────────────────────────────────────────────
 
-/** 2D array of hex color strings ('' = transparent) */
 type SpriteData = string[][];
 
 // ── Image loading ───────────────────────────────────────────────────────────
 
-let wallsImg: HTMLImageElement | null = null;
-let floorPatternsImg: HTMLImageElement | null = null;
 let wallSprites: SpriteData[] | null = null;
 let floorSprites: SpriteData[] | null = null;
 
@@ -30,13 +35,8 @@ export async function loadTileAssets(): Promise<void> {
     loadImg("/sprites/walls.png"),
     loadImg("/sprites/floor-patterns.png"),
   ]);
-  wallsImg = wImg;
-  floorPatternsImg = fImg;
 
-  // Extract wall sprites from walls.png (4×4 grid of 16×32 pieces)
   wallSprites = extractWallSprites(wImg);
-
-  // Extract floor patterns from floor-patterns.png (horizontal strip of 16×16 tiles)
   floorSprites = extractFloorSprites(fImg);
 }
 
@@ -142,26 +142,22 @@ function colorizeSprite(
       const pixel = sprite[r][ci];
       if (pixel === "") continue;
 
-      // Parse pixel luminance
       const rv = parseInt(pixel.slice(1, 3), 16);
       const gv = parseInt(pixel.slice(3, 5), 16);
       const bv = parseInt(pixel.slice(5, 7), 16);
       let lightness = (0.299 * rv + 0.587 * gv + 0.114 * bv) / 255;
 
-      // Apply contrast
       if (c !== 0) {
         const factor = (100 + c) / 100;
         lightness = 0.5 + (lightness - 0.5) * factor;
       }
 
-      // Apply brightness
       if (b !== 0) {
         lightness = lightness + b / 200;
       }
 
       lightness = Math.max(0, Math.min(1, lightness));
 
-      // HSL → RGB
       const satFrac = s / 100;
       const ch = (1 - Math.abs(2 * lightness - 1)) * satFrac;
       const hp = h / 60;
@@ -198,29 +194,28 @@ export function clearTileCache(): void {
 
 // ── Wall auto-tiling ────────────────────────────────────────────────────────
 
-/**
- * Get wall sprite for a tile based on its 4 cardinal neighbors.
- * Bitmask: N=1, E=2, S=4, W=8
- */
 function getWallMask(col: number, row: number): number {
   let mask = 0;
-  if (row > 0 && TILE_MAP[row - 1]?.[col] === 0) mask |= 1; // N
-  if (col < GRID_COLS - 1 && TILE_MAP[row]?.[col + 1] === 0) mask |= 2; // E
-  if (row < GRID_ROWS - 1 && TILE_MAP[row + 1]?.[col] === 0) mask |= 4; // S
-  if (col > 0 && TILE_MAP[row]?.[col - 1] === 0) mask |= 8; // W
+  // N: wall or void above
+  if (row > 0 && (isWall(TILE_MAP[row - 1]?.[col]) || TILE_MAP[row - 1]?.[col] === 8)) mask |= 1;
+  // E: wall or void right
+  if (col < GRID_COLS - 1 && (isWall(TILE_MAP[row]?.[col + 1]) || TILE_MAP[row]?.[col + 1] === 8)) mask |= 2;
+  // S: wall or void below
+  if (row < GRID_ROWS - 1 && (isWall(TILE_MAP[row + 1]?.[col]) || TILE_MAP[row + 1]?.[col] === 8)) mask |= 4;
+  // W: wall or void left
+  if (col > 0 && (isWall(TILE_MAP[row]?.[col - 1]) || TILE_MAP[row]?.[col - 1] === 8)) mask |= 8;
   return mask;
 }
 
 // ── Public rendering API ────────────────────────────────────────────────────
 
-/** Whether tile assets are loaded and ready */
 export function hasTileAssets(): boolean {
   return wallSprites !== null && floorSprites !== null;
 }
 
 /**
  * Draw all floor tiles with colorized patterns.
- * Call BEFORE z-sorted scene.
+ * Uses per-tile colors from layout tileColors array.
  */
 export function drawFloors(
   ctx: CanvasRenderingContext2D,
@@ -230,14 +225,13 @@ export function drawFloors(
 
   for (let y = 0; y < GRID_ROWS; y++) {
     for (let x = 0; x < GRID_COLS; x++) {
-      if (TILE_MAP[y][x] === 0) continue; // wall tile, skip
+      const tv = TILE_MAP[y][x];
+      if (!isFloor(tv)) continue;
 
-      const color = getFloorColor(x, y);
+      const color = getTileColor(x, y);
       if (!color) continue;
 
-      // Pick pattern based on floor zone type
-      const zone = getZoneType(x, y);
-      const patternIdx = FLOOR_PATTERN_MAP[zone] ?? 0;
+      const patternIdx = getFloorPatternIndex(tv);
       const sprite = floorSprites[patternIdx];
       if (!sprite) continue;
 
@@ -248,38 +242,19 @@ export function drawFloors(
   }
 }
 
-/** Map floor zone types to pattern indices */
-const FLOOR_PATTERN_MAP: Record<string, number> = {
-  wood: 1,    // wood plank pattern
-  tile: 2,    // grid tile pattern
-  carpet: 4,  // carpet dots pattern
-  library: 3, // diamond pattern
-};
-
-function getZoneType(x: number, y: number): string {
-  for (const zone of FLOOR_ZONES) {
-    if (x >= zone.x && x < zone.x + zone.w && y >= zone.y && y < zone.y + zone.h) {
-      return zone.type;
-    }
-  }
-  return "wood";
-}
-
 /**
  * Draw wall base color (flat fill behind wall sprites).
- * Wall sprites have transparent areas — the base color shows through.
  */
 export function drawWallBases(
   ctx: CanvasRenderingContext2D,
   zoom: number,
   wallColor: FloorColor
 ): void {
-  // Compute wall base hex from HSB
   const hex = hsbToHex(wallColor);
 
   for (let y = 0; y < GRID_ROWS; y++) {
     for (let x = 0; x < GRID_COLS; x++) {
-      if (TILE_MAP[y][x] !== 0) continue; // floor tile, skip
+      if (!isWall(TILE_MAP[y][x])) continue;
       ctx.fillStyle = hex;
       ctx.fillRect(x * TILE_SIZE * zoom, y * TILE_SIZE * zoom, TILE_SIZE * zoom, TILE_SIZE * zoom);
     }
@@ -288,7 +263,6 @@ export function drawWallBases(
 
 /**
  * Build wall Renderable objects for z-sorting with furniture/characters.
- * Walls are 16×32 sprites (2 tiles tall), anchored at the bottom of their tile.
  */
 export function buildWallRenderables(zoom: number, wallColor: FloorColor): Renderable[] {
   if (!wallSprites) return [];
@@ -297,7 +271,7 @@ export function buildWallRenderables(zoom: number, wallColor: FloorColor): Rende
 
   for (let y = 0; y < GRID_ROWS; y++) {
     for (let x = 0; x < GRID_COLS; x++) {
-      if (TILE_MAP[y][x] !== 0) continue; // not a wall
+      if (!isWall(TILE_MAP[y][x])) continue;
 
       const mask = getWallMask(x, y);
       const sprite = wallSprites[mask];
@@ -306,14 +280,13 @@ export function buildWallRenderables(zoom: number, wallColor: FloorColor): Rende
       const key = `wall-${mask}-${wallColor.h}-${wallColor.s}-${wallColor.b}-${wallColor.c}-z${zoom}`;
       const cached = colorizeSprite(sprite, wallColor, zoom, key);
 
-      // Wall sprite is 16×32 (2 tiles tall), anchored at bottom of tile
       const drawX = x * TILE_SIZE * zoom;
       const drawY = y * TILE_SIZE * zoom + TILE_SIZE * zoom - cached.height;
-      const bottomY = (y + 1) * TILE_SIZE; // z-sort by bottom edge of tile
+      const bottomY = (y + 1) * TILE_SIZE;
 
       items.push({
         bottomY,
-        draw: (ctx, _z) => {
+        draw: (ctx) => {
           ctx.drawImage(cached, drawX, drawY);
         },
       });

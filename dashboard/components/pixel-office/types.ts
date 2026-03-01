@@ -22,7 +22,7 @@ export interface SpriteSheets {
   tileset: SpriteSheet;
   characterModel: SpriteSheet;
   hairs: SpriteSheet;
-  outfits: SpriteSheet[]; // outfit1..6
+  outfits: SpriteSheet[]; // outfit1..7
   suits: SpriteSheet;
   shadow: SpriteSheet;
 }
@@ -33,11 +33,11 @@ export interface CharacterAppearance {
   skinRow: number;
   /** Row in hairs.png (0-7 = hair styles) */
   hairRow: number;
-  /** Which outfit file (0-5 = outfit1.png through outfit6.png) */
+  /** Which outfit file (0-6 = outfit1.png through outfit7.png) */
   outfitIndex: number;
 }
 
-// ── Floor / room zones ──────────────────────────────────────────────────────
+// ── Floor / tile colors ─────────────────────────────────────────────────────
 
 export type FloorType = "wood" | "tile" | "carpet" | "library";
 
@@ -49,24 +49,47 @@ export interface FloorZone {
   type: FloorType;
 }
 
-// ── Furniture ───────────────────────────────────────────────────────────────
-
-export interface FurnitureTile {
-  dx: number;
-  dy: number;
-  col: number;
-  row: number;
+/** HSB color with contrast — matches Pixel Agents FloorColor */
+export interface FloorColor {
+  h: number;
+  s: number;
+  b: number;
+  c: number;
 }
 
+// ── Furniture ───────────────────────────────────────────────────────────────
+
+/** Catalog entry loaded from furniture-catalog.json */
+export interface FurnitureCatalogEntry {
+  id: string;
+  name: string;
+  label: string;
+  category: string;
+  file: string;
+  width: number;
+  height: number;
+  footprintW: number;
+  footprintH: number;
+  isDesk: boolean;
+  canPlaceOnWalls?: boolean;
+  canPlaceOnSurfaces?: boolean;
+  backgroundTiles?: number;
+}
+
+/** A placed furniture item in the scene */
 export interface FurnitureItem {
   type: string;
   tileX: number;
   tileY: number;
   widthTiles: number;
   heightTiles: number;
-  tiles: FurnitureTile[];
+  /** Pixel dimensions of the sprite */
+  pixelW: number;
+  pixelH: number;
   solid: boolean;
   wallMounted?: boolean;
+  /** Color override from layout */
+  color?: FloorColor;
 }
 
 // ── Characters ──────────────────────────────────────────────────────────────

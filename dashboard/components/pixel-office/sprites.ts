@@ -1,13 +1,13 @@
 // ── Sprite Sheet Loader & Compositing System ────────────────────────────────
-// Loads PNG sprite sheets and composites character frames from body + hair + outfit layers.
-// Furniture tiles are referenced by (col, row) coordinates in the office tileset.
+// Loads PNG sprite sheets for characters and individual furniture PNGs.
+// Furniture sprites are loaded from /sprites/furniture/ by ASSET_* ID.
 
 import type {
   SpriteSheet,
   SpriteSheets,
   CharacterAppearance,
   Direction,
-  FurnitureTile,
+  FurnitureCatalogEntry,
 } from "./types";
 
 // ── Sheet Loading ───────────────────────────────────────────────────────────
@@ -76,15 +76,6 @@ export async function loadAllSheets(): Promise<SpriteSheets> {
 
 // ── Character Frame Compositing ─────────────────────────────────────────────
 
-/**
- * MetroCity sprite sheets use RPG Maker layout:
- * - 24 columns × N rows of 32×32 cells
- * - Each row has 2 character blocks (cols 0-11 and 12-23)
- * - Within each 12-col block: 4 directions × 3 walk frames
- *   - Cols 0-2: Down, Cols 3-5: Left, Cols 6-8: Right, Cols 9-11: Up
- *   - Frame 0: left foot, Frame 1: standing, Frame 2: right foot
- */
-
 const DIR_COL_OFFSET: Record<Direction, number> = {
   down: 0,
   left: 3,
@@ -92,7 +83,6 @@ const DIR_COL_OFFSET: Record<Direction, number> = {
   up: 9,
 };
 
-/** Convert direction + walk frame (0-2) to column index */
 function charCol(dir: Direction, frame: number): number {
   return DIR_COL_OFFSET[dir] + Math.min(frame, 2);
 }
@@ -103,10 +93,6 @@ export function clearSpriteCache(): void {
   charSpriteCache.clear();
 }
 
-/**
- * Composite a character frame from body + outfit + hair layers.
- * Returns a cached 32×32 canvas (at 1x, will be scaled during draw).
- */
 export function getCharacterFrame(
   sheets: SpriteSheets,
   appearance: CharacterAppearance,
@@ -123,7 +109,6 @@ export function getCharacterFrame(
   canvas.height = 32;
   const ctx = canvas.getContext("2d")!;
 
-  // Layer 1: Body (from character-model.png)
   const bodySheet = sheets.characterModel;
   ctx.drawImage(
     bodySheet.img,
@@ -137,13 +122,11 @@ export function getCharacterFrame(
     32
   );
 
-  // Layer 2: Outfit
   const outfitSheet = sheets.outfits[appearance.outfitIndex];
   if (outfitSheet) {
     ctx.drawImage(outfitSheet.img, col * 32, 0, 32, 32, 0, 0, 32, 32);
   }
 
-  // Layer 3: Hair (from hairs.png)
   const hairSheet = sheets.hairs;
   ctx.drawImage(
     hairSheet.img,
@@ -173,556 +156,63 @@ export const AGENT_APPEARANCES: Record<string, CharacterAppearance> = {
   isabel: { skinRow: 4, hairRow: 2, outfitIndex: 6 },
 };
 
-// ── Furniture Tile Catalog ──────────────────────────────────────────────────
-// Coordinates reference the office tileset (16×16 grid, 16 cols × 32 rows)
+// ── Furniture Sprite System (Individual PNGs) ───────────────────────────────
 
-export interface FurnitureDef {
-  widthTiles: number;
-  heightTiles: number;
-  tiles: FurnitureTile[];
-  solid: boolean;
-  wallMounted?: boolean;
+/** Loaded furniture catalog + sprite images */
+let furnitureCatalog: FurnitureCatalogEntry[] = [];
+const furnitureSprites = new Map<string, HTMLImageElement>();
+let furnitureLoaded = false;
+
+/** Load furniture catalog and all sprite PNGs */
+export async function loadFurnitureAssets(): Promise<void> {
+  try {
+    const resp = await fetch("/sprites/furniture/furniture-catalog.json");
+    if (!resp.ok) {
+      console.warn("[sprites] Failed to load furniture catalog:", resp.status);
+      return;
+    }
+    const data = await resp.json();
+    furnitureCatalog = data.assets || [];
+
+    // Load all PNGs in parallel
+    const loadPromises = furnitureCatalog.map(async (asset) => {
+      try {
+        const img = await loadImage(`/sprites/${asset.file}`);
+        furnitureSprites.set(asset.id, img);
+      } catch {
+        console.warn(`[sprites] Failed to load furniture: ${asset.id} (${asset.file})`);
+      }
+    });
+
+    await Promise.all(loadPromises);
+    furnitureLoaded = true;
+    console.log(`[sprites] Loaded ${furnitureSprites.size}/${furnitureCatalog.length} furniture sprites`);
+  } catch (err) {
+    console.warn("[sprites] Error loading furniture assets:", err);
+  }
 }
 
-export const FURNITURE_DEFS: Record<string, FurnitureDef> = {
-  // Brown desk (2×2 tiles)
-  desk: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 2, row: 0 },
-      { dx: 1, dy: 0, col: 3, row: 0 },
-      { dx: 0, dy: 1, col: 2, row: 1 },
-      { dx: 1, dy: 1, col: 3, row: 1 },
-    ],
-    solid: true,
-  },
+/** Whether furniture sprites are loaded */
+export function hasFurnitureAssets(): boolean {
+  return furnitureLoaded;
+}
 
-  // Large wood desk variant (2×2)
-  deskWood: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 4, row: 0 },
-      { dx: 1, dy: 0, col: 5, row: 0 },
-      { dx: 0, dy: 1, col: 4, row: 1 },
-      { dx: 1, dy: 1, col: 5, row: 1 },
-    ],
-    solid: true,
-  },
+/** Get the HTMLImageElement for a furniture asset ID */
+export function getFurnitureSprite(assetId: string): HTMLImageElement | undefined {
+  return furnitureSprites.get(assetId);
+}
 
-  // Pink/maroon chair (1×1)
-  chair: {
-    widthTiles: 1,
-    heightTiles: 1,
-    tiles: [{ dx: 0, dy: 0, col: 0, row: 16 }],
-    solid: false,
-  },
+/** Get catalog entry for a furniture asset ID */
+export function getFurnitureCatalogEntry(assetId: string): FurnitureCatalogEntry | undefined {
+  return furnitureCatalog.find((e) => e.id === assetId);
+}
 
-  // Office chair variant
-  chairGray: {
-    widthTiles: 1,
-    heightTiles: 1,
-    tiles: [{ dx: 0, dy: 0, col: 4, row: 16 }],
-    solid: false,
-  },
+/** Get the full catalog */
+export function getFurnitureCatalog(): FurnitureCatalogEntry[] {
+  return furnitureCatalog;
+}
 
-  // PC/Computer (2×2)
-  pc: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 10, row: 24 },
-      { dx: 1, dy: 0, col: 11, row: 24 },
-      { dx: 0, dy: 1, col: 10, row: 25 },
-      { dx: 1, dy: 1, col: 11, row: 25 },
-    ],
-    solid: true,
-  },
-
-  // Desktop monitor (1×1, sits on desk)
-  monitor: {
-    widthTiles: 1,
-    heightTiles: 1,
-    tiles: [{ dx: 0, dy: 0, col: 12, row: 22 }],
-    solid: false,
-  },
-
-  // Bookshelf with colored spines (2×2)
-  bookshelf: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 14, row: 4 },
-      { dx: 1, dy: 0, col: 15, row: 4 },
-      { dx: 0, dy: 1, col: 14, row: 5 },
-      { dx: 1, dy: 1, col: 15, row: 5 },
-    ],
-    solid: true,
-  },
-
-  // Tall bookcase (2×2)
-  bookcase: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 12, row: 12 },
-      { dx: 1, dy: 0, col: 13, row: 12 },
-      { dx: 0, dy: 1, col: 12, row: 13 },
-      { dx: 1, dy: 1, col: 13, row: 13 },
-    ],
-    solid: true,
-  },
-
-  // Plant (1×2 tall)
-  plant: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 2, row: 28 },
-      { dx: 0, dy: 1, col: 2, row: 29 },
-    ],
-    solid: true,
-  },
-
-  // Plant variant
-  plantB: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 4, row: 28 },
-      { dx: 0, dy: 1, col: 4, row: 29 },
-    ],
-    solid: true,
-  },
-
-  // Wall clock (1×2)
-  clock: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 0, row: 22 },
-      { dx: 0, dy: 1, col: 0, row: 23 },
-    ],
-    solid: false,
-    wallMounted: true,
-  },
-
-  // Landscape painting (2×2)
-  painting: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 4, row: 24 },
-      { dx: 1, dy: 0, col: 5, row: 24 },
-      { dx: 0, dy: 1, col: 4, row: 25 },
-      { dx: 1, dy: 1, col: 5, row: 25 },
-    ],
-    solid: false,
-    wallMounted: true,
-  },
-
-  // Chart/whiteboard (2×2)
-  whiteboard: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 2, row: 26 },
-      { dx: 1, dy: 0, col: 3, row: 26 },
-      { dx: 0, dy: 1, col: 2, row: 27 },
-      { dx: 1, dy: 1, col: 3, row: 27 },
-    ],
-    solid: false,
-    wallMounted: true,
-  },
-
-  // Vending machine (2×2)
-  vending: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 14, row: 16 },
-      { dx: 1, dy: 0, col: 15, row: 16 },
-      { dx: 0, dy: 1, col: 14, row: 17 },
-      { dx: 1, dy: 1, col: 15, row: 17 },
-    ],
-    solid: true,
-  },
-
-  // Water cooler (1×2)
-  cooler: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 8, row: 16 },
-      { dx: 0, dy: 1, col: 8, row: 17 },
-    ],
-    solid: true,
-  },
-
-  // Long counter (2×2)
-  counter: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 4, row: 18 },
-      { dx: 1, dy: 0, col: 5, row: 18 },
-      { dx: 0, dy: 1, col: 4, row: 19 },
-      { dx: 1, dy: 1, col: 5, row: 19 },
-    ],
-    solid: true,
-  },
-
-  // Gray counter variant
-  counterGray: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 6, row: 18 },
-      { dx: 1, dy: 0, col: 7, row: 18 },
-      { dx: 0, dy: 1, col: 6, row: 19 },
-      { dx: 1, dy: 1, col: 7, row: 19 },
-    ],
-    solid: true,
-  },
-
-  // Window (2×2)
-  window: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 4, row: 20 },
-      { dx: 1, dy: 0, col: 5, row: 20 },
-      { dx: 0, dy: 1, col: 4, row: 21 },
-      { dx: 1, dy: 1, col: 5, row: 21 },
-    ],
-    solid: false,
-    wallMounted: true,
-  },
-
-  // Filing cabinet (2×2)
-  cabinet: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 12, row: 8 },
-      { dx: 1, dy: 0, col: 13, row: 8 },
-      { dx: 0, dy: 1, col: 12, row: 9 },
-      { dx: 1, dy: 1, col: 13, row: 9 },
-    ],
-    solid: true,
-  },
-
-  // Couch section (2×2)
-  couch: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 0, row: 16 },
-      { dx: 1, dy: 0, col: 1, row: 16 },
-      { dx: 0, dy: 1, col: 0, row: 17 },
-      { dx: 1, dy: 1, col: 1, row: 17 },
-    ],
-    solid: true,
-  },
-
-  // Printer (2×2)
-  printer: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 10, row: 26 },
-      { dx: 1, dy: 0, col: 11, row: 26 },
-      { dx: 0, dy: 1, col: 10, row: 27 },
-      { dx: 1, dy: 1, col: 11, row: 27 },
-    ],
-    solid: true,
-  },
-
-  // Coffee cup (1×1)
-  cup: {
-    widthTiles: 1,
-    heightTiles: 1,
-    tiles: [{ dx: 0, dy: 0, col: 6, row: 16 }],
-    solid: false,
-  },
-
-  // Lamp (1×1)
-  lamp: {
-    widthTiles: 1,
-    heightTiles: 1,
-    tiles: [{ dx: 0, dy: 0, col: 14, row: 20 }],
-    solid: false,
-  },
-
-  // Boxes (2×2)
-  boxes: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 10, row: 28 },
-      { dx: 1, dy: 0, col: 11, row: 28 },
-      { dx: 0, dy: 1, col: 10, row: 29 },
-      { dx: 1, dy: 1, col: 11, row: 29 },
-    ],
-    solid: true,
-  },
-
-  // Venus flytrap in terracotta pot (1×2) — Cornett mascot plant
-  flytrap: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 8, row: 30 },
-      { dx: 0, dy: 1, col: 8, row: 31 },
-    ],
-    solid: true,
-  },
-
-  // Venus flytrap variant B — single head, smaller (1×2)
-  flytrapB: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 9, row: 30 },
-      { dx: 0, dy: 1, col: 9, row: 31 },
-    ],
-    solid: true,
-  },
-
-  // Rug/mat (2×1)
-  rug: {
-    widthTiles: 2,
-    heightTiles: 1,
-    tiles: [
-      { dx: 0, dy: 0, col: 0, row: 30 },
-      { dx: 1, dy: 0, col: 1, row: 30 },
-    ],
-    solid: false,
-  },
-
-  // Trash bin (1×1)
-  bin: {
-    widthTiles: 1,
-    heightTiles: 1,
-    tiles: [{ dx: 0, dy: 0, col: 8, row: 17 }],
-    solid: false,
-  },
-
-  // Stool (1×1)
-  stool: {
-    widthTiles: 1,
-    heightTiles: 1,
-    tiles: [{ dx: 0, dy: 0, col: 0, row: 18 }],
-    solid: false,
-  },
-
-  // Fridge (1×2)
-  fridge: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 13, row: 16 },
-      { dx: 0, dy: 1, col: 13, row: 17 },
-    ],
-    solid: true,
-  },
-
-  // Telephone (1×2, wall-mounted)
-  telephone: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 12, row: 19 },
-      { dx: 0, dy: 1, col: 12, row: 20 },
-    ],
-    solid: false,
-    wallMounted: true,
-  },
-
-  // Cushioned chair facing left (1×1)
-  chairLeft: {
-    widthTiles: 1,
-    heightTiles: 1,
-    tiles: [{ dx: 0, dy: 0, col: 3, row: 16 }],
-    solid: false,
-  },
-
-  // Cushioned chair facing right (1×1)
-  chairRight: {
-    widthTiles: 1,
-    heightTiles: 1,
-    tiles: [{ dx: 0, dy: 0, col: 2, row: 16 }],
-    solid: false,
-  },
-
-  // Large cushioned chair/couch facing left (1×2) — reuse couch sprite
-  couchLeft: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 0, row: 16 },
-      { dx: 1, dy: 0, col: 1, row: 16 },
-      { dx: 0, dy: 1, col: 0, row: 17 },
-      { dx: 1, dy: 1, col: 1, row: 17 },
-    ],
-    solid: true,
-  },
-
-  // Large cushioned chair/couch facing right (1×2) — reuse couch sprite
-  couchRight: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 0, row: 16 },
-      { dx: 1, dy: 0, col: 1, row: 16 },
-      { dx: 0, dy: 1, col: 0, row: 17 },
-      { dx: 1, dy: 1, col: 1, row: 17 },
-    ],
-    solid: true,
-  },
-
-  // Coffee table (2×1)
-  coffeeTable: {
-    widthTiles: 2,
-    heightTiles: 1,
-    tiles: [
-      { dx: 0, dy: 0, col: 4, row: 18 },
-      { dx: 1, dy: 0, col: 5, row: 18 },
-    ],
-    solid: true,
-  },
-
-  // Laptop facing left (1×2)
-  laptop: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 11, row: 24 },
-      { dx: 0, dy: 1, col: 11, row: 25 },
-    ],
-    solid: false,
-  },
-
-  // Laptop from back (1×2)
-  laptopBack: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 12, row: 24 },
-      { dx: 0, dy: 1, col: 12, row: 25 },
-    ],
-    solid: false,
-  },
-
-  // Large wood table (2×4)
-  tableLarge: {
-    widthTiles: 2,
-    heightTiles: 4,
-    tiles: [
-      { dx: 0, dy: 0, col: 4, row: 0 },
-      { dx: 1, dy: 0, col: 5, row: 0 },
-      { dx: 0, dy: 1, col: 4, row: 1 },
-      { dx: 1, dy: 1, col: 5, row: 1 },
-      { dx: 0, dy: 2, col: 4, row: 0 },
-      { dx: 1, dy: 2, col: 5, row: 0 },
-      { dx: 0, dy: 3, col: 4, row: 1 },
-      { dx: 1, dy: 3, col: 5, row: 1 },
-    ],
-    solid: true,
-  },
-
-  // Landscape painting variant B (2×2, wall-mounted)
-  paintingB: {
-    widthTiles: 2,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 2, row: 24 },
-      { dx: 1, dy: 0, col: 3, row: 24 },
-      { dx: 0, dy: 1, col: 2, row: 25 },
-      { dx: 1, dy: 1, col: 3, row: 25 },
-    ],
-    solid: false,
-    wallMounted: true,
-  },
-
-  // White plant variant C (1×2) — reuse plant sprite
-  plantC: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 2, row: 28 },
-      { dx: 0, dy: 1, col: 2, row: 29 },
-    ],
-    solid: true,
-  },
-
-  // White plant variant D (1×2)
-  plantD: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 4, row: 28 },
-      { dx: 0, dy: 1, col: 4, row: 29 },
-    ],
-    solid: true,
-  },
-
-  // Plant variant E (1×2)
-  plantE: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 6, row: 28 },
-      { dx: 0, dy: 1, col: 6, row: 29 },
-    ],
-    solid: true,
-  },
-
-  // Single book (1×1)
-  book: {
-    widthTiles: 1,
-    heightTiles: 1,
-    tiles: [{ dx: 0, dy: 0, col: 9, row: 21 }],
-    solid: false,
-  },
-
-  // Paper stack (1×2)
-  paper: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 14, row: 24 },
-      { dx: 0, dy: 1, col: 14, row: 25 },
-    ],
-    solid: false,
-  },
-
-  // Server rack (1×2)
-  server: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 8, row: 26 },
-      { dx: 0, dy: 1, col: 8, row: 27 },
-    ],
-    solid: true,
-  },
-
-  // Colored wall clock (1×2, wall-mounted)
-  clockColor: {
-    widthTiles: 1,
-    heightTiles: 2,
-    tiles: [
-      { dx: 0, dy: 0, col: 0, row: 22 },
-      { dx: 0, dy: 1, col: 0, row: 23 },
-    ],
-    solid: false,
-    wallMounted: true,
-  },
-};
-
-// ── Tileset Draw Helpers ────────────────────────────────────────────────────
+// ── Tileset Draw Helpers (still used for fallback) ──────────────────────────
 
 /** Draw a single 16×16 tile from the tileset onto the canvas */
 export function drawTilesetTile(

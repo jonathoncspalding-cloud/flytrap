@@ -1,28 +1,20 @@
-// ── Office Layout — JSON-driven with backward-compatible API ─────────────────
-// Layout data lives in office-layout.json for easy editing by Isabel agent.
-// This module reads the JSON and exports the same constants/functions
-// that PixelOffice.tsx and engine.ts already consume.
+// ── Office Layout — JSON-driven, Pixel Agents format ────────────────────────
+// Layout data lives in office-layout.json (exported from Pixel Agents editor).
+// Tile types: 0=wall, 1-7=floor patterns, 8=void
+// Furniture uses ASSET_* IDs loaded from furniture-catalog.json
 
-import type { Vec2, FurnitureItem, FloorZone } from "./types";
-import { FURNITURE_DEFS } from "./sprites";
+import type { Vec2, FurnitureItem, FloorColor } from "./types";
+import { getFurnitureCatalogEntry } from "./sprites";
 import layoutData from "./office-layout.json";
 
-// ── Layout JSON types ───────────────────────────────────────────────────────
+// ── Layout JSON types (Pixel Agents format) ─────────────────────────────────
 
-interface LayoutFloorZone {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  type: string;
-  color: { h: number; s: number; b: number; c: number };
-}
-
-interface LayoutFurniture {
+interface PlacedFurniture {
   uid: string;
   type: string;
   col: number;
   row: number;
+  color?: FloorColor;
 }
 
 interface LayoutJson {
@@ -30,15 +22,13 @@ interface LayoutJson {
   cols: number;
   rows: number;
   tiles: number[];
-  floorZones: LayoutFloorZone[];
-  wallColor: { h: number; s: number; b: number; c: number };
-  deskAssignments: Record<string, { deskTile: Vec2; chairTile: Vec2 }>;
-  furniture: LayoutFurniture[];
+  tileColors?: Array<FloorColor | null>;
+  furniture: PlacedFurniture[];
 }
 
 const layout = layoutData as LayoutJson;
 
-// ── Exported constants (same API as before) ─────────────────────────────────
+// ── Exported constants ──────────────────────────────────────────────────────
 
 export const TILE_SIZE = 16;
 export const GRID_COLS = layout.cols;
@@ -47,6 +37,7 @@ export const WORLD_W = GRID_COLS * TILE_SIZE;
 export const WORLD_H = GRID_ROWS * TILE_SIZE;
 
 // ── Tile grid from JSON flat array → 2D ─────────────────────────────────────
+// Values: 0=wall, 1-7=floor pattern types, 8=void (outside)
 
 export const TILE_MAP: number[][] = (() => {
   const map: number[][] = [];
@@ -60,88 +51,97 @@ export const TILE_MAP: number[][] = (() => {
   return map;
 })();
 
-// ── Floor zones from JSON ───────────────────────────────────────────────────
+// ── Per-tile colors from layout ─────────────────────────────────────────────
 
-export const FLOOR_ZONES: FloorZone[] = layout.floorZones.map((z) => ({
-  x: z.x,
-  y: z.y,
-  w: z.w,
-  h: z.h,
-  type: z.type as FloorZone["type"],
-}));
+const tileColors: Array<FloorColor | null> = layout.tileColors || [];
 
-// ── Floor zone colors (for the new renderer) ────────────────────────────────
-
-export interface FloorColor {
-  h: number;
-  s: number;
-  b: number;
-  c: number;
+/** Get the HSB color for a specific tile position */
+export function getTileColor(x: number, y: number): FloorColor | null {
+  const idx = y * GRID_COLS + x;
+  return tileColors[idx] ?? null;
 }
 
-export const FLOOR_ZONE_COLORS: Map<string, FloorColor> = new Map(
-  layout.floorZones.map((z) => [
-    `${z.x},${z.y},${z.w},${z.h}`,
-    z.color,
-  ])
-);
+// ── Tile type helpers ───────────────────────────────────────────────────────
 
-/** Get the HSB color for a floor tile based on which zone it falls in */
-export function getFloorColor(x: number, y: number): FloorColor | null {
-  for (const zone of layout.floorZones) {
-    if (x >= zone.x && x < zone.x + zone.w && y >= zone.y && y < zone.y + zone.h) {
-      return zone.color;
+/** Whether a tile is walkable floor (types 1-7) */
+export function isFloor(tileVal: number): boolean {
+  return tileVal >= 1 && tileVal <= 7;
+}
+
+/** Whether a tile is a wall (type 0) */
+export function isWall(tileVal: number): boolean {
+  return tileVal === 0;
+}
+
+/** Whether a tile is void/outside (type 8) */
+export function isVoid(tileVal: number): boolean {
+  return tileVal === 8;
+}
+
+/** Get floor pattern index (0-6) from tile value (1-7) */
+export function getFloorPatternIndex(tileVal: number): number {
+  return Math.max(0, tileVal - 1);
+}
+
+// ── Wall color (default dark blue-gray) ─────────────────────────────────────
+
+export const WALL_HSB: FloorColor = { h: 220, s: 25, b: -15, c: 5 };
+
+// ── Desk assignments (7 agents) ─────────────────────────────────────────────
+// Manually mapped to furniture positions in the stock layout.
+// These are chair positions where agents sit + desk positions they face.
+
+export const DESK_ASSIGNMENTS: Record<string, { deskTile: Vec2; chairTile: Vec2 }> = (() => {
+  // Find desk-type furniture (ASSET_90 = FULL_COMPUTER_COFFEE_OFF, which are the workstations)
+  const desks = layout.furniture.filter((f) => f.type === "ASSET_90");
+  // Find chairs near desks
+  const agents = ["sentinel", "scout", "architect", "optimize", "oracle", "strategist", "isabel"];
+  const assignments: Record<string, { deskTile: Vec2; chairTile: Vec2 }> = {};
+
+  for (let i = 0; i < agents.length; i++) {
+    if (i < desks.length) {
+      const desk = desks[i];
+      // Chair is typically 2 rows below the desk (desk is 2x2, chair at bottom)
+      assignments[agents[i]] = {
+        deskTile: { x: desk.col, y: desk.row },
+        chairTile: { x: desk.col + 1, y: desk.row + 2 },
+      };
+    } else {
+      // Fallback for agents without desks — put them in walkable space
+      assignments[agents[i]] = {
+        deskTile: { x: 5 + i, y: 5 },
+        chairTile: { x: 5 + i, y: 6 },
+      };
     }
   }
-  return null;
-}
 
-/** Wall color from layout JSON */
-export const WALL_HSB: FloorColor = layout.wallColor;
-
-// ── Desk assignments from JSON ──────────────────────────────────────────────
-
-export const DESK_ASSIGNMENTS: Record<string, { deskTile: Vec2; chairTile: Vec2 }> =
-  layout.deskAssignments;
+  return assignments;
+})();
 
 // ── Furniture placement from JSON ───────────────────────────────────────────
-
-function makeFurniture(
-  type: string,
-  tileX: number,
-  tileY: number
-): FurnitureItem {
-  const def = FURNITURE_DEFS[type];
-  if (!def) throw new Error(`Unknown furniture: ${type}`);
-  return {
-    type,
-    tileX,
-    tileY,
-    widthTiles: def.widthTiles,
-    heightTiles: def.heightTiles,
-    tiles: def.tiles,
-    solid: def.solid,
-    wallMounted: def.wallMounted,
-  };
-}
 
 export function buildFurnitureList(): FurnitureItem[] {
   const items: FurnitureItem[] = [];
 
-  // Agent desks, chairs, monitors from desk assignments
-  for (const a of Object.values(DESK_ASSIGNMENTS)) {
-    items.push(makeFurniture("desk", a.deskTile.x, a.deskTile.y));
-    items.push(makeFurniture("chair", a.chairTile.x, a.chairTile.y));
-    items.push(makeFurniture("monitor", a.deskTile.x, a.deskTile.y));
-  }
-
-  // Decorative furniture from JSON
   for (const f of layout.furniture) {
-    if (!FURNITURE_DEFS[f.type]) {
+    const catalogEntry = getFurnitureCatalogEntry(f.type);
+    if (!catalogEntry) {
       console.warn(`[office-layout] Unknown furniture type: ${f.type}`);
       continue;
     }
-    items.push(makeFurniture(f.type, f.col, f.row));
+
+    items.push({
+      type: f.type,
+      tileX: f.col,
+      tileY: f.row,
+      widthTiles: catalogEntry.footprintW,
+      heightTiles: catalogEntry.footprintH,
+      pixelW: catalogEntry.width,
+      pixelH: catalogEntry.height,
+      solid: !catalogEntry.canPlaceOnSurfaces && !catalogEntry.canPlaceOnWalls,
+      wallMounted: catalogEntry.canPlaceOnWalls,
+      color: f.color,
+    });
   }
 
   return items;
@@ -154,12 +154,17 @@ export function buildWalkableMap(furniture: FurnitureItem[]): boolean[][] {
   for (let y = 0; y < GRID_ROWS; y++) {
     map[y] = [];
     for (let x = 0; x < GRID_COLS; x++) {
-      map[y][x] = TILE_MAP[y][x] !== 0; // 0 = wall, 1+ = floor
+      const tv = TILE_MAP[y][x];
+      map[y][x] = isFloor(tv); // only floor tiles (1-7) are walkable
     }
   }
 
   for (const f of furniture) {
-    if (!f.solid || f.type === "chair" || f.type === "chairGray" || f.type === "chairLeft" || f.type === "chairRight" || f.type === "stool") continue;
+    if (!f.solid || f.wallMounted) continue;
+    // Small items on surfaces don't block
+    const entry = getFurnitureCatalogEntry(f.type);
+    if (entry?.canPlaceOnSurfaces) continue;
+
     for (let dy = 0; dy < f.heightTiles; dy++) {
       for (let dx = 0; dx < f.widthTiles; dx++) {
         const fy = f.tileY + dy;
