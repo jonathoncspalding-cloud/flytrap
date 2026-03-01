@@ -68,9 +68,9 @@ function platformEmoji(p: string) {
 }
 
 function sentimentColor(s: string): string {
-  if (s === "Positive") return "#4ade80";
-  if (s === "Negative") return "#f87171";
-  if (s === "Mixed") return "#fbbf24";
+  if (s === "Positive") return "#2a8c4a";
+  if (s === "Negative") return "#E8127A";
+  if (s === "Mixed") return "#FF8200";
   return "rgba(255,255,255,0.35)";
 }
 
@@ -341,11 +341,11 @@ function BriefingSection({
   onTrendClick: (t: TrendRef) => void;
 }) {
   // Emoji → section color mapping
-  const sectionColor = heading.includes("🔴") || heading.includes("Flashpoint") ? "#4ade80"
-    : heading.includes("📈") || heading.includes("Momentum") ? "#86efac"
-    : heading.includes("⚡") || heading.includes("Collision") ? "#fbbf24"
-    : heading.includes("🌊") || heading.includes("Signal") ? "#818cf8"
-    : heading.includes("💡") || heading.includes("Opportunity") ? "#fb923c"
+  const sectionColor = heading.includes("🔴") || heading.includes("Flashpoint") ? "#2a8c4a"
+    : heading.includes("📈") || heading.includes("Momentum") ? "#3da65a"
+    : heading.includes("⚡") || heading.includes("Collision") ? "#FF8200"
+    : heading.includes("🌊") || heading.includes("Signal") ? "rgba(232,18,122,0.7)"
+    : heading.includes("💡") || heading.includes("Opportunity") ? "#FF8200"
     : heading.includes("🗓️") || heading.includes("Calendar") ? "#67e8f9"
     : "rgba(255,255,255,0.5)";
 
@@ -389,12 +389,12 @@ function BriefingSection({
                   <button
                     onClick={() => onTrendClick(trend)}
                     style={{
-                      background: "rgba(74,222,128,0.08)",
-                      border: "1px solid rgba(74,222,128,0.2)",
+                      background: "rgba(0,79,34,0.08)",
+                      border: "1px solid rgba(0,79,34,0.2)",
                       borderRadius: 4,
                       padding: "1px 6px",
                       cursor: "pointer",
-                      color: "#86efac",
+                      color: "#3da65a",
                       fontWeight: 700,
                       fontSize: "inherit",
                       fontFamily: "inherit",
@@ -406,7 +406,7 @@ function BriefingSection({
                     title={`Click to see evidence for: ${cleanText}`}
                   >
                     {cleanText}
-                    <span style={{ fontSize: 10, color: "rgba(74,222,128,0.6)", fontWeight: 400 }}>
+                    <span style={{ fontSize: 10, color: "rgba(0,79,34,0.6)", fontWeight: 400 }}>
                       {trend.cps}
                     </span>
                   </button>
@@ -456,7 +456,7 @@ function BriefingSection({
             // Links
             a({ href, children }) {
               return (
-                <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "#86efac", textDecoration: "underline" }}>
+                <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "#3da65a", textDecoration: "underline" }}>
                   {children}
                 </a>
               );
@@ -509,13 +509,13 @@ export default function BriefingViewer({
       <div style={{
         display: "flex", alignItems: "center", gap: 8,
         marginBottom: 16, padding: "8px 12px",
-        background: "rgba(74,222,128,0.05)",
-        border: "1px solid rgba(74,222,128,0.12)",
+        background: "rgba(0,79,34,0.05)",
+        border: "1px solid rgba(0,79,34,0.12)",
         borderRadius: 8,
       }}>
         <span style={{ fontSize: 13 }}>💡</span>
         <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
-          Click any <strong style={{ color: "#86efac", fontWeight: 600 }}>highlighted trend</strong> to see the supporting signals and sources behind it.
+          Click any <strong style={{ color: "#3da65a", fontWeight: 600 }}>highlighted trend</strong> to see the supporting signals and sources behind it.
         </span>
       </div>
 

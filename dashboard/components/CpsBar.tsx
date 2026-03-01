@@ -1,6 +1,6 @@
 /**
  * CpsBar — Cultural Potency Score display component.
- * Color scale: green (high) → amber → slate → dim
+ * Cornett brand palette: Rose (hot) → Sunset (warm) → Moss (cool)
  */
 
 interface CpsBarProps {
@@ -25,21 +25,21 @@ export function cpsFullLabel(score: number): string {
   return "Background Noise — logged but low priority";
 }
 
-// Green-dominant scale — high CPS = bright green
+// Cornett palette: Rose → Sunset → Moss scale
 export function cpsBarColor(score: number): string {
-  if (score >= 80) return "#4ade80";   // bright green  — Flashpoint
-  if (score >= 60) return "#86efac";   // medium green  — Rising Heat
-  if (score >= 40) return "#fbbf24";   // amber         — Simmer
-  if (score >= 20) return "#6366f1";   // indigo        — Low Burn
-  return "rgba(255,255,255,0.2)";      // dim           — Noise
+  if (score >= 80) return "#E8127A";             // Rose — Flashpoint
+  if (score >= 60) return "#FF8200";             // Sunset — Rising Heat
+  if (score >= 40) return "rgba(255,130,0,0.6)"; // Sunset muted — Simmer
+  if (score >= 20) return "rgba(42,140,74,0.5)"; // Moss muted — Low Burn
+  return "rgba(242,239,237,0.15)";               // Birch dim — Noise
 }
 
 export function cpsTextColor(score: number): string {
-  if (score >= 80) return "#4ade80";
-  if (score >= 60) return "#86efac";
-  if (score >= 40) return "#fbbf24";
-  if (score >= 20) return "#818cf8";
-  return "rgba(255,255,255,0.3)";
+  if (score >= 80) return "#E8127A";
+  if (score >= 60) return "#FF8200";
+  if (score >= 40) return "rgba(255,130,0,0.7)";
+  if (score >= 20) return "#2a8c4a";
+  return "rgba(242,239,237,0.3)";
 }
 
 export function cpsDotColor(score: number): string {
@@ -47,11 +47,11 @@ export function cpsDotColor(score: number): string {
 }
 
 export function cpsEmoji(score: number): string {
-  if (score >= 80) return "🟢";
-  if (score >= 60) return "🟩";
-  if (score >= 40) return "🟡";
-  if (score >= 20) return "🔵";
-  return "⚪";
+  if (score >= 80) return "\uD83D\uDD34"; // red circle — flashpoint urgency
+  if (score >= 60) return "\uD83D\uDFE0"; // orange circle
+  if (score >= 40) return "\uD83D\uDFE1"; // yellow circle
+  if (score >= 20) return "\uD83D\uDFE2"; // green circle
+  return "\u26AA";                          // white circle
 }
 
 export default function CpsBar({ score, showLabel = false, compact = false }: CpsBarProps) {
@@ -65,7 +65,7 @@ export default function CpsBar({ score, showLabel = false, compact = false }: Cp
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{
           height: 4, flex: 1,
-          background: "rgba(255,255,255,0.08)",
+          background: "rgba(242,239,237,0.06)",
           borderRadius: 2, overflow: "hidden",
         }}>
           <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 2 }} />
@@ -83,10 +83,13 @@ export default function CpsBar({ score, showLabel = false, compact = false }: Cp
         <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
           {showLabel ? label : "Cultural Potency"}
         </span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: textColor }}>{score}</span>
+        <span style={{
+          fontFamily: "var(--font-fraunces, 'Fraunces', serif)",
+          fontSize: 14, fontWeight: 600, color: textColor,
+        }}>{score}</span>
       </div>
       <div style={{
-        height: 4, background: "rgba(255,255,255,0.08)",
+        height: 4, background: "rgba(242,239,237,0.06)",
         borderRadius: 2, overflow: "hidden",
       }}>
         <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 2 }} />

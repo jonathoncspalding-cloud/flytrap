@@ -19,15 +19,15 @@ interface PulseItem {
 const SOURCE_CONFIG = {
   reddit: {
     label: "REDDIT",
-    color: "#f97316",
+    color: "#FF8200",
   },
   wikipedia: {
     label: "READING",
-    color: "#818cf8",
+    color: "rgba(232,18,122,0.7)",
   },
   news: {
     label: "NEWS",
-    color: "#4ade80",
+    color: "#2a8c4a",
   },
 };
 
@@ -63,7 +63,7 @@ export default function CulturalTicker() {
         zIndex: 100,
         height: 40,
         background: "linear-gradient(135deg, #0d0820 0%, #100c24 50%, #0d0820 100%)",
-        borderTop: "1px solid rgba(129,140,248,0.25)",
+        borderTop: "1px solid rgba(232,18,122,0.25)",
         display: "flex",
         alignItems: "center",
         boxShadow: "0 -4px 24px rgba(0,0,0,0.5)",
@@ -77,7 +77,7 @@ export default function CulturalTicker() {
           gap: 7,
           padding: "0 14px",
           flexShrink: 0,
-          borderRight: "1px solid rgba(129,140,248,0.2)",
+          borderRight: "1px solid rgba(232,18,122,0.2)",
           height: "100%",
         }}
       >
@@ -87,7 +87,7 @@ export default function CulturalTicker() {
             width: 5,
             height: 5,
             borderRadius: "50%",
-            background: "#818cf8",
+            background: "rgba(232,18,122,0.7)",
             display: "inline-block",
           }}
         />
@@ -96,7 +96,7 @@ export default function CulturalTicker() {
           style={{
             fontSize: 9,
             fontWeight: 800,
-            color: "#818cf8",
+            color: "rgba(232,18,122,0.7)",
             letterSpacing: "0.12em",
             textTransform: "uppercase",
             textDecoration: "none",
@@ -144,7 +144,7 @@ export default function CulturalTicker() {
 
         <div style={{ display: "flex", alignItems: "center", height: "100%" }}>
           {items.length === 0 ? (
-            <span style={{ fontSize: 11, color: "rgba(129,140,248,0.4)", paddingLeft: 16 }}>
+            <span style={{ fontSize: 11, color: "rgba(232,18,122,0.4)", paddingLeft: 16 }}>
               Fetching live signals…
             </span>
           ) : (
@@ -220,7 +220,7 @@ export default function CulturalTicker() {
                   <span
                     style={{
                       fontSize: 10,
-                      color: "rgba(129,140,248,0.2)",
+                      color: "rgba(232,18,122,0.2)",
                       marginLeft: 4,
                     }}
                   >

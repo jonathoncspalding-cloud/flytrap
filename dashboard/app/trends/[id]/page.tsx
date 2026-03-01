@@ -8,18 +8,18 @@ export const revalidate = 300;
 
 const TYPE_STYLES: Record<string, { bg: string; color: string }> = {
   "Macro Trend":      { bg: "rgba(139,92,246,0.15)", color: "#a78bfa" },
-  "Micro Trend":      { bg: "rgba(99,102,241,0.15)", color: "#818cf8" },
-  "Emerging Signal":  { bg: "rgba(234,179,8,0.12)",  color: "#facc15" },
-  "Scheduled Event":  { bg: "rgba(34,197,94,0.12)",  color: "#4ade80" },
-  "Predicted Moment": { bg: "rgba(239,68,68,0.12)",  color: "#f87171" },
+  "Micro Trend":      { bg: "rgba(232,18,122,0.15)", color: "rgba(232,18,122,0.7)" },
+  "Emerging Signal":  { bg: "rgba(255,130,0,0.12)",  color: "#FF8200" },
+  "Scheduled Event":  { bg: "rgba(0,79,34,0.12)",  color: "#2a8c4a" },
+  "Predicted Moment": { bg: "rgba(232,18,122,0.12)",  color: "#E8127A" },
 };
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
-  Exploding: { bg: "rgba(239,68,68,0.15)",   color: "#f87171" },
-  Rising:    { bg: "rgba(249,115,22,0.15)",   color: "#fb923c" },
-  Peaked:    { bg: "rgba(234,179,8,0.15)",    color: "#fbbf24" },
-  Stable:    { bg: "rgba(34,197,94,0.12)",    color: "#4ade80" },
-  Emerging:  { bg: "rgba(99,102,241,0.15)",   color: "#818cf8" },
+  Exploding: { bg: "rgba(232,18,122,0.15)",   color: "#E8127A" },
+  Rising:    { bg: "rgba(255,130,0,0.15)",   color: "#FF8200" },
+  Peaked:    { bg: "rgba(255,130,0,0.15)",    color: "#FF8200" },
+  Stable:    { bg: "rgba(0,79,34,0.12)",    color: "#2a8c4a" },
+  Emerging:  { bg: "rgba(232,18,122,0.15)",   color: "rgba(232,18,122,0.7)" },
   Archived:  { bg: "rgba(255,255,255,0.06)",  color: "rgba(255,255,255,0.3)" },
 };
 
@@ -32,19 +32,19 @@ const PLATFORM_ICONS: Record<string, string> = {
 };
 
 const SENTIMENT_COLORS: Record<string, { bg: string; color: string }> = {
-  Positive: { bg: "rgba(34,197,94,0.12)",   color: "#4ade80" },
-  Negative: { bg: "rgba(239,68,68,0.12)",   color: "#f87171" },
+  Positive: { bg: "rgba(0,79,34,0.12)",   color: "#2a8c4a" },
+  Negative: { bg: "rgba(232,18,122,0.12)",   color: "#E8127A" },
   Neutral:  { bg: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" },
-  Mixed:    { bg: "rgba(234,179,8,0.12)",   color: "#fbbf24" },
+  Mixed:    { bg: "rgba(255,130,0,0.12)",   color: "#FF8200" },
 };
 
 function confidenceLabel(count: number, platforms: number): { label: string; color: string } {
   if (count === 0)     return { label: "No evidence", color: "rgba(255,255,255,0.25)" };
-  if (count >= 15 && platforms >= 4) return { label: "High confidence", color: "#4ade80" };
-  if (count >= 8  && platforms >= 3) return { label: "Good confidence", color: "#86efac" };
-  if (count >= 4  && platforms >= 2) return { label: "Building",        color: "#fbbf24" };
-  if (count >= 2)                    return { label: "Early signal",     color: "#fb923c" };
-  return { label: "Hypothesis",  color: "#f87171" };
+  if (count >= 15 && platforms >= 4) return { label: "High confidence", color: "#2a8c4a" };
+  if (count >= 8  && platforms >= 3) return { label: "Good confidence", color: "#3da65a" };
+  if (count >= 4  && platforms >= 2) return { label: "Building",        color: "#FF8200" };
+  if (count >= 2)                    return { label: "Early signal",     color: "#FF8200" };
+  return { label: "Hypothesis",  color: "#E8127A" };
 }
 
 export default async function TrendDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -115,7 +115,7 @@ export default async function TrendDetailPage({ params }: { params: Promise<{ id
                     📌 Pinned
                   </span>
                 )}
-                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: confidence.color === "#4ade80" ? "rgba(74,222,128,0.12)" : "rgba(255,255,255,0.06)", color: confidence.color, fontWeight: 600 }}>
+                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: confidence.color === "#2a8c4a" ? "rgba(0,79,34,0.12)" : "rgba(255,255,255,0.06)", color: confidence.color, fontWeight: 600 }}>
                   {confidence.label}
                 </span>
               </div>
@@ -164,7 +164,7 @@ export default async function TrendDetailPage({ params }: { params: Promise<{ id
               <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 1 }}>Signals</div>
             </div>
             <div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: platformCount >= 3 ? "#4ade80" : platformCount >= 2 ? "#fbbf24" : "var(--text-secondary)" }}>
+              <div style={{ fontSize: 20, fontWeight: 700, color: platformCount >= 3 ? "#2a8c4a" : platformCount >= 2 ? "#FF8200" : "var(--text-secondary)" }}>
                 {platformCount}
               </div>
               <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 1 }}>Platforms</div>
@@ -296,11 +296,11 @@ export default async function TrendDetailPage({ params }: { params: Promise<{ id
             <div style={{
               background: "var(--surface)",
               border: "1px solid var(--border)",
-              borderLeft: "3px solid #6366f1",
+              borderLeft: "3px solid #E8127A",
               borderRadius: 8,
               padding: "14px 16px",
             }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#818cf8", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(232,18,122,0.7)", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
                 🔮 Forecast
               </div>
               <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
@@ -357,7 +357,7 @@ export default async function TrendDetailPage({ params }: { params: Promise<{ id
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>Platform spread</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: platformCount >= 3 ? "#4ade80" : "#fbbf24" }}>{platformCount}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: platformCount >= 3 ? "#2a8c4a" : "#FF8200" }}>{platformCount}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>Assessment</span>

@@ -1,21 +1,23 @@
 import { CalendarEvent } from "@/lib/notion";
-import { cpsEmoji, cpsDotColor } from "./CpsBar";
+import { cpsEmoji, cpsTextColor } from "./CpsBar";
 
 interface Props {
   event: CalendarEvent;
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  Politics: "bg-red-100 text-red-700",
-  Entertainment: "bg-pink-100 text-pink-700",
-  Sports: "bg-green-100 text-green-700",
-  Tech: "bg-blue-100 text-blue-700",
-  Business: "bg-gray-100 text-gray-700",
-  Culture: "bg-purple-100 text-purple-700",
-  Holiday: "bg-yellow-100 text-yellow-700",
-  Music: "bg-orange-100 text-orange-700",
-  Film: "bg-indigo-100 text-indigo-700",
+const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
+  Politics:      { bg: "rgba(232,18,122,0.10)", color: "#E8127A" },
+  Entertainment: { bg: "rgba(232,18,122,0.08)", color: "rgba(232,18,122,0.7)" },
+  Sports:        { bg: "rgba(0,79,34,0.12)",    color: "#2a8c4a" },
+  Tech:          { bg: "rgba(255,130,0,0.10)",   color: "#FF8200" },
+  Business:      { bg: "var(--surface-raised)",  color: "var(--text-secondary)" },
+  Culture:       { bg: "rgba(232,18,122,0.06)", color: "rgba(232,18,122,0.6)" },
+  Holiday:       { bg: "rgba(255,130,0,0.08)",   color: "rgba(255,130,0,0.7)" },
+  Music:         { bg: "rgba(0,79,34,0.08)",     color: "rgba(42,140,74,0.8)" },
+  Film:          { bg: "rgba(232,18,122,0.08)",  color: "rgba(232,18,122,0.7)" },
 };
+
+const DEFAULT_CAT = { bg: "var(--surface-raised)", color: "var(--text-tertiary)" };
 
 function daysUntil(dateStr: string): number {
   const today = new Date();
@@ -31,57 +33,96 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function urgencyColor(days: number): string {
+  if (days <= 3) return "#E8127A";
+  if (days <= 7) return "#FF8200";
+  if (days <= 14) return "rgba(255,130,0,0.6)";
+  return "var(--text-tertiary)";
+}
+
 export default function CalendarEventRow({ event }: Props) {
   const days = daysUntil(event.date);
-  const urgency =
-    days <= 3
-      ? "text-red-600 font-bold"
-      : days <= 7
-      ? "text-orange-500 font-semibold"
-      : days <= 14
-      ? "text-yellow-600"
-      : "text-gray-400";
 
   return (
-    <div className="flex items-start gap-4 py-3 border-b border-gray-100 last:border-0">
+    <div style={{
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 14,
+      padding: "10px 0",
+      borderBottom: "1px solid var(--border)",
+    }}>
       {/* Date column */}
-      <div className="text-center shrink-0 w-14">
-        <div className="text-sm font-bold text-gray-800">{formatDate(event.date)}</div>
-        <div className={`text-xs mt-0.5 ${urgency}`}>
+      <div style={{ textAlign: "center", flexShrink: 0, width: 52 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>
+          {formatDate(event.date)}
+        </div>
+        <div style={{
+          fontSize: 10,
+          marginTop: 2,
+          fontWeight: days <= 7 ? 700 : 400,
+          color: urgencyColor(days),
+        }}>
           {days === 0 ? "TODAY" : days === 1 ? "tmrw" : `in ${days}d`}
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1 flex-wrap">
-          <span className={`text-base ${cpsDotColor(event.cps)}`}>{cpsEmoji(event.cps)}</span>
-          <span className="font-medium text-gray-900 text-sm">{event.name}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 14 }}>{cpsEmoji(event.cps)}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{event.name}</span>
           {event.type === "Predicted Moment" && (
-            <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">
+            <span style={{
+              fontSize: 10,
+              background: "rgba(232,18,122,0.10)",
+              color: "#E8127A",
+              padding: "1px 6px",
+              borderRadius: 4,
+              fontWeight: 600,
+            }}>
               Predicted
             </span>
           )}
         </div>
-        <div className="flex gap-1 flex-wrap">
-          {event.categories.map((cat) => (
-            <span
-              key={cat}
-              className={`text-xs px-1.5 py-0.5 rounded ${CATEGORY_COLORS[cat] ?? "bg-gray-100 text-gray-600"}`}
-            >
-              {cat}
-            </span>
-          ))}
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {event.categories.map((cat) => {
+            const style = CATEGORY_COLORS[cat] ?? DEFAULT_CAT;
+            return (
+              <span
+                key={cat}
+                style={{
+                  fontSize: 10,
+                  padding: "1px 6px",
+                  borderRadius: 4,
+                  background: style.bg,
+                  color: style.color,
+                }}
+              >
+                {cat}
+              </span>
+            );
+          })}
         </div>
         {event.notes && (
-          <p className="text-xs text-gray-500 mt-1 line-clamp-2">{event.notes}</p>
+          <p style={{
+            fontSize: 11,
+            color: "var(--text-tertiary)",
+            lineHeight: 1.4,
+            margin: "4px 0 0",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          } as React.CSSProperties}>
+            {event.notes}
+          </p>
         )}
       </div>
 
       {/* CPS */}
-      <div className="text-right shrink-0">
-        <span className="text-sm font-bold text-gray-700">{event.cps}</span>
-        <div className="text-xs text-gray-400">CPS</div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: cpsTextColor(event.cps) }}>{event.cps}</span>
+        <div style={{ fontSize: 9, color: "var(--text-tertiary)" }}>CPS</div>
       </div>
     </div>
   );

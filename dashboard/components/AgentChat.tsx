@@ -19,11 +19,11 @@ type ApiContentBlock =
   | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
 
 const AGENT_META: Record<string, { emoji: string; label: string; color: string }> = {
-  sentinel: { emoji: "👁️", label: "Sentinel", color: "#f87171" },
-  scout: { emoji: "🔭", label: "Scout", color: "#4ade80" },
-  oracle: { emoji: "🧠", label: "Oracle", color: "#818cf8" },
+  sentinel: { emoji: "👁️", label: "Sentinel", color: "#E8127A" },
+  scout: { emoji: "🔭", label: "Scout", color: "#2a8c4a" },
+  oracle: { emoji: "🧠", label: "Oracle", color: "rgba(232,18,122,0.7)" },
   architect: { emoji: "🎨", label: "Architect", color: "#f472b6" },
-  optimize: { emoji: "⚡", label: "Optimize", color: "#fbbf24" },
+  optimize: { emoji: "⚡", label: "Optimize", color: "#FF8200" },
   strategist: { emoji: "📝", label: "Strategist", color: "#a78bfa" },
   isabel: { emoji: "🎨", label: "Isabel", color: "#2dd4bf" },
 };
@@ -422,7 +422,7 @@ export default function AgentChat({
                 style={{
                   position: "absolute", top: -2, right: -2,
                   width: 16, height: 16, borderRadius: "50%",
-                  background: "#ef4444", border: "none", color: "#fff",
+                  background: "#E8127A", border: "none", color: "#fff",
                   fontSize: 10, cursor: "pointer", lineHeight: "16px",
                   padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
                 }}

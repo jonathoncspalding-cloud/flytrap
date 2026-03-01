@@ -14,7 +14,7 @@ const INFO_PAGES: Record<string, {
   briefing: {
     title: "Daily Briefing",
     subtitle: "What it is, how it's made, and how to use it.",
-    accentColor: "#4ade80",
+    accentColor: "#2a8c4a",
     sections: [
       {
         heading: "What is the Daily Briefing?",
@@ -55,10 +55,10 @@ const INFO_PAGES: Record<string, {
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
               {[
-                { range: "80–100", label: "Flashpoint", color: "#4ade80", desc: "Dominating cultural conversation. Act now." },
-                { range: "60–79", label: "Rising", color: "#86efac", desc: "Strong momentum, accelerating discourse." },
-                { range: "40–59", label: "Simmering", color: "#fbbf24", desc: "Active and building. Worth watching." },
-                { range: "20–39", label: "Low Signal", color: "#6366f1", desc: "Early movement, not yet mainstream." },
+                { range: "80–100", label: "Flashpoint", color: "#2a8c4a", desc: "Dominating cultural conversation. Act now." },
+                { range: "60–79", label: "Rising", color: "#3da65a", desc: "Strong momentum, accelerating discourse." },
+                { range: "40–59", label: "Simmering", color: "#FF8200", desc: "Active and building. Worth watching." },
+                { range: "20–39", label: "Low Signal", color: "#E8127A", desc: "Early movement, not yet mainstream." },
                 { range: "0–19", label: "Noise", color: "rgba(255,255,255,0.3)", desc: "Minimal signal. Background level." },
               ].map((tier) => (
                 <div key={tier.range} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px" }}>
@@ -100,7 +100,7 @@ const INFO_PAGES: Record<string, {
   chatbot: {
     title: "Cultural Strategist AI",
     subtitle: "How the AI works and what it knows.",
-    accentColor: "#4ade80",
+    accentColor: "#2a8c4a",
     sections: [
       {
         heading: "What is this?",
@@ -161,7 +161,7 @@ const INFO_PAGES: Record<string, {
   tensions: {
     title: "Active Tensions",
     subtitle: "What they are, how they're found, how they're scored, and how to use them.",
-    accentColor: "#f59e0b",
+    accentColor: "#FF8200",
     sections: [
       {
         heading: "What is a cultural tension?",
@@ -213,8 +213,8 @@ const INFO_PAGES: Record<string, {
                   desc: "New tensions can also be added manually to the Notion database at any time, and the pipeline will incorporate them into the next run. Weights can be adjusted manually if the automated evaluation hasn't caught a shift yet. The system is designed to self-evolve, but human judgment can always intervene.",
                 },
               ].map((s) => (
-                <div key={s.step} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderLeft: "3px solid #f59e0b", borderRadius: 8, padding: "12px 14px" }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#f59e0b", marginBottom: 5 }}>{s.step}</div>
+                <div key={s.step} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderLeft: "3px solid #FF8200", borderRadius: 8, padding: "12px 14px" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#FF8200", marginBottom: 5 }}>{s.step}</div>
                   <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: 1.6 }}>{s.desc}</p>
                 </div>
               ))}
@@ -255,9 +255,9 @@ const INFO_PAGES: Record<string, {
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
               {[
-                { range: "9–10", color: "#f87171", border: "rgba(239,68,68,0.3)", bg: "rgba(239,68,68,0.06)", label: "Critical", desc: "Dominating cultural conversation across multiple platforms. Brands cannot be neutral on this tension without that neutrality itself becoming a position. Active flashpoint." },
-                { range: "7–8", color: "#fb923c", border: "rgba(249,115,22,0.3)", bg: "rgba(249,115,22,0.06)", label: "High", desc: "Strongly present in consumer behavior and discourse. Campaigns built against this tension will land. High creative leverage." },
-                { range: "5–6", color: "#fbbf24", border: "rgba(234,179,8,0.3)", bg: "rgba(234,179,8,0.06)", label: "Active", desc: "Consistently present and useful for strategy. Not dominating the conversation, but clearly felt by your audience. Safe to build against." },
+                { range: "9–10", color: "#E8127A", border: "rgba(232,18,122,0.3)", bg: "rgba(232,18,122,0.06)", label: "Critical", desc: "Dominating cultural conversation across multiple platforms. Brands cannot be neutral on this tension without that neutrality itself becoming a position. Active flashpoint." },
+                { range: "7–8", color: "#FF8200", border: "rgba(255,130,0,0.3)", bg: "rgba(255,130,0,0.06)", label: "High", desc: "Strongly present in consumer behavior and discourse. Campaigns built against this tension will land. High creative leverage." },
+                { range: "5–6", color: "#FF8200", border: "rgba(255,130,0,0.2)", bg: "rgba(255,130,0,0.05)", label: "Active", desc: "Consistently present and useful for strategy. Not dominating the conversation, but clearly felt by your audience. Safe to build against." },
                 { range: "1–4", color: "var(--text-secondary)", border: "var(--border)", bg: "var(--surface)", label: "Background", desc: "A real tension, but not generating strong current signal. More of a backdrop context than an active creative opportunity." },
               ].map((t) => (
                 <div key={t.range} style={{ background: t.bg, border: `1px solid ${t.border}`, borderRadius: 8, padding: "10px 14px", display: "flex", gap: 12 }}>
@@ -279,9 +279,9 @@ const INFO_PAGES: Record<string, {
             <p>The badge color on the dashboard directly maps to the weight score — it's a visual urgency signal.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
               {[
-                { color: "#f87171", bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.3)", label: "Red", score: "9–10", when: "Critical weight. This tension is at peak cultural intensity. Highest priority for brand strategy." },
-                { color: "#fb923c", bg: "rgba(249,115,22,0.08)", border: "rgba(249,115,22,0.3)", label: "Orange", score: "7–8", when: "High weight. Strong current signal. Excellent creative leverage opportunity." },
-                { color: "#fbbf24", bg: "rgba(234,179,8,0.08)", border: "rgba(234,179,8,0.3)", label: "Yellow", score: "5–6", when: "Active weight. Steadily present. Good for thematic campaign alignment." },
+                { color: "#E8127A", bg: "rgba(232,18,122,0.08)", border: "rgba(232,18,122,0.3)", label: "Red", score: "9–10", when: "Critical weight. This tension is at peak cultural intensity. Highest priority for brand strategy." },
+                { color: "#FF8200", bg: "rgba(255,130,0,0.08)", border: "rgba(255,130,0,0.3)", label: "Orange", score: "7–8", when: "High weight. Strong current signal. Excellent creative leverage opportunity." },
+                { color: "#FF8200", bg: "rgba(255,130,0,0.06)", border: "rgba(255,130,0,0.2)", label: "Yellow", score: "5–6", when: "Active weight. Steadily present. Good for thematic campaign alignment." },
                 { color: "var(--text-secondary)", bg: "var(--surface)", border: "var(--border)", label: "Gray", score: "1–4", when: "Background weight. Real but quiet. Context, not action." },
               ].map((c) => (
                 <div key={c.label} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -301,15 +301,15 @@ const INFO_PAGES: Record<string, {
         content: (
           <>
             <p>
-              A <strong style={{ color: "#4ade80" }}>Flashpoint</strong> is a trend with a Cultural Pulse Score (CPS)
+              A <strong style={{ color: "#2a8c4a" }}>Flashpoint</strong> is a trend with a Cultural Pulse Score (CPS)
               of 80 or above — meaning it is at peak cultural energy right now. Flashpoints are not a type
               of tension; they are a status applied to individual <em>trends</em>. However, the two are deeply
               connected: Flashpoints almost always exist because one or more tensions are fueling them.
             </p>
-            <div style={{ background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 8, padding: "12px 14px", marginTop: 12 }}>
+            <div style={{ background: "rgba(0,79,34,0.06)", border: "1px solid rgba(0,79,34,0.2)", borderRadius: 8, padding: "12px 14px", marginTop: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                <span className="pulse-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#4ade80" }}>What Flashpoint status means</span>
+                <span className="pulse-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: "#2a8c4a", display: "inline-block" }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#2a8c4a" }}>What Flashpoint status means</span>
               </div>
               <ul style={{ margin: 0, paddingLeft: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
                 {[
@@ -320,7 +320,7 @@ const INFO_PAGES: Record<string, {
                   "After a Flashpoint, trends typically move to Peaked status — the window has closed",
                 ].map((point, i) => (
                   <li key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                    <span style={{ color: "#4ade80", fontSize: 10, flexShrink: 0, marginTop: 2 }}>▶</span>
+                    <span style={{ color: "#2a8c4a", fontSize: 10, flexShrink: 0, marginTop: 2 }}>▶</span>
                     <span style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55 }}>{point}</span>
                   </li>
                 ))}
@@ -360,7 +360,7 @@ const INFO_PAGES: Record<string, {
   trends: {
     title: "Trends",
     subtitle: "What the three time horizons mean and how trends are scored.",
-    accentColor: "#4ade80",
+    accentColor: "#2a8c4a",
     sections: [
       {
         heading: "Three time horizons",
@@ -369,19 +369,19 @@ const INFO_PAGES: Record<string, {
             {[
               {
                 label: "Micro Trends",
-                color: "#4ade80",
+                color: "#2a8c4a",
                 time: "Days to weeks",
                 desc: "Fast-moving signals that are peaking now. These are the trends to act on this week. High urgency, short window. They include Emerging Signals (pre-mainstream breakouts) and Predicted Moments (forecast intersections).",
               },
               {
                 label: "Macro Trends",
-                color: "#fbbf24",
+                color: "#FF8200",
                 time: "3–12 months",
                 desc: "Sustained cultural forces with enough momentum to shape strategy over a quarter or more. These inform campaign themes, seasonal planning, and brand positioning. Act within the month, not the day.",
               },
               {
                 label: "Historical Trends",
-                color: "#6366f1",
+                color: "#E8127A",
                 time: "12+ months / settled",
                 desc: "Trends that have peaked or stabilized and are now part of the cultural backdrop. They explain why micro and macro trends behave the way they do. Use them as context, not creative inspiration.",
               },
@@ -433,10 +433,10 @@ const INFO_PAGES: Record<string, {
         content: (
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
             {[
-              { label: "Active", color: "#4ade80", desc: "Currently generating signals and moving." },
-              { label: "Rising", color: "#86efac", desc: "Accelerating — signal velocity is increasing." },
-              { label: "Peaked", color: "#fbbf24", desc: "Signal volume is declining from its high." },
-              { label: "Stable", color: "#6366f1", desc: "Consistent low-level presence. Part of the backdrop." },
+              { label: "Active", color: "#2a8c4a", desc: "Currently generating signals and moving." },
+              { label: "Rising", color: "#3da65a", desc: "Accelerating — signal velocity is increasing." },
+              { label: "Peaked", color: "#FF8200", desc: "Signal volume is declining from its high." },
+              { label: "Stable", color: "#E8127A", desc: "Consistent low-level presence. Part of the backdrop." },
             ].map((s) => (
               <div key={s.label} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: s.color, width: 60, flexShrink: 0 }}>{s.label}</span>
@@ -501,9 +501,9 @@ const INFO_PAGES: Record<string, {
         content: (
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
             {[
-              { symbol: "↑", color: "#4ade80", label: "Positive", desc: "Finding supports or accelerates an active trend." },
-              { symbol: "↓", color: "#f87171", label: "Negative", desc: "Finding represents headwind or complicates a trend." },
-              { symbol: "~", color: "#fbbf24", label: "Mixed", desc: "Finding has conflicting or nuanced implications." },
+              { symbol: "↑", color: "#2a8c4a", label: "Positive", desc: "Finding supports or accelerates an active trend." },
+              { symbol: "↓", color: "#E8127A", label: "Negative", desc: "Finding represents headwind or complicates a trend." },
+              { symbol: "~", color: "#FF8200", label: "Mixed", desc: "Finding has conflicting or nuanced implications." },
             ].map((s) => (
               <div key={s.label} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: s.color, width: 20, flexShrink: 0 }}>{s.symbol}</span>
@@ -628,7 +628,7 @@ const INFO_PAGES: Record<string, {
   ticker: {
     title: "Culture Pulse Ticker",
     subtitle: "What's being talked about right now — Reddit community signal + Wikipedia trending.",
-    accentColor: "#818cf8",
+    accentColor: "rgba(232,18,122,0.7)",
     sections: [
       {
         heading: "What is the ticker?",
@@ -646,8 +646,8 @@ const INFO_PAGES: Record<string, {
         heading: "Data sources",
         content: (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-            <div style={{ background: "var(--surface)", border: "1px solid rgba(249,115,22,0.2)", borderLeft: "3px solid #f97316", borderRadius: 8, padding: "12px 14px" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#f97316", marginBottom: 4 }}>REDDIT — Community trending</div>
+            <div style={{ background: "var(--surface)", border: "1px solid rgba(255,130,0,0.2)", borderLeft: "3px solid #FF8200", borderRadius: 8, padding: "12px 14px" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#FF8200", marginBottom: 4 }}>REDDIT — Community trending</div>
               <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: 1.55, marginBottom: 8 }}>
                 Hot posts from culture-relevant subreddits, ranked by community votes and recency. This works similarly to
                 Twitter trending — high-scoring posts are things that large groups of people are actively reacting to
@@ -657,8 +657,8 @@ const INFO_PAGES: Record<string, {
                 Subreddits monitored: r/entertainment, r/Music, r/television, r/movies, r/sports, r/popculture, r/hiphopheads
               </div>
             </div>
-            <div style={{ background: "var(--surface)", border: "1px solid rgba(129,140,248,0.2)", borderLeft: "3px solid #818cf8", borderRadius: 8, padding: "12px 14px" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", marginBottom: 4 }}>READING — Wikipedia Trending</div>
+            <div style={{ background: "var(--surface)", border: "1px solid rgba(232,18,122,0.2)", borderLeft: "3px solid rgba(232,18,122,0.7)", borderRadius: 8, padding: "12px 14px" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(232,18,122,0.7)", marginBottom: 4 }}>READING — Wikipedia Trending</div>
               <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: 1.55 }}>
                 The most-viewed Wikipedia articles in the past 24 hours. When something enters mainstream conversation,
                 people look it up — Wikipedia trending is a reliable indicator that a topic is crossing from niche into
@@ -689,7 +689,7 @@ const INFO_PAGES: Record<string, {
                   "The public JSON API is free, reliable, and doesn't require authentication",
                 ].map((p, i) => (
                   <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                    <span style={{ color: "#f97316", fontSize: 10, flexShrink: 0, marginTop: 2 }}>▶</span>
+                    <span style={{ color: "#FF8200", fontSize: 10, flexShrink: 0, marginTop: 2 }}>▶</span>
                     <span style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>{p}</span>
                   </div>
                 ))}
@@ -715,9 +715,9 @@ const INFO_PAGES: Record<string, {
         heading: "How to read it",
         content: (
           <p>
-            Hover over the ticker to pause it. <strong style={{ color: "#f97316" }}>REDDIT</strong> items show
+            Hover over the ticker to pause it. <strong style={{ color: "#FF8200" }}>REDDIT</strong> items show
             the community and are linked to the post — click to see the full conversation.{" "}
-            <strong style={{ color: "#818cf8" }}>READING</strong> items are Wikipedia trending and link to the article.
+            <strong style={{ color: "rgba(232,18,122,0.7)" }}>READING</strong> items are Wikipedia trending and link to the article.
             When the same topic appears in both sources, it is crossing from active conversation into
             the explanatory phase — people are not just reacting, they are trying to understand it.
             That transition is often a leading indicator for your tracked trends.

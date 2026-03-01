@@ -11,9 +11,9 @@ import type { Evidence } from "@/lib/notion";
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function sentimentDot(s: string) {
-  if (s === "Positive") return { color: "#4ade80", label: "↑" };
-  if (s === "Negative") return { color: "#f87171", label: "↓" };
-  if (s === "Mixed")    return { color: "#fbbf24", label: "~" };
+  if (s === "Positive") return { color: "#2a8c4a", label: "↑" };
+  if (s === "Negative") return { color: "#E8127A", label: "↓" };
+  if (s === "Mixed")    return { color: "#FF8200", label: "~" };
   return null;
 }
 
@@ -94,7 +94,7 @@ function InsightCard({ item, isLast }: { item: Evidence; isLast: boolean }) {
           target="_blank"
           rel="noopener noreferrer"
           style={{
-            fontSize: 11, color: "rgba(74,222,128,0.6)",
+            fontSize: 11, color: "rgba(0,79,34,0.6)",
             textDecoration: "none",
             display: "inline-flex", alignItems: "center", gap: 3,
           }}

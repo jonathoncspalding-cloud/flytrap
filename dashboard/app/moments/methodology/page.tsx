@@ -8,7 +8,7 @@ const PREDICTION_TYPES = [
   {
     icon: "⚡",
     name: "Catalyst",
-    color: "#f59e0b",
+    color: "#FF8200",
     description:
       "A known upcoming event intersects with active cultural tensions to produce a specific, predictable outcome. The event is the spark; the tension is the fuel.",
     example:
@@ -17,7 +17,7 @@ const PREDICTION_TYPES = [
   {
     icon: "💥",
     name: "Collision",
-    color: "#ef4444",
+    color: "#E8127A",
     description:
       "Two or more independently accelerating trends converge on a flashpoint. Neither trend alone would create the moment — it's the intersection that matters.",
     example:
@@ -26,7 +26,7 @@ const PREDICTION_TYPES = [
   {
     icon: "🌊",
     name: "Pressure",
-    color: "#3b82f6",
+    color: "#2a8c4a",
     description:
       "Signal velocity for a topic is accelerating beyond its baseline. The discourse is building toward a tipping point where a single trigger could cause a viral breakout.",
     example:
@@ -35,7 +35,7 @@ const PREDICTION_TYPES = [
   {
     icon: "🔄",
     name: "Pattern",
-    color: "#8b5cf6",
+    color: "rgba(232,18,122,0.7)",
     description:
       "A seasonal or cyclical event collides with current cultural context to produce a novel expression. The calendar provides the when; the cultural mood provides the what.",
     example:
@@ -59,9 +59,9 @@ const SCORING = [
     description:
       "How likely the moment is to actually materialize. Based on the strength and number of converging signals, velocity acceleration patterns, historical precedent, and quality of evidence. A score of 80+ means multiple independent data sources point to the same conclusion.",
     tiers: [
-      { range: "75–100", color: "#4ade80", label: "High — strong convergent evidence" },
-      { range: "50–74", color: "#fbbf24", label: "Medium — clear signals, some uncertainty" },
-      { range: "25–49", color: "#818cf8", label: "Low — early pattern, watch closely" },
+      { range: "75–100", color: "#2a8c4a", label: "High — strong convergent evidence" },
+      { range: "50–74", color: "#FF8200", label: "Medium — clear signals, some uncertainty" },
+      { range: "25–49", color: "rgba(232,18,122,0.7)", label: "Low — early pattern, watch closely" },
       { range: "0–24", color: "rgba(255,255,255,0.3)", label: "Speculative — weak signal" },
     ],
   },
@@ -71,9 +71,9 @@ const SCORING = [
     description:
       "How big the cultural impact will be if it happens. Measures expected reach, engagement intensity, duration, and potential to shift brand/consumer behavior. Not about likelihood — about consequence.",
     tiers: [
-      { range: "80–100", color: "#f87171", label: "Seismic — dominates cultural conversation" },
-      { range: "60–79", color: "#fbbf24", label: "Major — widespread discussion, brand impact" },
-      { range: "40–59", color: "#818cf8", label: "Significant — niche-to-mainstream crossover" },
+      { range: "80–100", color: "#E8127A", label: "Seismic — dominates cultural conversation" },
+      { range: "60–79", color: "#FF8200", label: "Major — widespread discussion, brand impact" },
+      { range: "40–59", color: "rgba(232,18,122,0.7)", label: "Significant — niche-to-mainstream crossover" },
       { range: "20–39", color: "rgba(255,255,255,0.5)", label: "Notable — relevant within its community" },
       { range: "0–19", color: "rgba(255,255,255,0.3)", label: "Minor — limited cultural footprint" },
     ],
@@ -81,15 +81,15 @@ const SCORING = [
 ];
 
 const HORIZONS = [
-  { label: "This Week", color: "#f87171", window: "0–7 days", confidence: "Highest. Very specific predictions." },
-  { label: "2–4 Weeks", color: "#fbbf24", window: "8–28 days", confidence: "Medium. Directional, less specific." },
-  { label: "1–3 Months", color: "#818cf8", window: "29–90 days", confidence: "Lower. Thematic patterns." },
+  { label: "This Week", color: "#E8127A", window: "0–7 days", confidence: "Highest. Very specific predictions." },
+  { label: "2–4 Weeks", color: "#FF8200", window: "8–28 days", confidence: "Medium. Directional, less specific." },
+  { label: "1–3 Months", color: "rgba(232,18,122,0.7)", window: "29–90 days", confidence: "Lower. Thematic patterns." },
 ];
 
 const LIFECYCLE = [
-  { label: "Predicted", color: "#818cf8", description: "Forecasted based on signal analysis. Not yet showing real-world confirmation." },
-  { label: "Forming", color: "#fbbf24", description: "Early real-world signals are confirming the prediction. Momentum is building." },
-  { label: "Happening", color: "#f87171", description: "The moment is actively unfolding in culture. Real-time." },
+  { label: "Predicted", color: "rgba(232,18,122,0.7)", description: "Forecasted based on signal analysis. Not yet showing real-world confirmation." },
+  { label: "Forming", color: "#FF8200", description: "Early real-world signals are confirming the prediction. Momentum is building." },
+  { label: "Happening", color: "#E8127A", description: "The moment is actively unfolding in culture. Real-time." },
   { label: "Passed", color: "rgba(255,255,255,0.3)", description: "The moment has concluded. Outcome can be evaluated." },
   { label: "Missed", color: "rgba(255,255,255,0.2)", description: "The prediction window closed without materialization." },
 ];

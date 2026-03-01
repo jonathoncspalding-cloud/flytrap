@@ -34,16 +34,16 @@ export default async function TensionsPage() {
           <p style={{ fontSize: 13, color: "var(--text-tertiary)", margin: 0 }}>
             {tensions.length} tensions tracked &middot; The opposing forces that drive cultural behavior
             {" · "}
-            <Link href="/info/tensions" style={{ color: "rgba(245,158,11,0.6)", textDecoration: "none", fontSize: 12 }} className="link-hover">
+            <Link href="/info/tensions" style={{ color: "rgba(255,130,0,0.6)", textDecoration: "none", fontSize: 12 }} className="link-hover">
               What are tensions? &rarr;
             </Link>
           </p>
         </div>
         <div style={{ display: "flex", gap: 16, flexShrink: 0 }}>
           {[
-            { label: "Critical", count: critical.length, color: "#ef4444" },
-            { label: "High", count: high.length, color: "#f97316" },
-            { label: "Moderate", count: moderate.length, color: "#eab308" },
+            { label: "Critical", count: critical.length, color: "#E8127A" },
+            { label: "High", count: high.length, color: "#FF8200" },
+            { label: "Moderate", count: moderate.length, color: "rgba(255,130,0,0.6)" },
           ].map((s) => (
             <div key={s.label} style={{ textAlign: "center" }}>
               <div style={{ fontSize: 18, fontWeight: 700, color: s.color }}>{s.count}</div>
@@ -55,9 +55,9 @@ export default async function TensionsPage() {
 
       {/* Tension groups */}
       {[
-        { label: "Critical", items: critical, color: "#ef4444" },
-        { label: "High", items: high, color: "#f97316" },
-        { label: "Moderate", items: moderate, color: "#eab308" },
+        { label: "Critical", items: critical, color: "#E8127A" },
+        { label: "High", items: high, color: "#FF8200" },
+        { label: "Moderate", items: moderate, color: "rgba(255,130,0,0.6)" },
         { label: "Background", items: low, color: "var(--text-tertiary)" },
       ]
         .filter((g) => g.items.length > 0)

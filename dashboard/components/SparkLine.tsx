@@ -16,9 +16,9 @@ interface SparkLineProps {
 }
 
 function cpsSparkColor(lastValue: number): string {
-  if (lastValue >= 80) return "#4ade80";
-  if (lastValue >= 60) return "#86efac";
-  if (lastValue >= 40) return "#fbbf24";
+  if (lastValue >= 80) return "#2a8c4a";
+  if (lastValue >= 60) return "#3da65a";
+  if (lastValue >= 40) return "#FF8200";
   return "rgba(255,255,255,0.3)";
 }
 

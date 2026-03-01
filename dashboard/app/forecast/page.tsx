@@ -4,31 +4,31 @@ import { getAllMoments, CulturalMoment } from "@/lib/notion";
 export const revalidate = 300;
 
 const TYPE_CONFIG: Record<string, { icon: string; color: string; bg: string }> = {
-  Catalyst:  { icon: "\u26a1", color: "#f59e0b", bg: "rgba(245,158,11,0.1)" },
-  Collision: { icon: "\ud83d\udca5", color: "#ef4444", bg: "rgba(239,68,68,0.1)" },
-  Pressure:  { icon: "\ud83c\udf0a", color: "#3b82f6", bg: "rgba(59,130,246,0.1)" },
-  Pattern:   { icon: "\ud83d\udd04", color: "#8b5cf6", bg: "rgba(139,92,246,0.1)" },
+  Catalyst:  { icon: "\u26a1", color: "#FF8200", bg: "rgba(255,130,0,0.1)" },
+  Collision: { icon: "\ud83d\udca5", color: "#E8127A", bg: "rgba(232,18,122,0.1)" },
+  Pressure:  { icon: "\ud83c\udf0a", color: "#2a8c4a", bg: "rgba(0,79,34,0.1)" },
+  Pattern:   { icon: "\ud83d\udd04", color: "rgba(232,18,122,0.7)", bg: "rgba(232,18,122,0.1)" },
   Void:      { icon: "\ud83d\udd73\ufe0f", color: "#6b7280", bg: "rgba(107,114,128,0.1)" },
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; pulse?: boolean }> = {
-  Predicted:  { label: "Predicted", color: "#818cf8", bg: "rgba(129,140,248,0.12)" },
-  Forming:    { label: "Forming", color: "#fbbf24", bg: "rgba(251,191,36,0.12)", pulse: true },
-  Happening:  { label: "Happening", color: "#f87171", bg: "rgba(248,113,113,0.15)", pulse: true },
-  Passed:     { label: "Passed", color: "#4ade80", bg: "rgba(74,222,128,0.12)" },
+  Predicted:  { label: "Predicted", color: "rgba(232,18,122,0.7)", bg: "rgba(232,18,122,0.12)" },
+  Forming:    { label: "Forming", color: "#FF8200", bg: "rgba(255,130,0,0.12)", pulse: true },
+  Happening:  { label: "Happening", color: "#E8127A", bg: "rgba(232,18,122,0.15)", pulse: true },
+  Passed:     { label: "Passed", color: "#2a8c4a", bg: "rgba(0,79,34,0.12)" },
   Missed:     { label: "Missed", color: "#6b7280", bg: "rgba(107,114,128,0.12)" },
 };
 
 const HORIZON_CONFIG: Record<string, { label: string; color: string }> = {
-  "This Week":  { label: "This Week", color: "#f87171" },
-  "2-4 Weeks":  { label: "2-4 Weeks", color: "#fbbf24" },
-  "1-3 Months": { label: "1-3 Months", color: "#818cf8" },
+  "This Week":  { label: "This Week", color: "#E8127A" },
+  "2-4 Weeks":  { label: "2-4 Weeks", color: "#FF8200" },
+  "1-3 Months": { label: "1-3 Months", color: "rgba(232,18,122,0.7)" },
 };
 
 function confidenceColor(c: number): string {
-  if (c >= 75) return "#4ade80";
-  if (c >= 50) return "#fbbf24";
-  if (c >= 25) return "#818cf8";
+  if (c >= 75) return "#2a8c4a";
+  if (c >= 50) return "#FF8200";
+  if (c >= 25) return "rgba(232,18,122,0.7)";
   return "rgba(255,255,255,0.3)";
 }
 
@@ -79,16 +79,16 @@ export default async function ForecastPage() {
           <p style={{ fontSize: 13, color: "var(--text-tertiary)", margin: 0 }}>
             {active.length} active predictions &middot; Moments forecasted before they happen
             {" · "}
-            <Link href="/moments/methodology" style={{ color: "rgba(245,158,11,0.6)", textDecoration: "none", fontSize: 12 }} className="link-hover">
+            <Link href="/moments/methodology" style={{ color: "rgba(255,130,0,0.6)", textDecoration: "none", fontSize: 12 }} className="link-hover">
               How we predict &rarr;
             </Link>
           </p>
         </div>
         <div style={{ display: "flex", gap: 16, alignItems: "center", flexShrink: 0 }}>
           {forming.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 8, padding: "5px 10px" }}>
-              <span className="pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: "#f87171", display: "inline-block" }} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#f87171" }}>{forming.length} forming</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(232,18,122,0.08)", border: "1px solid rgba(232,18,122,0.2)", borderRadius: 8, padding: "5px 10px" }}>
+              <span className="pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: "#E8127A", display: "inline-block" }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#E8127A" }}>{forming.length} forming</span>
             </div>
           )}
           {(Object.entries(horizonCounts) as [string, number][]).filter(([, c]) => c > 0).map(([h, c]) => {

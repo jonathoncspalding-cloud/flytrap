@@ -78,22 +78,28 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebar">
-      {/* Logo */}
+      {/* Logo — Cornett wordmark + Flytrap product name */}
       <div className="sidebar-logo">
-        <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+        <Link href="/" style={{ textDecoration: "none", display: "flex", flexDirection: "column", gap: 3 }}>
           <div style={{
-            width: 28, height: 28, borderRadius: 8,
-            background: "linear-gradient(135deg, #4ade80, #22c55e)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 14, fontWeight: 800, color: "#0a0a0a",
-            flexShrink: 0,
+            fontFamily: "var(--font-fraunces, 'Fraunces', serif)",
+            fontSize: 20,
+            fontWeight: 400,
+            color: "var(--text-primary)",
+            letterSpacing: "-0.02em",
+            lineHeight: 1.1,
           }}>
-            F
+            Cornett
           </div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.2, whiteSpace: "nowrap" }}>
-              Flytrap
-            </div>
+          <div style={{
+            fontSize: 9,
+            fontWeight: 800,
+            letterSpacing: "0.15em",
+            textTransform: "uppercase" as const,
+            color: "var(--moss-bright, #2a8c4a)",
+            paddingLeft: 1,
+          }}>
+            Flytrap
           </div>
         </Link>
       </div>
@@ -119,7 +125,7 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Sync controls + date + theme toggle */}
+      {/* Sync controls + date */}
       <SyncFooter />
     </aside>
   );

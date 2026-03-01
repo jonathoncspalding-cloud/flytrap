@@ -23,11 +23,11 @@ function cpsTierClass(cps: number): string {
 }
 
 const TYPE_STYLES: Record<string, { bg: string; color: string }> = {
-  "Macro Trend":      { bg: "rgba(139,92,246,0.15)", color: "#a78bfa" },
-  "Micro Trend":      { bg: "rgba(99,102,241,0.15)", color: "#818cf8" },
-  "Emerging Signal":  { bg: "rgba(234,179,8,0.12)",  color: "#facc15" },
-  "Scheduled Event":  { bg: "rgba(34,197,94,0.12)",  color: "#4ade80" },
-  "Predicted Moment": { bg: "rgba(239,68,68,0.12)",  color: "#f87171" },
+  "Macro Trend":      { bg: "rgba(255,130,0,0.12)",  color: "#FF8200" },
+  "Micro Trend":      { bg: "rgba(0,79,34,0.15)",    color: "#2a8c4a" },
+  "Emerging Signal":  { bg: "rgba(232,18,122,0.10)", color: "#E8127A" },
+  "Scheduled Event":  { bg: "rgba(0,79,34,0.10)",    color: "#2a8c4a" },
+  "Predicted Moment": { bg: "rgba(232,18,122,0.12)", color: "#E8127A" },
 };
 
 const TYPE_PLAIN: Record<string, string> = {
@@ -39,20 +39,20 @@ const TYPE_PLAIN: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
-  Exploding: { bg: "rgba(239,68,68,0.15)",   color: "#f87171" },
-  Rising:    { bg: "rgba(249,115,22,0.15)",   color: "#fb923c" },
-  Peaked:    { bg: "rgba(234,179,8,0.15)",    color: "#fbbf24" },
-  Stable:    { bg: "rgba(34,197,94,0.12)",    color: "#4ade80" },
-  Emerging:  { bg: "rgba(99,102,241,0.15)",   color: "#818cf8" },
-  Archived:  { bg: "var(--surface-raised)",   color: "var(--text-tertiary)" },
+  Exploding: { bg: "rgba(232,18,122,0.12)",   color: "#E8127A" },
+  Rising:    { bg: "rgba(255,130,0,0.12)",     color: "#FF8200" },
+  Peaked:    { bg: "rgba(255,130,0,0.10)",     color: "rgba(255,130,0,0.7)" },
+  Stable:    { bg: "rgba(0,79,34,0.10)",       color: "#2a8c4a" },
+  Emerging:  { bg: "rgba(232,18,122,0.08)",    color: "rgba(232,18,122,0.7)" },
+  Archived:  { bg: "var(--surface-raised)",    color: "var(--text-tertiary)" },
 };
 
 function cpsDelta(sparkline: number[]): { value: number; label: string; color: string } | null {
   if (!sparkline || sparkline.length < 2) return null;
   const delta = sparkline[sparkline.length - 1] - sparkline[sparkline.length - 2];
-  if (delta === 0) return { value: 0, label: "→", color: "var(--text-tertiary)" };
+  if (delta === 0) return { value: 0, label: "\u2192", color: "var(--text-tertiary)" };
   const label = delta > 0 ? `+${delta}` : `${delta}`;
-  const color = delta > 0 ? "#4ade80" : "#f87171";
+  const color = delta > 0 ? "#2a8c4a" : "#E8127A";
   return { value: delta, label, color };
 }
 
@@ -198,7 +198,7 @@ export default function TrendCard({ trend, compact = false }: TrendCardProps) {
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             {trend.evidenceCount !== undefined && trend.evidenceCount > 0 && (
               <span
-                style={{ fontSize: 11, color: trend.evidenceCount >= 10 ? "#4ade80" : trend.evidenceCount >= 5 ? "#fbbf24" : "var(--text-tertiary)" }}
+                style={{ fontSize: 11, color: trend.evidenceCount >= 10 ? "#2a8c4a" : trend.evidenceCount >= 5 ? "#FF8200" : "var(--text-tertiary)" }}
                 title={`${trend.evidenceCount} signals across ${trend.platformCount ?? 1} platform${(trend.platformCount ?? 1) !== 1 ? "s" : ""}`}
               >
                 {trend.evidenceCount} signal{trend.evidenceCount !== 1 ? "s" : ""} · {trend.platformCount ?? 1} platform{(trend.platformCount ?? 1) !== 1 ? "s" : ""}

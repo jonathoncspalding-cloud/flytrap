@@ -4,9 +4,9 @@ import Link from "next/link";
 import { Tension } from "@/lib/notion";
 
 function weightStyle(w: number) {
-  if (w >= 9) return { border: "rgba(239,68,68,0.3)", bg: "rgba(239,68,68,0.06)", color: "#f87171", bar: "#ef4444", hoverClass: "tension-hover tension-hover-red", vsColor: "rgba(239,68,68,0.35)" };
-  if (w >= 7) return { border: "rgba(249,115,22,0.3)", bg: "rgba(249,115,22,0.06)", color: "#fb923c", bar: "#f97316", hoverClass: "tension-hover tension-hover-orange", vsColor: "rgba(249,115,22,0.35)" };
-  if (w >= 5) return { border: "rgba(234,179,8,0.3)", bg: "rgba(234,179,8,0.06)", color: "#fbbf24", bar: "#eab308", hoverClass: "tension-hover tension-hover-yellow", vsColor: "rgba(234,179,8,0.35)" };
+  if (w >= 9) return { border: "rgba(232,18,122,0.3)", bg: "rgba(232,18,122,0.06)", color: "#E8127A", bar: "#E8127A", hoverClass: "tension-hover tension-hover-red", vsColor: "rgba(232,18,122,0.35)" };
+  if (w >= 7) return { border: "rgba(255,130,0,0.3)", bg: "rgba(255,130,0,0.06)", color: "#FF8200", bar: "#FF8200", hoverClass: "tension-hover tension-hover-orange", vsColor: "rgba(255,130,0,0.35)" };
+  if (w >= 5) return { border: "rgba(255,130,0,0.2)", bg: "rgba(255,130,0,0.04)", color: "#FF8200", bar: "rgba(255,130,0,0.6)", hoverClass: "tension-hover tension-hover-yellow", vsColor: "rgba(255,130,0,0.25)" };
   return { border: "var(--border)", bg: "var(--surface-raised)", color: "var(--text-secondary)", bar: "var(--border-strong)", hoverClass: "tension-hover tension-hover-gray", vsColor: "var(--text-tertiary)" };
 }
 

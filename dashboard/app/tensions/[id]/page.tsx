@@ -14,9 +14,9 @@ function weightLabel(w: number): string {
 }
 
 function weightColor(w: number): string {
-  if (w >= 9) return "#ef4444";
-  if (w >= 7) return "#f97316";
-  if (w >= 5) return "#eab308";
+  if (w >= 9) return "#E8127A";
+  if (w >= 7) return "#FF8200";
+  if (w >= 5) return "rgba(255,130,0,0.6)";
   return "rgba(255,255,255,0.4)";
 }
 
@@ -33,10 +33,10 @@ const PLATFORM_ICON: Record<string, string> = {
 };
 
 const SENTIMENT_COLOR: Record<string, string> = {
-  Positive: "#4ade80",
-  Negative: "#f87171",
+  Positive: "#2a8c4a",
+  Negative: "#E8127A",
   Neutral: "rgba(255,255,255,0.4)",
-  Mixed: "#fbbf24",
+  Mixed: "#FF8200",
 };
 
 export default async function TensionDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -106,11 +106,11 @@ export default async function TensionDetailPage({ params }: { params: Promise<{ 
             <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>linked trends</div>
           </div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#ef4444" }}>{flashpoints.length}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#E8127A" }}>{flashpoints.length}</div>
             <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>flashpoints</div>
           </div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#f97316" }}>{risingHeat.length}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "#FF8200" }}>{risingHeat.length}</div>
             <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>rising heat</div>
           </div>
           <div>

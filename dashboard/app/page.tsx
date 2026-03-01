@@ -8,7 +8,6 @@ import {
 import TrendCard from "@/components/TrendCard";
 import TensionBadge from "@/components/TensionBadge";
 import MomentsWidget from "@/components/MomentsWidget";
-import Chatbot from "@/components/Chatbot";
 import DashboardHome from "@/components/DashboardHome";
 import { cpsTextColor, cpsBarColor } from "@/components/CpsBar";
 
@@ -49,7 +48,7 @@ function CardHeader({ title, linkHref, linkLabel, accent }: {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         {accent && <div style={{ width: 3, height: 14, borderRadius: 2, background: accent, flexShrink: 0 }} />}
-        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+        <span style={{ fontSize: 10, fontWeight: 800, color: "var(--text-secondary)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
           {title}
         </span>
       </div>
@@ -65,8 +64,8 @@ function CardHeader({ title, linkHref, linkLabel, accent }: {
 function StatPill({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div style={{ textAlign: "center", minWidth: 40 }}>
-      <div style={{ fontSize: 18, fontWeight: 700, color, lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 9, color: "var(--text-tertiary)", marginTop: 2 }}>{label}</div>
+      <div style={{ fontFamily: "var(--font-fraunces, 'Fraunces', serif)", fontSize: 20, fontWeight: 600, color, lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 9, color: "var(--text-tertiary)", marginTop: 3 }}>{label}</div>
     </div>
   );
 }
@@ -101,17 +100,17 @@ export default async function DashboardPage() {
 
       {/* ════ ROW 1 ════ Briefing | Moments | Stats ════════════════════════ */}
 
-      {/* Briefing Card */}
-      <div className="dash-card" style={{ gridColumn: "1 / 3", gridRow: "1" }}>
-        <CardHeader title="Today's Briefing" linkHref="/briefings" linkLabel="Full briefing \u2192" accent="#4ade80" />
+      {/* Briefing Card — gradient top border */}
+      <div className="dash-card dash-card-briefing" style={{ gridColumn: "1 / 3", gridRow: "1" }}>
+        <CardHeader title="Today's Briefing" linkHref="/briefings" linkLabel="Full briefing \u2192" accent="var(--moss-bright, #2a8c4a)" />
         {latestBriefing ? (
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{latestBriefing.date}</span>
+              <span style={{ fontFamily: "var(--font-fraunces, 'Fraunces', serif)", fontSize: 15, fontWeight: 400, color: "var(--text-primary)" }}>{latestBriefing.date}</span>
               {latestBriefing.flashpointCount > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 5, padding: "2px 7px" }}>
-                  <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} className="pulse-dot" />
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#4ade80" }}>{latestBriefing.flashpointCount} active</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(232,18,122,0.08)", border: "1px solid rgba(232,18,122,0.2)", borderRadius: 5, padding: "2px 7px" }}>
+                  <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--rose, #E8127A)", display: "inline-block" }} className="pulse-dot" />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--rose, #E8127A)" }}>{latestBriefing.flashpointCount} active</span>
                 </div>
               )}
             </div>
@@ -138,16 +137,16 @@ export default async function DashboardPage() {
 
       {/* Predicted Moments (compact) */}
       <div className="dash-card" style={{ gridColumn: "3 / 5", gridRow: "1" }}>
-        <CardHeader title="Predicted Moments" linkHref="/moments/methodology" linkLabel="Methodology \u2192" accent="#f59e0b" />
+        <CardHeader title="Predicted Moments" linkHref="/moments/methodology" linkLabel="Methodology \u2192" accent="var(--sunset, #FF8200)" />
         <MomentsWidget moments={moments} compact />
       </div>
 
       {/* Radar Stats */}
       <div className="dash-card" style={{ gridColumn: "5", gridRow: "1", display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
-        <CardHeader title="Radar" accent="#6366f1" />
+        <CardHeader title="Radar" accent="var(--rose, #E8127A)" />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <StatPill label="Trends" value={trends.length} color="var(--text-primary)" />
-          <StatPill label="Flashpoints" value={flashpoints.length} color="#4ade80" />
+          <StatPill label="Flashpoints" value={flashpoints.length} color="var(--rose, #E8127A)" />
           <StatPill label="Tensions" value={tensions.length} color="var(--text-primary)" />
           <StatPill label="Events" value={events.length} color="var(--text-secondary)" />
         </div>
@@ -157,33 +156,34 @@ export default async function DashboardPage() {
       {flashpoints.length > 0 && (
         <div style={{
           gridColumn: "1 / -1", gridRow: "2",
-          background: "rgba(74,222,128,0.04)", border: "1px solid rgba(74,222,128,0.15)",
+          background: "linear-gradient(90deg, rgba(232,18,122,0.06), rgba(0,79,34,0.04))",
+          border: "1px solid rgba(232,18,122,0.15)",
           borderRadius: 8, padding: "5px 10px",
           display: "flex", alignItems: "center", gap: 8,
           overflow: "hidden",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} className="pulse-dot" />
-            <span style={{ fontSize: 10, fontWeight: 700, color: "#4ade80", letterSpacing: "0.08em", textTransform: "uppercase" }}>Flashpoints</span>
-            <span style={{ background: "#4ade80", color: "#0a0a0a", fontSize: 9, fontWeight: 800, padding: "0px 4px", borderRadius: 99 }}>{flashpoints.length}</span>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--rose, #E8127A)", display: "inline-block" }} className="pulse-dot" />
+            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--rose, #E8127A)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Flashpoints</span>
+            <span style={{ background: "var(--rose, #E8127A)", color: "#fff", fontSize: 9, fontWeight: 800, padding: "0px 5px", borderRadius: 99 }}>{flashpoints.length}</span>
           </div>
           <div style={{ display: "flex", gap: 4, overflow: "auto", flexShrink: 1, scrollbarWidth: "none" }} className="hide-scrollbar">
             {flashpoints.slice(0, 12).map((t) => (
               <Link key={t.id} href={`/trends/${t.id}`} style={{ textDecoration: "none", flexShrink: 0 }}>
-                <span className="tension-hover-green" style={{
-                  display: "inline-flex", alignItems: "center", gap: 3,
-                  background: "rgba(74,222,128,0.07)", border: "1px solid rgba(74,222,128,0.18)",
-                  borderRadius: 99, padding: "2px 7px 2px 5px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.82)",
+                <span className="tension-hover-red" style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  background: "rgba(232,18,122,0.07)", border: "1px solid rgba(232,18,122,0.18)",
+                  borderRadius: 99, padding: "2px 8px 2px 6px", fontSize: 10, fontWeight: 600, color: "rgba(242,239,237,0.82)",
                   whiteSpace: "nowrap",
                 }}>
                   {t.name}
-                  <span style={{ fontSize: 9, fontWeight: 800, color: "#4ade80", background: "rgba(74,222,128,0.12)", padding: "0px 3px", borderRadius: 3 }}>{t.cps}</span>
+                  <span style={{ fontSize: 9, fontWeight: 800, color: "var(--rose, #E8127A)", background: "rgba(232,18,122,0.12)", padding: "0px 3px", borderRadius: 3 }}>{t.cps}</span>
                 </span>
               </Link>
             ))}
             {flashpoints.length > 12 && (
               <Link href="/trends" style={{ textDecoration: "none", flexShrink: 0 }}>
-                <span style={{ fontSize: 10, color: "#4ade80", padding: "2px 6px", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 10, color: "var(--rose, #E8127A)", padding: "2px 6px", whiteSpace: "nowrap" }}>
                   +{flashpoints.length - 12} more \u2192
                 </span>
               </Link>
@@ -196,7 +196,7 @@ export default async function DashboardPage() {
 
       {/* Micro Trends */}
       <div className="dash-card" style={{ gridColumn: "1 / 3", gridRow: r2 }}>
-        <CardHeader title="Micro Trends" linkHref="/trends" linkLabel="All trends \u2192" accent="#4ade80" />
+        <CardHeader title="Micro Trends" linkHref="/trends" linkLabel="All trends \u2192" accent="var(--moss-bright, #2a8c4a)" />
         <div style={{ display: "flex", flexDirection: "column", gap: 0, borderRadius: 7, overflow: "hidden", border: "1px solid var(--border)" }}>
           {micro.length > 0 ? micro.slice(0, 4).map((t) => (
             <TrendCard key={t.id} trend={t} compact />
@@ -211,7 +211,7 @@ export default async function DashboardPage() {
 
       {/* Macro Trends */}
       <div className="dash-card" style={{ gridColumn: "3 / 5", gridRow: r2 }}>
-        <CardHeader title="Macro Trends" linkHref="/trends" linkLabel="All trends \u2192" accent="#fbbf24" />
+        <CardHeader title="Macro Trends" linkHref="/trends" linkLabel="All trends \u2192" accent="var(--sunset, #FF8200)" />
         <div style={{ display: "flex", flexDirection: "column", gap: 0, borderRadius: 7, overflow: "hidden", border: "1px solid var(--border)" }}>
           {macro.length > 0 ? macro.slice(0, 4).map((t) => (
             <TrendCard key={t.id} trend={t} compact />
@@ -229,7 +229,7 @@ export default async function DashboardPage() {
 
         {/* Calendar mini */}
         <div className="dash-card" style={{ flex: "0 0 auto" }}>
-          <CardHeader title="Upcoming" linkHref="/calendar" accent="#a78bfa" />
+          <CardHeader title="Upcoming" linkHref="/calendar" accent="rgba(242,239,237,0.3)" />
           {upcomingEvents.length > 0 ? upcomingEvents.map((e, i) => (
             <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0", borderBottom: i < upcomingEvents.length - 1 ? "1px solid var(--border)" : "none" }}>
               <div>
@@ -251,7 +251,7 @@ export default async function DashboardPage() {
 
         {/* Tensions mini */}
         <div className="dash-card" style={{ flex: 1, overflow: "hidden" }}>
-          <CardHeader title="Tensions" accent="#f59e0b" />
+          <CardHeader title="Tensions" accent="var(--sunset, #FF8200)" />
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
             {tensions.slice(0, 4).map((t) => (
               <TensionBadge key={t.id} tension={t} />
@@ -265,7 +265,6 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <Chatbot />
     </div>
     </DashboardHome>
   );

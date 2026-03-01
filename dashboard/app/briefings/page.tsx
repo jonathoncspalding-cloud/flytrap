@@ -52,7 +52,7 @@ export default async function BriefingsPage() {
               key={briefing.id}
               style={{
                 background: "var(--surface)",
-                border: i === 0 ? "1px solid rgba(74,222,128,0.2)" : "1px solid var(--border)",
+                border: i === 0 ? "1px solid rgba(0,79,34,0.2)" : "1px solid var(--border)",
                 borderRadius: 12,
                 overflow: "hidden",
               }}
@@ -61,7 +61,7 @@ export default async function BriefingsPage() {
               <div style={{
                 padding: "16px 24px",
                 borderBottom: "1px solid var(--border)",
-                background: i === 0 ? "rgba(74,222,128,0.03)" : "transparent",
+                background: i === 0 ? "rgba(0,79,34,0.03)" : "transparent",
                 display: "flex", justifyContent: "space-between", alignItems: "flex-start",
               }}>
                 <div>
@@ -72,7 +72,7 @@ export default async function BriefingsPage() {
                     {i === 0 && (
                       <span style={{
                         fontSize: 11, fontWeight: 600,
-                        background: "rgba(74,222,128,0.12)", color: "#4ade80",
+                        background: "rgba(0,79,34,0.12)", color: "#2a8c4a",
                         padding: "2px 8px", borderRadius: 99,
                       }}>
                         Latest
@@ -88,7 +88,7 @@ export default async function BriefingsPage() {
                 {briefing.flashpointCount > 0 && (
                   <span style={{
                     fontSize: 12, fontWeight: 600,
-                    background: "rgba(74,222,128,0.1)", color: "#4ade80",
+                    background: "rgba(0,79,34,0.1)", color: "#2a8c4a",
                     padding: "3px 10px", borderRadius: 99, flexShrink: 0,
                   }}>
                     ⚡ {briefing.flashpointCount} flashpoint{briefing.flashpointCount !== 1 ? "s" : ""}

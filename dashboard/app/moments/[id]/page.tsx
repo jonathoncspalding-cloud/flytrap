@@ -5,31 +5,31 @@ import { getMoment, getTrend, getTension, getUpcomingEvents, Trend, Tension, Cal
 export const revalidate = 300;
 
 const TYPE_CONFIG: Record<string, { icon: string; color: string; bg: string; description: string }> = {
-  Catalyst:  { icon: "⚡", color: "#f59e0b", bg: "rgba(245,158,11,0.1)", description: "A known event collides with active cultural tensions to produce a predictable cultural outcome." },
-  Collision: { icon: "💥", color: "#ef4444", bg: "rgba(239,68,68,0.1)", description: "Two or more converging trends are building toward an inevitable flashpoint." },
-  Pressure:  { icon: "🌊", color: "#3b82f6", bg: "rgba(59,130,246,0.1)", description: "Signal velocity is accelerating toward a tipping point or breakout moment." },
-  Pattern:   { icon: "🔄", color: "#8b5cf6", bg: "rgba(139,92,246,0.1)", description: "A seasonal or cyclical pattern meeting novel cultural context." },
+  Catalyst:  { icon: "⚡", color: "#FF8200", bg: "rgba(255,130,0,0.1)", description: "A known event collides with active cultural tensions to produce a predictable cultural outcome." },
+  Collision: { icon: "💥", color: "#E8127A", bg: "rgba(232,18,122,0.1)", description: "Two or more converging trends are building toward an inevitable flashpoint." },
+  Pressure:  { icon: "🌊", color: "#2a8c4a", bg: "rgba(0,79,34,0.1)", description: "Signal velocity is accelerating toward a tipping point or breakout moment." },
+  Pattern:   { icon: "🔄", color: "rgba(232,18,122,0.7)", bg: "rgba(232,18,122,0.1)", description: "A seasonal or cyclical pattern meeting novel cultural context." },
   Void:      { icon: "🕳️", color: "#6b7280", bg: "rgba(107,114,128,0.1)", description: "Something conspicuously absent from discourse — the absence itself may become the story." },
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  Predicted:  { label: "Predicted", color: "#818cf8", bg: "rgba(129,140,248,0.12)" },
-  Forming:    { label: "Forming", color: "#fbbf24", bg: "rgba(251,191,36,0.12)" },
-  Happening:  { label: "Happening Now", color: "#f87171", bg: "rgba(248,113,113,0.15)" },
-  Passed:     { label: "Passed", color: "#4ade80", bg: "rgba(74,222,128,0.12)" },
+  Predicted:  { label: "Predicted", color: "rgba(232,18,122,0.7)", bg: "rgba(232,18,122,0.12)" },
+  Forming:    { label: "Forming", color: "#FF8200", bg: "rgba(255,130,0,0.12)" },
+  Happening:  { label: "Happening Now", color: "#E8127A", bg: "rgba(232,18,122,0.15)" },
+  Passed:     { label: "Passed", color: "#2a8c4a", bg: "rgba(0,79,34,0.12)" },
   Missed:     { label: "Missed", color: "#6b7280", bg: "rgba(107,114,128,0.12)" },
 };
 
 const HORIZON_CONFIG: Record<string, { color: string }> = {
-  "This Week":  { color: "#f87171" },
-  "2-4 Weeks":  { color: "#fbbf24" },
-  "1-3 Months": { color: "#818cf8" },
+  "This Week":  { color: "#E8127A" },
+  "2-4 Weeks":  { color: "#FF8200" },
+  "1-3 Months": { color: "rgba(232,18,122,0.7)" },
 };
 
 function confidenceColor(c: number): string {
-  if (c >= 75) return "#4ade80";
-  if (c >= 50) return "#fbbf24";
-  if (c >= 25) return "#818cf8";
+  if (c >= 75) return "#2a8c4a";
+  if (c >= 50) return "#FF8200";
+  if (c >= 25) return "rgba(232,18,122,0.7)";
   return "rgba(255,255,255,0.3)";
 }
 
@@ -551,11 +551,11 @@ export default async function MomentDetailPage({ params }: { params: Promise<{ i
                           fontWeight: 700,
                           color:
                             t.cps >= 80
-                              ? "#4ade80"
+                              ? "#2a8c4a"
                               : t.cps >= 60
-                              ? "#86efac"
+                              ? "#3da65a"
                               : t.cps >= 40
-                              ? "#fbbf24"
+                              ? "#FF8200"
                               : "rgba(255,255,255,0.4)",
                         }}
                       >
@@ -595,15 +595,15 @@ export default async function MomentDetailPage({ params }: { params: Promise<{ i
                       style={{
                         background:
                           t.weight >= 8
-                            ? "rgba(239,68,68,0.1)"
+                            ? "rgba(232,18,122,0.1)"
                             : t.weight >= 6
-                            ? "rgba(245,158,11,0.1)"
+                            ? "rgba(255,130,0,0.1)"
                             : "rgba(255,255,255,0.04)",
                         border: `1px solid ${
                           t.weight >= 8
-                            ? "rgba(239,68,68,0.25)"
+                            ? "rgba(232,18,122,0.25)"
                             : t.weight >= 6
-                            ? "rgba(245,158,11,0.25)"
+                            ? "rgba(255,130,0,0.25)"
                             : "rgba(255,255,255,0.1)"
                         }`,
                         borderRadius: 99,
@@ -617,9 +617,9 @@ export default async function MomentDetailPage({ params }: { params: Promise<{ i
                           fontWeight: 500,
                           color:
                             t.weight >= 8
-                              ? "#f87171"
+                              ? "#E8127A"
                               : t.weight >= 6
-                              ? "#fbbf24"
+                              ? "#FF8200"
                               : "rgba(255,255,255,0.6)",
                         }}
                       >

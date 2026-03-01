@@ -4,9 +4,9 @@ import { getResearchInsights, Evidence } from "@/lib/notion";
 export const revalidate = 300;
 
 function sentimentDot(s: string) {
-  if (s === "Positive") return { color: "#4ade80", label: "\u2191 Positive" };
-  if (s === "Negative") return { color: "#f87171", label: "\u2193 Negative" };
-  if (s === "Mixed")    return { color: "#fbbf24", label: "~ Mixed" };
+  if (s === "Positive") return { color: "#2a8c4a", label: "\u2191 Positive" };
+  if (s === "Negative") return { color: "#E8127A", label: "\u2193 Negative" };
+  if (s === "Mixed")    return { color: "#FF8200", label: "~ Mixed" };
   return null;
 }
 
