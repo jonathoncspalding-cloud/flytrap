@@ -51,7 +51,7 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
         </span>
       </div>
 
-      {/* Office with terminal overlay */}
+      {/* Office with chat overlay */}
       <div
         style={{
           position: "relative",
@@ -59,33 +59,42 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
           borderRadius: 10,
           overflow: "hidden",
           background: "#0c0f1a",
+          height: 400,
         }}
       >
-        {/* Pixel Office canvas — full width */}
-        <PixelOffice
-          agents={agents}
-          selectedAgent={selectedAgent}
-          onSelectAgent={(id) =>
-            setSelectedAgent(selectedAgent === id ? null : id)
-          }
-        />
-
-        {/* Terminal overlay — upper right */}
+        {/* Pixel Office canvas — scaled to fit container */}
         <div
           style={{
             position: "absolute",
-            top: 8,
-            right: 8,
-            width: 280,
-            maxHeight: "calc(100% - 16px)",
-            borderRadius: 8,
-            border: "1px solid #21262d",
-            background: "rgba(13, 17, 23, 0.92)",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <PixelOffice
+            agents={agents}
+            selectedAgent={selectedAgent}
+            onSelectAgent={(id) =>
+              setSelectedAgent(selectedAgent === id ? null : id)
+            }
+          />
+        </div>
+
+        {/* Chat panel — fills right side */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            width: 300,
+            height: "100%",
+            borderLeft: "1px solid #21262d",
+            background: "rgba(13, 17, 23, 0.95)",
             backdropFilter: "blur(8px)",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
           }}
         >
           {selectedAgent ? (

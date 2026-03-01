@@ -584,7 +584,9 @@ export default function PixelOffice({
         onMouseMove={handleMove}
         onWheel={handleWheel}
         style={{
-          width: "100%",
+          maxWidth: "100%",
+          maxHeight: "100%",
+          width: "auto",
           height: "auto",
           display: loading ? "none" : "block",
           imageRendering: "pixelated",
