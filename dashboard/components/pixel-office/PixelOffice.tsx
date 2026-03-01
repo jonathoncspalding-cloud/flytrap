@@ -22,10 +22,9 @@ import {
 } from "./office-layout";
 import {
   loadAllSheets,
+  loadFurnitureImages,
   getCharacterFrame,
-  drawTilesetTile,
   AGENT_APPEARANCES,
-  clearSpriteCache,
 } from "./sprites";
 import {
   createGameLoop,
@@ -40,7 +39,6 @@ import {
   drawFloors,
   drawWallBases,
   buildWallRenderables,
-  clearTileCache,
 } from "./tile-renderer";
 import { WALL_HSB } from "./office-layout";
 
@@ -87,8 +85,6 @@ const AGENT_GREETINGS: Record<string, { emoji: string; role: string; greeting: s
 // ── Constants ───────────────────────────────────────────────────────────────
 
 const BASE_ZOOM = 2;
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 5;
 
 // Floor colors per zone type — Cornett brand palette
 // Sunset #FF8200, Moss #004F22, Rose #E8127A, Birch #F2EFED, Black #000000
@@ -174,6 +170,7 @@ export default function PixelOffice({
     async function init() {
       const [sheets] = await Promise.all([
         loadAllSheets(),
+        loadFurnitureImages().catch((e) => console.warn("Furniture images not loaded:", e)),
         loadTileAssets().catch((e) => console.warn("Tile assets not loaded:", e)),
       ]);
       if (cancelled) return;
@@ -358,19 +355,19 @@ export default function PixelOffice({
     ctx: CanvasRenderingContext2D,
     item: FurnitureItem,
     z: number,
-    sheets: SpriteSheets
+    _sheets: SpriteSheets
   ) {
-    for (const tile of item.tiles) {
-      drawTilesetTile(
-        ctx,
-        sheets.tileset,
-        tile.col,
-        tile.row,
-        (item.tileX + tile.dx) * TILE_SIZE * z,
-        (item.tileY + tile.dy) * TILE_SIZE * z,
-        z
+    if (item.image && item.imageWidthPx && item.imageHeightPx) {
+      // Draw individual PNG image directly
+      const px = item.tileX * TILE_SIZE * z;
+      const py = item.tileY * TILE_SIZE * z;
+      ctx.drawImage(
+        item.image,
+        0, 0, item.imageWidthPx, item.imageHeightPx,
+        px, py, item.imageWidthPx * z, item.imageHeightPx * z
       );
     }
+    // If no image loaded, skip silently (furniture won't appear)
   }
 
   function drawCharacter(
@@ -536,19 +533,6 @@ export default function PixelOffice({
     setHoveredAgent(id);
     const canvas = canvasRef.current;
     if (canvas) canvas.style.cursor = id ? "pointer" : "default";
-  }
-
-  function handleWheel(e: React.WheelEvent) {
-    e.stopPropagation();
-    const s = stateRef.current;
-    if (!s) return;
-    const next = Math.max(
-      MIN_ZOOM,
-      Math.min(MAX_ZOOM, s.zoom - e.deltaY * 0.005)
-    );
-    s.zoom = next;
-    clearSpriteCache();
-    clearTileCache();
   }
 
   // ── JSX ───────────────────────────────────────────────────────────────

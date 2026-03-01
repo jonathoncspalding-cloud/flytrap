@@ -2500,90 +2500,87 @@
   "furniture": [
     {
       "uid": "f-1770720603403-9vfr",
-      "type": "vending",
+      "type": "ASSET_40",
       "col": 11,
       "row": 10
     },
     {
       "uid": "f-1770720612017-f2f0",
-      "type": "bin",
+      "type": "ASSET_44",
       "col": 16,
       "row": 11
     },
     {
       "uid": "f-1770738908507-t1xd",
-      "type": "cooler",
+      "type": "ASSET_42",
       "col": 13,
       "row": 10
     },
     {
       "uid": "f-1770738932007-u7ju",
-      "type": "telephone",
+      "type": "ASSET_61",
       "col": 11,
-      "row": 16,
-      "wallMounted": true
+      "row": 16
     },
     {
       "uid": "f-1770825889942-ft1f",
-      "type": "stool",
+      "type": "ASSET_49",
       "col": 8,
       "row": 18
     },
     {
       "uid": "f-1770829214421-uu44",
-      "type": "fridge",
+      "type": "ASSET_41_0_1",
       "col": 19,
       "row": 10
     },
     {
       "uid": "f-1770829235442-8cvj",
-      "type": "counter",
+      "type": "ASSET_7",
       "col": 17,
       "row": 10
     },
     {
       "uid": "f-1770831748000-ksmj",
-      "type": "bookcase",
+      "type": "ASSET_18",
       "col": 1,
       "row": 10
     },
     {
       "uid": "f-1770831767041-zaxr",
-      "type": "bookcase",
+      "type": "ASSET_18",
       "col": 7,
       "row": 10
     },
     {
       "uid": "f-1770831768596-kx8j",
-      "type": "bookshelf",
+      "type": "ASSET_17",
       "col": 3,
       "row": 10
     },
     {
       "uid": "f-1770831788343-fbxl",
-      "type": "plant",
+      "type": "ASSET_143",
       "col": 1,
       "row": 11
     },
     {
       "uid": "f-1770831791526-md8k",
-      "type": "plantB",
+      "type": "ASSET_142",
       "col": 1,
       "row": 19
     },
     {
       "uid": "f-1770831898859-bfdn",
-      "type": "clock",
+      "type": "ASSET_83",
       "col": 14,
-      "row": 10,
-      "wallMounted": true
+      "row": 10
     },
     {
       "uid": "f-1771117638479-ddcx",
-      "type": "clockColor",
+      "type": "ASSET_84",
       "col": 15,
       "row": 9,
-      "wallMounted": true,
       "color": {
         "h": -167,
         "s": -52,
@@ -2593,10 +2590,9 @@
     },
     {
       "uid": "f-1771117697507-gcxt",
-      "type": "painting",
+      "type": "ASSET_101",
       "col": 15,
       "row": 14,
-      "wallMounted": true,
       "color": {
         "h": -9,
         "s": 3,
@@ -2606,19 +2602,19 @@
     },
     {
       "uid": "f-1771119388928-dbrf",
-      "type": "couchRight",
+      "type": "ASSET_NEW_110",
       "col": 14,
       "row": 17
     },
     {
       "uid": "f-1771119393112-vl9b",
-      "type": "couchLeft",
+      "type": "ASSET_NEW_111",
       "col": 17,
       "row": 17
     },
     {
       "uid": "f-1771253485902-4ipo",
-      "type": "deskWood",
+      "type": "ASSET_NEW_106",
       "col": 2,
       "row": 14,
       "color": {
@@ -2630,7 +2626,7 @@
     },
     {
       "uid": "f-1771253487232-60st",
-      "type": "deskWood",
+      "type": "ASSET_NEW_106",
       "col": 7,
       "row": 14,
       "color": {
@@ -2642,19 +2638,19 @@
     },
     {
       "uid": "f-1771253497231-n2au",
-      "type": "stool",
+      "type": "ASSET_49",
       "col": 3,
       "row": 16
     },
     {
       "uid": "f-1771253498608-apjl",
-      "type": "stool",
+      "type": "ASSET_49",
       "col": 8,
       "row": 16
     },
     {
       "uid": "f-1771253522193-5zaf",
-      "type": "deskWood",
+      "type": "ASSET_NEW_106",
       "col": 7,
       "row": 18,
       "color": {
@@ -2666,13 +2662,13 @@
     },
     {
       "uid": "f-1771253587796-nwgi",
-      "type": "stool",
+      "type": "ASSET_49",
       "col": 3,
       "row": 18
     },
     {
       "uid": "f-1771253595155-yets",
-      "type": "deskWood",
+      "type": "ASSET_NEW_106",
       "col": 2,
       "row": 18,
       "color": {
@@ -2684,79 +2680,79 @@
     },
     {
       "uid": "f-1771254122890-desz",
-      "type": "plantB",
+      "type": "ASSET_142",
       "col": 10,
       "row": 19
     },
     {
       "uid": "f-1771254147816-bpkr",
-      "type": "plantC",
+      "type": "ASSET_140",
       "col": 14,
       "row": 15
     },
     {
       "uid": "f-1771254151704-exrz",
-      "type": "plantD",
+      "type": "ASSET_141",
       "col": 17,
       "row": 15
     },
     {
       "uid": "f-1771273583560-z9r1",
-      "type": "coffeeTable",
+      "type": "ASSET_NEW_112",
       "col": 15,
       "row": 17
     },
     {
       "uid": "f-1771273618430-t3u3",
-      "type": "bookcase",
+      "type": "ASSET_18",
       "col": 18,
       "row": 15
     },
     {
       "uid": "f-1771273619213-ylzf",
-      "type": "bookcase",
+      "type": "ASSET_18",
       "col": 12,
       "row": 15
     },
     {
       "uid": "f-1771275688296-pyz3",
-      "type": "laptopBack",
+      "type": "ASSET_109",
       "col": 8,
       "row": 18
     },
     {
       "uid": "f-1771275690326-y60x",
-      "type": "laptop",
+      "type": "ASSET_99",
       "col": 5,
       "row": 3
     },
     {
       "uid": "f-1771275699466-nwdh",
-      "type": "laptopBack",
+      "type": "ASSET_109",
       "col": 3,
       "row": 18
     },
     {
       "uid": "f-1771275984894-29h8",
-      "type": "cup",
+      "type": "ASSET_51",
       "col": 6,
       "row": 4
     },
     {
       "uid": "f-1771275987306-bts7",
-      "type": "cup",
+      "type": "ASSET_51",
       "col": 16,
       "row": 17
     },
     {
       "uid": "f-1771277148633-u8j9",
-      "type": "bookcase",
+      "type": "ASSET_18",
       "col": 9,
       "row": 10
     },
     {
       "uid": "f-1771277212373-enh1",
-      "type": "tableLarge",
+      "type": "ASSET_27_A",
       "col": 5,
       "row": 2,
       "color": {
@@ -2768,7 +2764,7 @@
     },
     {
       "uid": "f-1771277253664-6618",
-      "type": "chairLeft",
+      "type": "ASSET_34",
       "col": 7,
       "row": 3,
       "color": {
@@ -2780,7 +2776,7 @@
     },
     {
       "uid": "f-1771277346180-prsv",
-      "type": "chairLeft",
+      "type": "ASSET_34",
       "col": 7,
       "row": 4,
       "color": {
@@ -2792,7 +2788,7 @@
     },
     {
       "uid": "f-1771277346584-y3x4",
-      "type": "chairLeft",
+      "type": "ASSET_34",
       "col": 7,
       "row": 5,
       "color": {
@@ -2804,7 +2800,7 @@
     },
     {
       "uid": "f-1771277358914-5w7p",
-      "type": "chairRight",
+      "type": "ASSET_33",
       "col": 4,
       "row": 5,
       "color": {
@@ -2816,7 +2812,7 @@
     },
     {
       "uid": "f-1771277359246-bk4b",
-      "type": "chairRight",
+      "type": "ASSET_33",
       "col": 4,
       "row": 4,
       "color": {
@@ -2828,7 +2824,7 @@
     },
     {
       "uid": "f-1771277359490-pqu5",
-      "type": "chairRight",
+      "type": "ASSET_33",
       "col": 4,
       "row": 3,
       "color": {
@@ -2840,92 +2836,91 @@
     },
     {
       "uid": "f-1771277556757-gadp",
-      "type": "paintingB",
+      "type": "ASSET_102",
       "col": 5,
-      "row": 0,
-      "wallMounted": true
+      "row": 0
     },
     {
       "uid": "f-1771277574471-hcv0",
-      "type": "plantB",
+      "type": "ASSET_142",
       "col": 3,
       "row": 1
     },
     {
       "uid": "f-1771277575299-mfxh",
-      "type": "plantB",
+      "type": "ASSET_142",
       "col": 8,
       "row": 1
     },
     {
       "uid": "f-1771277802319-1joi",
-      "type": "plantC",
+      "type": "ASSET_140",
       "col": 19,
       "row": 19
     },
     {
       "uid": "f-1771277804247-jvcl",
-      "type": "plantD",
+      "type": "ASSET_141",
       "col": 12,
       "row": 19
     },
     {
       "uid": "f-1771279067027-ia1a",
-      "type": "laptop",
+      "type": "ASSET_99",
       "col": 15,
       "row": 17
     },
     {
       "uid": "f-1771279925079-5ts8",
-      "type": "bin",
+      "type": "ASSET_44",
       "col": 1,
       "row": 19
     },
     {
       "uid": "f-1771280121112-6ffk",
-      "type": "book",
+      "type": "ASSET_72",
       "col": 6,
       "row": 3
     },
     {
       "uid": "f-1771280128756-ylw9",
-      "type": "paper",
+      "type": "ASSET_100",
       "col": 2,
       "row": 14
     },
     {
       "uid": "f-1771280255329-3x6d",
-      "type": "boxes",
+      "type": "ASSET_139",
       "col": 2,
       "row": 11
     },
     {
       "uid": "f-1771282426463-of9k",
-      "type": "pc",
+      "type": "ASSET_90",
       "col": 8,
       "row": 14
     },
     {
       "uid": "f-1771282455174-4ohy",
-      "type": "pc",
+      "type": "ASSET_90",
       "col": 3,
       "row": 14
     },
     {
       "uid": "f-1771282481279-lthm",
-      "type": "server",
+      "type": "ASSET_123",
       "col": 2,
       "row": 19
     },
     {
       "uid": "f-1772315438938-45z4",
-      "type": "plantE",
+      "type": "ASSET_132",
       "col": 9,
       "row": 17
     },
     {
       "uid": "f-1772316558243-w9wi",
-      "type": "rug",
+      "type": "ASSET_148",
       "col": 15,
       "row": 20
     }

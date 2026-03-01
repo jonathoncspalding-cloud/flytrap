@@ -67,6 +67,12 @@ export interface FurnitureItem {
   tiles: FurnitureTile[];
   solid: boolean;
   wallMounted?: boolean;
+  /** Individual PNG image for this furniture piece (loaded from /sprites/furniture/) */
+  image?: HTMLImageElement;
+  /** Pixel width of the individual PNG */
+  imageWidthPx?: number;
+  /** Pixel height of the individual PNG */
+  imageHeightPx?: number;
 }
 
 // ── Characters ──────────────────────────────────────────────────────────────

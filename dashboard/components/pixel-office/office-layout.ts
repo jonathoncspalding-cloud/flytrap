@@ -4,7 +4,7 @@
 // that PixelOffice.tsx and engine.ts already consume.
 
 import type { Vec2, FurnitureItem, FloorZone } from "./types";
-import { FURNITURE_DEFS } from "./sprites";
+import { FURNITURE_ASSETS, furnitureImages } from "./sprites";
 import layoutData from "./office-layout.json";
 
 // ── Layout JSON types ───────────────────────────────────────────────────────
@@ -123,43 +123,43 @@ export const DESK_ASSIGNMENTS: Record<string, { deskTile: Vec2; chairTile: Vec2 
   layout.deskAssignments;
 
 // ── Furniture placement from JSON ───────────────────────────────────────────
-
-function makeFurniture(
-  type: string,
-  tileX: number,
-  tileY: number
-): FurnitureItem {
-  const def = FURNITURE_DEFS[type];
-  if (!def) throw new Error(`Unknown furniture: ${type}`);
-  return {
-    type,
-    tileX,
-    tileY,
-    widthTiles: def.widthTiles,
-    heightTiles: def.heightTiles,
-    tiles: def.tiles,
-    solid: def.solid,
-    wallMounted: def.wallMounted,
-  };
-}
+// Uses individual PNG images per ASSET_* type from Pixel Agents catalog.
 
 export function buildFurnitureList(): FurnitureItem[] {
   const items: FurnitureItem[] = [];
 
-  // All furniture comes from the PA layout JSON — desk assignments are only
-  // used for agent character positioning, not for placing extra furniture.
   for (const f of layout.furniture) {
-    if (!FURNITURE_DEFS[f.type]) {
-      console.warn(`[office-layout] Unknown furniture type: ${f.type}`);
+    const asset = FURNITURE_ASSETS[f.type];
+    if (!asset) {
+      console.warn(`[office-layout] Unknown furniture asset: ${f.type}`);
       continue;
     }
-    items.push(makeFurniture(f.type, f.col, f.row));
+
+    items.push({
+      type: f.type,
+      tileX: f.col,
+      tileY: f.row,
+      widthTiles: asset.footprintW,
+      heightTiles: asset.footprintH,
+      tiles: [], // not used — image-based rendering
+      solid: asset.solid,
+      wallMounted: asset.wallMounted,
+      image: furnitureImages.get(f.type),
+      imageWidthPx: asset.widthPx,
+      imageHeightPx: asset.heightPx,
+    });
   }
 
   return items;
 }
 
 // ── Walkable map ────────────────────────────────────────────────────────────
+
+// Chair/stool ASSET_* types that should not block walking
+const CHAIR_ASSETS = new Set([
+  "ASSET_33", "ASSET_34", "ASSET_49",           // cushioned chairs, stool
+  "ASSET_NEW_110", "ASSET_NEW_111",              // large cushioned chairs
+]);
 
 export function buildWalkableMap(furniture: FurnitureItem[]): boolean[][] {
   const map: boolean[][] = [];
@@ -173,7 +173,7 @@ export function buildWalkableMap(furniture: FurnitureItem[]): boolean[][] {
   }
 
   for (const f of furniture) {
-    if (!f.solid || f.type === "chair" || f.type === "chairGray" || f.type === "chairLeft" || f.type === "chairRight" || f.type === "stool") continue;
+    if (!f.solid || CHAIR_ASSETS.has(f.type)) continue;
     for (let dy = 0; dy < f.heightTiles; dy++) {
       for (let dx = 0; dx < f.widthTiles; dx++) {
         const fy = f.tileY + dy;
