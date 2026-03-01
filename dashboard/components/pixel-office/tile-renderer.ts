@@ -202,12 +202,18 @@ export function clearTileCache(): void {
  * Get wall sprite for a tile based on its 4 cardinal neighbors.
  * Bitmask: N=1, E=2, S=4, W=8
  */
+/** Check if a tile is a wall (0) or void (8) — both are non-floor */
+function isWallOrVoid(col: number, row: number): boolean {
+  const t = TILE_MAP[row]?.[col];
+  return t === 0 || t === 8 || t === undefined;
+}
+
 function getWallMask(col: number, row: number): number {
   let mask = 0;
-  if (row > 0 && TILE_MAP[row - 1]?.[col] === 0) mask |= 1; // N
-  if (col < GRID_COLS - 1 && TILE_MAP[row]?.[col + 1] === 0) mask |= 2; // E
-  if (row < GRID_ROWS - 1 && TILE_MAP[row + 1]?.[col] === 0) mask |= 4; // S
-  if (col > 0 && TILE_MAP[row]?.[col - 1] === 0) mask |= 8; // W
+  if (row > 0 && isWallOrVoid(col, row - 1)) mask |= 1; // N
+  if (col < GRID_COLS - 1 && isWallOrVoid(col + 1, row)) mask |= 2; // E
+  if (row < GRID_ROWS - 1 && isWallOrVoid(col, row + 1)) mask |= 4; // S
+  if (col > 0 && isWallOrVoid(col - 1, row)) mask |= 8; // W
   return mask;
 }
 
@@ -230,14 +236,14 @@ export function drawFloors(
 
   for (let y = 0; y < GRID_ROWS; y++) {
     for (let x = 0; x < GRID_COLS; x++) {
-      if (TILE_MAP[y][x] === 0) continue; // wall tile, skip
+      const tileType = TILE_MAP[y][x];
+      if (tileType === 0 || tileType === 8) continue; // wall or void, skip
 
       const color = getFloorColor(x, y);
       if (!color) continue;
 
-      // Pick pattern based on floor zone type
-      const zone = getZoneType(x, y);
-      const patternIdx = FLOOR_PATTERN_MAP[zone] ?? 0;
+      // Pick pattern from tile value (1-7) or fall back to zone type
+      const patternIdx = (tileType >= 1 && tileType <= 7) ? tileType - 1 : (FLOOR_PATTERN_MAP[getZoneType(x, y)] ?? 0);
       const sprite = floorSprites[patternIdx];
       if (!sprite) continue;
 
@@ -279,7 +285,7 @@ export function drawWallBases(
 
   for (let y = 0; y < GRID_ROWS; y++) {
     for (let x = 0; x < GRID_COLS; x++) {
-      if (TILE_MAP[y][x] !== 0) continue; // floor tile, skip
+      if (TILE_MAP[y][x] !== 0) continue; // only draw on actual walls (not void)
       ctx.fillStyle = hex;
       ctx.fillRect(x * TILE_SIZE * zoom, y * TILE_SIZE * zoom, TILE_SIZE * zoom, TILE_SIZE * zoom);
     }
@@ -297,7 +303,7 @@ export function buildWallRenderables(zoom: number, wallColor: FloorColor): Rende
 
   for (let y = 0; y < GRID_ROWS; y++) {
     for (let x = 0; x < GRID_COLS; x++) {
-      if (TILE_MAP[y][x] !== 0) continue; // not a wall
+      if (TILE_MAP[y][x] !== 0) continue; // only walls get wall sprites (not void)
 
       const mask = getWallMask(x, y);
       const sprite = wallSprites[mask];

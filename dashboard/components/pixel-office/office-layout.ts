@@ -1,5 +1,5 @@
 // ── Office Layout — JSON-driven with backward-compatible API ─────────────────
-// Layout data lives in office-layout.json for easy editing by Isabel agent.
+// Layout data lives in office-layout.json (exported from Pixel Agents editor).
 // This module reads the JSON and exports the same constants/functions
 // that PixelOffice.tsx and engine.ts already consume.
 
@@ -30,13 +30,14 @@ interface LayoutJson {
   cols: number;
   rows: number;
   tiles: number[];
-  floorZones: LayoutFloorZone[];
-  wallColor: { h: number; s: number; b: number; c: number };
+  tileColors?: ({ h: number; s: number; b: number; c: number } | null)[];
+  floorZones?: LayoutFloorZone[];
+  wallColor?: { h: number; s: number; b: number; c: number };
   deskAssignments: Record<string, { deskTile: Vec2; chairTile: Vec2 }>;
   furniture: LayoutFurniture[];
 }
 
-const layout = layoutData as LayoutJson;
+const layout = layoutData as unknown as LayoutJson;
 
 // ── Exported constants (same API as before) ─────────────────────────────────
 
@@ -60,9 +61,9 @@ export const TILE_MAP: number[][] = (() => {
   return map;
 })();
 
-// ── Floor zones from JSON ───────────────────────────────────────────────────
+// ── Floor zones from JSON (optional — Pixel Agents layouts use tileColors) ──
 
-export const FLOOR_ZONES: FloorZone[] = layout.floorZones.map((z) => ({
+export const FLOOR_ZONES: FloorZone[] = (layout.floorZones ?? []).map((z) => ({
   x: z.x,
   y: z.y,
   w: z.w,
@@ -70,7 +71,7 @@ export const FLOOR_ZONES: FloorZone[] = layout.floorZones.map((z) => ({
   type: z.type as FloorZone["type"],
 }));
 
-// ── Floor zone colors (for the new renderer) ────────────────────────────────
+// ── Floor color types ────────────────────────────────────────────────────────
 
 export interface FloorColor {
   h: number;
@@ -80,15 +81,32 @@ export interface FloorColor {
 }
 
 export const FLOOR_ZONE_COLORS: Map<string, FloorColor> = new Map(
-  layout.floorZones.map((z) => [
+  (layout.floorZones ?? []).map((z) => [
     `${z.x},${z.y},${z.w},${z.h}`,
     z.color,
   ])
 );
 
-/** Get the HSB color for a floor tile based on which zone it falls in */
+// ── Per-tile colors from JSON (Pixel Agents format) ─────────────────────────
+
+export const TILE_COLORS: (FloorColor | null)[] = (() => {
+  if (layout.tileColors) {
+    return layout.tileColors.map((c) => c ?? null);
+  }
+  return [];
+})();
+
+/** Get the HSB color for a floor tile — checks per-tile colors first, then zones */
 export function getFloorColor(x: number, y: number): FloorColor | null {
-  for (const zone of layout.floorZones) {
+  // Per-tile color takes priority (Pixel Agents format)
+  if (TILE_COLORS.length > 0) {
+    const idx = y * GRID_COLS + x;
+    if (idx >= 0 && idx < TILE_COLORS.length && TILE_COLORS[idx]) {
+      return TILE_COLORS[idx];
+    }
+  }
+  // Fall back to zone-based colors
+  for (const zone of layout.floorZones ?? []) {
     if (x >= zone.x && x < zone.x + zone.w && y >= zone.y && y < zone.y + zone.h) {
       return zone.color;
     }
@@ -96,8 +114,8 @@ export function getFloorColor(x: number, y: number): FloorColor | null {
   return null;
 }
 
-/** Wall color from layout JSON */
-export const WALL_HSB: FloorColor = layout.wallColor;
+/** Wall color from layout JSON (default dark blue if not specified) */
+export const WALL_HSB: FloorColor = layout.wallColor ?? { h: 220, s: 25, b: -15, c: 5 };
 
 // ── Desk assignments from JSON ──────────────────────────────────────────────
 
@@ -128,14 +146,8 @@ function makeFurniture(
 export function buildFurnitureList(): FurnitureItem[] {
   const items: FurnitureItem[] = [];
 
-  // Agent desks, chairs, monitors from desk assignments
-  for (const a of Object.values(DESK_ASSIGNMENTS)) {
-    items.push(makeFurniture("desk", a.deskTile.x, a.deskTile.y));
-    items.push(makeFurniture("chair", a.chairTile.x, a.chairTile.y));
-    items.push(makeFurniture("monitor", a.deskTile.x, a.deskTile.y));
-  }
-
-  // Decorative furniture from JSON
+  // All furniture comes from the PA layout JSON — desk assignments are only
+  // used for agent character positioning, not for placing extra furniture.
   for (const f of layout.furniture) {
     if (!FURNITURE_DEFS[f.type]) {
       console.warn(`[office-layout] Unknown furniture type: ${f.type}`);
@@ -154,7 +166,9 @@ export function buildWalkableMap(furniture: FurnitureItem[]): boolean[][] {
   for (let y = 0; y < GRID_ROWS; y++) {
     map[y] = [];
     for (let x = 0; x < GRID_COLS; x++) {
-      map[y][x] = TILE_MAP[y][x] !== 0; // 0 = wall, 1+ = floor
+      const tile = TILE_MAP[y][x];
+      // 0 = wall, 8 = void — both unwalkable. 1-7 = floor patterns = walkable.
+      map[y][x] = tile > 0 && tile < 8;
     }
   }
 
