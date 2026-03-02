@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import PixelOffice from "./pixel-office/PixelOffice";
 import AgentChat from "./AgentChat";
 
@@ -15,9 +15,23 @@ type AgentData = {
 
 export default function CommandCenter({ agents }: { agents: AgentData[] }) {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [isabelPrompt, setIsabelPrompt] = useState<string | undefined>(undefined);
+  const commandCenterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleIsabelFeedback(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      setSelectedAgent("isabel");
+      setIsabelPrompt(detail.prompt);
+      // Scroll CommandCenter into view
+      commandCenterRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    window.addEventListener("isabel-feedback", handleIsabelFeedback);
+    return () => window.removeEventListener("isabel-feedback", handleIsabelFeedback);
+  }, []);
 
   return (
-    <div>
+    <div ref={commandCenterRef}>
       <div
         style={{
           display: "flex",
@@ -93,7 +107,8 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
           {selectedAgent ? (
             <AgentChat
               agent={selectedAgent}
-              onClose={() => setSelectedAgent(null)}
+              onClose={() => { setSelectedAgent(null); setIsabelPrompt(undefined); }}
+              initialPrompt={selectedAgent === "isabel" ? isabelPrompt : undefined}
             />
           ) : (
             <div

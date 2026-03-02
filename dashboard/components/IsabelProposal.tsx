@@ -205,12 +205,33 @@ export default function IsabelProposal() {
 
         {/* Footer */}
         <div style={{
-          fontSize: 9,
-          color: "var(--text-tertiary)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
           marginTop: 10,
-          textAlign: "right",
         }}>
-          Replacing {proposal.targets.length} {proposal.category.toLowerCase()} in the office
+          <span style={{ fontSize: 9, color: "var(--text-tertiary)" }}>
+            Replacing {proposal.targets.length} {proposal.category.toLowerCase()} in the office
+          </span>
+          <button
+            onClick={() => {
+              const optionNames = proposal.options.map((o) => o.label).join(", ");
+              const prompt = `<!-- PROPOSAL_CONTEXT category=${proposal.category} footprint=${proposal.footprint.w}x${proposal.footprint.h} options=${optionNames} -->\nIsabel, I'm looking at your ${proposal.category.toLowerCase()} proposal. You suggested: ${optionNames}. Here's my feedback: `;
+              window.dispatchEvent(new CustomEvent("isabel-feedback", { detail: { prompt } }));
+            }}
+            style={{
+              fontSize: 10,
+              padding: "4px 12px",
+              borderRadius: 4,
+              border: "1px solid #2dd4bf44",
+              background: "transparent",
+              color: "#2dd4bf",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            💬 Give Feedback
+          </button>
         </div>
       </div>
     </div>
