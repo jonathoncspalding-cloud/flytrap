@@ -1,5 +1,6 @@
 import { getAgentActivity, getTrends, getAllMoments, AgentActivity, AgentName } from "@/lib/notion";
 import CommandCenter from "@/components/CommandCenter";
+import TriggerButton from "@/components/TriggerButton";
 
 export const revalidate = 0; // Always fresh
 
@@ -70,6 +71,11 @@ export default async function AgentsPage() {
     }
   }
 
+  // Find latest Sentinel digest
+  const digest = activity.find(
+    (a) => a.agent === "sentinel" && a.type === "synthesis"
+  ) ?? null;
+
   return (
     <div>
       {/* Header */}
@@ -99,6 +105,31 @@ export default async function AgentsPage() {
           };
         })}
       />
+
+      {/* Pipeline Health + Agent Status + Standup Digest — below office + chat */}
+      <div style={{ marginTop: 24 }}>
+        <PipelineHealth digest={digest} />
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <div style={{ width: 3, height: 14, borderRadius: 2, background: "var(--text-tertiary)", flexShrink: 0 }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+            Agent Status
+          </span>
+        </div>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+          gap: 12,
+          marginBottom: 20,
+        }}>
+          {AGENTS.map((agent) => {
+            const latest = latestByAgent.get(agent.name) ?? null;
+            return <AgentStatusCard key={agent.name} agent={agent} latest={latest} />;
+          })}
+        </div>
+
+        <StandupDigest digest={digest} />
+      </div>
 
       {/* Recent Activity Feed */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -193,6 +224,161 @@ export default async function AgentsPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function PipelineHealth({ digest }: { digest: AgentActivity | null }) {
+  if (!digest) {
+    return (
+      <div style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: 10,
+        padding: "16px 20px",
+        marginBottom: 16,
+      }}>
+        <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
+          No pipeline data yet. Waiting for first Sentinel digest.
+        </span>
+      </div>
+    );
+  }
+
+  const priorityColor = digest.priority === "high" || digest.priority === "critical"
+    ? "#E8127A"
+    : "#2a8c4a";
+
+  return (
+    <div style={{
+      background: "var(--surface)",
+      border: `1px solid ${priorityColor}30`,
+      borderRadius: 10,
+      padding: "16px 20px",
+      marginBottom: 16,
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: 2,
+        background: `linear-gradient(90deg, ${priorityColor}, ${priorityColor}33)`,
+      }} />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{
+            width: 8, height: 8, borderRadius: "50%",
+            background: priorityColor,
+            display: "inline-block",
+          }} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+            Pipeline Status
+          </span>
+        </div>
+        <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
+          {digest.date}
+        </span>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: 1.6 }}>
+        {digest.summary}
+      </p>
+    </div>
+  );
+}
+
+function AgentStatusCard({ agent, latest }: {
+  agent: { name: AgentName; emoji: string; label: string; role: string; color: string };
+  latest: AgentActivity | null;
+}) {
+  const isActive = latest && latest.date === new Date().toISOString().split("T")[0];
+  const statusColor = isActive ? "#2a8c4a" : latest ? "#6b7280" : "#E8127A";
+
+  return (
+    <div style={{
+      background: "var(--surface)",
+      border: `1px solid ${agent.color}22`,
+      borderRadius: 10,
+      padding: 14,
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: 2,
+        background: `linear-gradient(90deg, ${agent.color}, ${agent.color}33)`,
+      }} />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16 }}>{agent.emoji}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+            {agent.label}
+          </span>
+          <span style={{
+            width: 6, height: 6, borderRadius: "50%",
+            background: statusColor,
+            display: "inline-block",
+          }} />
+        </div>
+        <TriggerButton agent={agent.name} />
+      </div>
+      {latest ? (
+        <div>
+          <p style={{
+            fontSize: 11, color: "var(--text-secondary)", margin: "0 0 6px",
+            lineHeight: 1.5, overflow: "hidden", textOverflow: "ellipsis",
+            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+          } as React.CSSProperties}>
+            {latest.summary}
+          </p>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
+              {TYPE_LABELS[latest.type] || latest.type}
+            </span>
+            <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
+              {timeAgo(latest.date)}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <p style={{ fontSize: 11, color: "var(--text-tertiary)", fontStyle: "italic", margin: 0 }}>
+          No activity yet
+        </p>
+      )}
+    </div>
+  );
+}
+
+function StandupDigest({ digest }: { digest: AgentActivity | null }) {
+  if (!digest || !digest.details) return null;
+
+  return (
+    <div style={{
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
+      borderRadius: 10,
+      padding: "16px 20px",
+      marginBottom: 20,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <div style={{ width: 3, height: 14, borderRadius: 2, background: "#E8127A", flexShrink: 0 }} />
+        <span style={{
+          fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)",
+          letterSpacing: "0.08em", textTransform: "uppercase",
+        }}>
+          Latest Team Standup
+        </span>
+        <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
+          {digest.date}
+        </span>
+      </div>
+      <pre style={{
+        fontSize: 11,
+        color: "var(--text-secondary)",
+        lineHeight: 1.6,
+        margin: 0,
+        whiteSpace: "pre-wrap",
+        fontFamily: "var(--font-mono, monospace)",
+      }}>
+        {digest.details}
+      </pre>
     </div>
   );
 }
