@@ -174,6 +174,15 @@ def main():
         priority=priority,
     )
 
+    # Update shared agent state
+    from agent_state import update_agent
+    findings_list = issues if issues else ["No issues found. All databases healthy."]
+    update_agent(
+        agent="sentinel",
+        status="warning" if issues else "healthy",
+        findings=findings_list,
+    )
+
     return {"issues": issues, "stats": stats}
 
 

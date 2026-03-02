@@ -107,6 +107,18 @@ def main():
         priority=priority,
     )
 
+    # Update shared agent state
+    from agent_state import update_agent
+    findings_list = []
+    if missing:
+        findings_list.append(f"Missing sources: {', '.join(missing)}")
+    findings_list.append(f"{len(signals)} signals from {len(platform_counts)} platforms (7d)")
+    update_agent(
+        agent="scout",
+        status="warning" if missing else "healthy",
+        findings=findings_list,
+    )
+
     return {"total_signals": len(signals), "platforms": dict(platform_counts), "missing": missing}
 
 

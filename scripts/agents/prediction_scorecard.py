@@ -157,6 +157,19 @@ def main():
         priority=priority,
     )
 
+    # Update shared agent state
+    from agent_state import update_agent
+    oracle_alerts = []
+    if hit_rate < 50 and total_resolved >= 5:
+        oracle_alerts.append(f"Hit rate below 50%: {hit_rate:.0f}% ({total_hits}/{total_resolved})")
+    if not oracle_alerts:
+        oracle_alerts.append("Prediction calibration nominal.")
+    update_agent(
+        agent="oracle",
+        status="warning" if (hit_rate < 50 and total_resolved >= 5) else "healthy",
+        findings=oracle_alerts,
+    )
+
     return {"hit_rate": hit_rate, "total": len(moments), "resolved": total_resolved}
 
 

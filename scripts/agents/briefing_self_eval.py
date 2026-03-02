@@ -172,6 +172,21 @@ def main():
         priority=priority,
     )
 
+    # Update shared agent state
+    from agent_state import update_agent
+    eval_issues = []
+    if scores["overall"] < 5:
+        eval_issues.append(f"Briefing quality below threshold: {scores['overall']}/10")
+    if scores["generic_phrases"] > 0:
+        eval_issues.append(f"{scores['generic_phrases']} generic phrases detected")
+    if not eval_issues:
+        eval_issues.append("Briefing quality nominal.")
+    update_agent(
+        agent="strategist",
+        status="warning" if scores["overall"] < 5 else "healthy",
+        findings=eval_issues,
+    )
+
     return scores
 
 

@@ -159,6 +159,15 @@ def main():
         priority=priority,
     )
 
+    # Update shared agent state
+    from agent_state import update_agent, update_digest
+    update_agent(
+        agent="sentinel",
+        status="warning" if alerts else "healthy",
+        findings=alerts if alerts else ["System operating normally."],
+    )
+    update_digest(summary=summary, action_items=alerts if alerts else [])
+
     return {"activities": len(activities), "alerts": alerts, "stats": system_stats}
 
 

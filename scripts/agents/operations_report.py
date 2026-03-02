@@ -173,6 +173,15 @@ def main():
         priority=priority,
     )
 
+    # Update shared agent state
+    from agent_state import update_agent
+    findings_list = alerts if alerts else [f"Healthy. {total_rows} total rows."]
+    update_agent(
+        agent="optimize",
+        status="warning" if alerts else "healthy",
+        findings=findings_list,
+    )
+
     return {"db_sizes": db_sizes, "log_stats": log_stats, "alerts": alerts}
 
 
