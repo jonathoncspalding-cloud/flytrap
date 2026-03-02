@@ -95,7 +95,13 @@ def load_existing_trends() -> list:
 
 
 def load_unprocessed_signals(hours: int = 24) -> list:
-    """Load Evidence Log entries from the last N days not yet linked to a trend."""
+    """Load Evidence Log entries from the last N days not yet processed.
+
+    A signal is considered processed once it has a Summary (written by
+    update_signal_in_notion).  Previously this filtered on Linked Trends
+    being empty, but signals scored as noise never get a trend link — so
+    they were re-sent to Claude every run, creating an ever-growing backlog.
+    """
     days        = max(1, hours // 24)
     cutoff_date = (date.today() - timedelta(days=days)).isoformat()
     pages = query_database(
@@ -103,7 +109,7 @@ def load_unprocessed_signals(hours: int = 24) -> list:
         filter_obj={
             "and": [
                 {"property": "Date Captured", "date": {"on_or_after": cutoff_date}},
-                {"property": "Linked Trends",  "relation": {"is_empty": True}},
+                {"property": "Summary",       "rich_text": {"is_empty": True}},
             ]
         },
     )
@@ -413,9 +419,20 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
     """
     logger.info("Starting signal processing (v2 — evidence threshold + collision detection)...")
 
+    # Safety cap: max signals per run to prevent runaway costs.
+    # 300 signals = 15 batches @ batch_size=20 ≈ $1.00 max per run.
+    MAX_SIGNALS_PER_RUN = 300
+
     tensions = load_active_tensions()
     trends   = load_existing_trends()
     signals  = load_unprocessed_signals(hours=hours)
+
+    if len(signals) > MAX_SIGNALS_PER_RUN:
+        logger.warning(
+            f"⚠️ {len(signals)} unprocessed signals exceeds cap of {MAX_SIGNALS_PER_RUN}. "
+            f"Processing first {MAX_SIGNALS_PER_RUN} only — remainder will be caught next run."
+        )
+        signals = signals[:MAX_SIGNALS_PER_RUN]
 
     logger.info(f"Loaded: {len(tensions)} tensions, {len(trends)} trends, {len(signals)} unprocessed signals")
 
