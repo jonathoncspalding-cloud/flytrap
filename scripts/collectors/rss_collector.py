@@ -14,6 +14,7 @@ from email.utils import parsedate_to_datetime
 logger = logging.getLogger(__name__)
 
 # Curated RSS feeds — culture, entertainment, food, fashion, sports, tech, advertising
+# Last audited: 2026-03-01. Review quarterly.
 RSS_FEEDS = [
     # ── US National News (breaking news backbone) ────────────────────────────
     {"url": "https://feeds.npr.org/1001/rss.xml", "label": "NPR News", "category": "News"},
@@ -34,7 +35,7 @@ RSS_FEEDS = [
     {"url": "https://nymag.com/feed/all", "label": "New York Mag", "category": "Culture"},
     {"url": "https://www.axios.com/feeds/feed.rss", "label": "Axios", "category": "Culture"},
     {"url": "https://thecut.com/feed/rss.xml", "label": "The Cut", "category": "Culture"},
-    {"url": "https://www.buzzfeednews.com/site.atom", "label": "BuzzFeed News", "category": "Culture"},
+    # BuzzFeed News — shut down April 2023, removed 2026-03-01
     # ── Entertainment ────────────────────────────────────────────────────────
     {"url": "https://www.hollywoodreporter.com/feed/", "label": "Hollywood Reporter", "category": "Entertainment"},
     {"url": "https://pitchfork.com/rss/news/feed.xml", "label": "Pitchfork", "category": "Music"},
@@ -85,7 +86,7 @@ RSS_FEEDS = [
     {"url": "https://sloanreview.mit.edu/feed/", "label": "MIT Sloan Review", "category": "Research", "platform": "Research"},
     {"url": "https://www.nielsen.com/insights/feed/", "label": "Nielsen Insights", "category": "Research", "platform": "Research"},
     {"url": "https://www.kantar.com/inspiration/rss", "label": "Kantar Inspiration", "category": "Research", "platform": "Research"},
-    {"url": "https://hbr.org/feed", "label": "HBR Research", "category": "Research", "platform": "Research"},
+    # HBR Research — duplicate of HBR Business (same feed URL), removed 2026-03-01
     # ── Culture newsletters & Substacks ──────────────────────────────────────
     # These are strategist-grade voices — early to trends, opinionated, non-corporate.
     {"url": "https://annehelen.substack.com/feed", "label": "Culture Study", "category": "Culture"},
@@ -98,10 +99,10 @@ RSS_FEEDS = [
     {"url": "https://nymag.com/intelligencer/feed/rss.xml", "label": "Intelligencer", "category": "Culture"},
     {"url": "https://www.theatlantic.com/feed/channel/entertainment/", "label": "Atlantic Entertainment", "category": "Entertainment"},
     {"url": "https://www.grunge.com/feed/", "label": "Grunge", "category": "Culture"},
-    {"url": "https://gen.medium.com/feed", "label": "GEN (Medium)", "category": "Culture"},
-    {"url": "https://onezero.medium.com/feed", "label": "OneZero", "category": "Tech"},
+    # GEN (Medium) — defunct, removed 2026-03-01
+    # OneZero (Medium) — defunct, removed 2026-03-01
     # ── Sports & gaming (cultural velocity indicators) ────────────────────────
-    {"url": "https://www.si.com/rss/si_culture.rss", "label": "SI Culture", "category": "Sports"},
+    # SI Culture — unreliable after ownership changes, removed 2026-03-01
     {"url": "https://kotaku.com/rss", "label": "Kotaku", "category": "Gaming"},
     {"url": "https://www.polygon.com/rss/index.xml", "label": "Polygon", "category": "Gaming"},
     # ── International signals ─────────────────────────────────────────────────

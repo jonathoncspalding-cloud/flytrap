@@ -31,17 +31,16 @@ logger = logging.getLogger(__name__)
 # Subreddits to monitor for cultural signals
 # Curated for cultural forecasting — signals about how people think, feel,
 # spend, and behave. Not just "what's popular" but "what's shifting."
+# Last audited: 2026-03-01. Review quarterly.
 SUBREDDITS = [
     # ── Trend surfaces (high-volume, what's breaking now) ─────────────────
     "OutOfTheLoop",         # "Why is everyone talking about X?" = trend detection gold
     "TikTokCringe",         # Viral content that crosses platforms
     "HobbyDrama",           # Deep community conflict = cultural pressure
-    "SubredditDrama",       # Meta-discourse about shifting norms
     # ── Entertainment & culture ───────────────────────────────────────────
     "popculturechat",       # Celebrity/entertainment discourse
     "Fauxmoi",              # Blind items + celebrity insider culture
     "television",           # TV discourse (shared cultural experiences)
-    "Music",                # Music culture broadly
     "movies",               # Film discourse + box office culture
     "gaming",               # Massive cultural surface area, 40M+ members
     "books",                # BookTok/literary culture crossover
@@ -49,45 +48,32 @@ SUBREDDITS = [
     "NoStupidQuestions",    # Genuine confusion = norm shifts in progress
     "unpopularopinion",     # Overton window movement detector
     "changemyview",         # Where people actually engage across divides
-    "TrueOffMyChest",       # Real feelings about cultural pressures
     "AskReddit",            # Mass opinion surface
-    # ── Race, gender & social commentary ──────────────────────────────────
+    # ── Race, gender & identity ───────────────────────────────────────────
     "BlackPeopleTwitter",   # Black cultural commentary + viral takes
-    "WhitePeopleTwitter",   # Progressive social commentary
     "TwoXChromosomes",      # Women's issues — cultural pressure points
-    "MensLib",              # Men's issues without toxicity — emerging discourse
-    # ── Generational identity ─────────────────────────────────────────────
     "GenZ",                 # Gen Z self-reported perspectives
-    "Millennials",          # Millennial perspectives + economic anxiety
-    # ── Work, money & economic anxiety ────────────────────────────────────
+    # ── Work & economic anxiety ───────────────────────────────────────────
     "antiwork",             # Labor movement sentiment
-    "WorkReform",           # Pragmatic work culture change
-    "povertyfinance",       # Lower-income economic realities
-    "PersonalFinance",      # Financial anxiety signals
-    "latestagecapitalism",  # Anti-capitalist framing of events
-    "Overemployed",         # Remote work culture + hustle shifts
     # ── Consumer culture & spending ───────────────────────────────────────
     "BuyItForLife",         # Anti-disposable, quality-seeking consumers
-    "Anticonsumption",      # Active pushback against consumerism
     "mildlyinfuriating",    # Consumer frustration signals (huge sub)
-    "streetwear",           # Hype culture + fashion trends
     # ── Tech, AI & the future ─────────────────────────────────────────────
     "technology",           # Tech industry + society intersection
     "ChatGPT",              # AI adoption in daily life
-    "artificial",           # AI industry discourse
     "Futurology",           # Where society thinks it's headed
     # ── Wellness, health & lifestyle ──────────────────────────────────────
     "relationship_advice",  # Interpersonal dynamics = cultural proxy
-    "StopDrinking",         # Sober curious movement
     "collapse",             # Doomer sentiment + systemic anxiety
     "MadeMeSmile",          # Viral positivity — counterweight signal
     # ── Advertising & marketing ───────────────────────────────────────────
-    "marketing",            # Industry practitioner perspective
     "advertising",          # Ad culture + brand discourse
 ]
 
-MIN_UPVOTES = 500  # Minimum upvotes to include a post (PRAW/JSON only)
-POSTS_PER_SUB = 10
+MIN_UPVOTES = 500       # Minimum upvotes to include a post (PRAW/JSON only)
+POSTS_PER_SUB = 10      # PRAW/JSON mode
+POSTS_PER_SUB_RSS = 5   # RSS mode — no engagement filter, so cap volume
+MIN_TITLE_LENGTH = 15   # Skip very short titles (likely memes/low-content) in RSS mode
 
 # ── RSS helpers ──────────────────────────────────────────────────────────────
 
@@ -280,9 +266,12 @@ def collect() -> list:
                     })
         else:
             # ── RSS path: no upvotes, but works on cloud IPs ────────────
-            posts = _get_posts_rss(subreddit, limit=POSTS_PER_SUB)
+            posts = _get_posts_rss(subreddit, limit=POSTS_PER_SUB_RSS)
             if posts:
                 for post in posts:
+                    # Skip very short titles (likely memes/low-content)
+                    if len(post.get("title", "")) < MIN_TITLE_LENGTH:
+                        continue
                     signals.append(_format_post_rss(post, subreddit))
             else:
                 rss_failures += 1

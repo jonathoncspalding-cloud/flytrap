@@ -92,13 +92,30 @@ def collect() -> list:
     today = date.today().isoformat()
     signals = []
 
-    # 1. Daily trending searches
+    # 1. Daily trending searches — enrich top 8 with related queries for context
     trending = _safe_trending(pytrends)
-    for topic in trending[:30]:
+    ENRICH_TOP_N = 8  # Only enrich the hottest topics to avoid rate-limiting (~12s cost)
+
+    for i, topic in enumerate(trending[:30]):
+        raw_content = f"Trending on Google Trends (US) on {today}: {topic}"
+
+        # Enrich top topics with related rising queries so Claude has context
+        if i < ENRICH_TOP_N:
+            try:
+                pytrends.build_payload([topic], timeframe="now 1-d", geo="US")
+                related = pytrends.related_queries()
+                rising = related.get(topic, {}).get("rising")
+                if rising is not None and not rising.empty:
+                    top_queries = rising.head(3)["query"].tolist()
+                    raw_content += f". Related rising queries: {', '.join(top_queries)}"
+                time.sleep(1.5)  # Respect rate limits
+            except Exception as e:
+                logger.debug(f"Related queries failed for '{topic}': {e}")
+
         signals.append({
             "title": f"Google Trends Daily: {topic}",
             "source_platform": "Google Trends",
-            "raw_content": f"Trending on Google Trends (US) on {today}: {topic}",
+            "raw_content": raw_content,
             "summary": f"'{topic}' is trending in Google Trends US searches today.",
         })
 

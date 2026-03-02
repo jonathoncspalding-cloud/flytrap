@@ -6,7 +6,7 @@ the public API — no authentication required for public content.
 
 Endpoints used:
   - app.bsky.unspecced.getTrendingTopics  (trending hashtags/topics)
-  - app.bsky.feed.searchPosts             (search cultural keywords)
+  (keyword search removed 2026-03-01 — trending topics pre-filter by engagement)
 
 Bluesky public API: https://public.api.bsky.app
 """
@@ -14,27 +14,14 @@ Bluesky public API: https://public.api.bsky.app
 import time
 import logging
 import requests
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
 BSKY_API = "https://public.api.bsky.app/xrpc"
 
-# Cultural search terms to query
-CULTURE_QUERIES = [
-    "culture",
-    "trending",
-    "viral",
-    "gen z",
-    "ad industry",
-    "brand",
-    "creative brief",
-]
-
 MAX_AGE_HOURS    = 48
-MIN_LIKE_COUNT   = 50   # Minimum likes for a post to qualify
-MAX_POSTS_PER_QUERY = 5
-MAX_TRENDING_TOPICS = 20
+MAX_TRENDING_TOPICS = 30  # Raised from 25 to compensate for removal of keyword search
 
 
 def _get_trending_topics() -> list:
@@ -53,25 +40,6 @@ def _get_trending_topics() -> list:
         return topics
     except Exception as e:
         logger.warning(f"Bluesky trending topics failed: {e}")
-        return []
-
-
-def _search_posts(query: str, limit: int = MAX_POSTS_PER_QUERY) -> list:
-    """Search for posts matching a query."""
-    try:
-        cutoff = (datetime.now(timezone.utc) - timedelta(hours=MAX_AGE_HOURS)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        resp   = requests.get(
-            f"{BSKY_API}/app.bsky.feed.searchPosts",
-            params={"q": query, "limit": limit, "since": cutoff, "sort": "top"},
-            timeout=10,
-        )
-        if resp.status_code != 200:
-            return []
-        data  = resp.json()
-        posts = data.get("posts", [])
-        return posts
-    except Exception as e:
-        logger.warning(f"Bluesky search '{query}' failed: {e}")
         return []
 
 
@@ -116,47 +84,7 @@ def collect() -> list:
             "_category":       "Social",
         })
 
-    logger.debug(f"Bluesky: {len(signals)} trending topics")
-    time.sleep(1)
-
-    # ── Post search for cultural queries ─────────────────────────────────────
-    for query in CULTURE_QUERIES:
-        posts = _search_posts(query)
-        for post in posts:
-            text        = _extract_post_text(post)
-            like_count  = post.get("likeCount", 0)
-            repost_count = post.get("repostCount", 0)
-            author      = post.get("author", {})
-            handle      = author.get("handle", "unknown")
-            uri         = post.get("uri", "")
-
-            if not text or like_count < MIN_LIKE_COUNT:
-                continue
-
-            # Deduplicate by text content
-            text_key = text[:80].lower().strip()
-            if text_key in seen_texts:
-                continue
-            seen_texts.add(text_key)
-
-            engagement = f"{like_count} likes, {repost_count} reposts"
-            bsky_url   = f"https://bsky.app/profile/{handle}" if handle != "unknown" else ""
-
-            signals.append({
-                "title":           f"Bluesky: {text[:100]}",
-                "source_platform": "Social",
-                "source_url":      bsky_url,
-                "raw_content":     (
-                    f"[Bluesky / @{handle}] {text[:400]} "
-                    f"— {engagement}"
-                ),
-                "summary":         f"@{handle}: {text[:120]} ({engagement})",
-                "_category":       "Social",
-            })
-
-        time.sleep(0.5)
-
-    logger.info(f"Bluesky: {len(signals)} total signals")
+    logger.info(f"Bluesky: {len(signals)} signals (trending topics only)")
     return signals
 
 

@@ -168,6 +168,12 @@ Your tasks:
    - Be distinct from existing tensions (not a subset or reframing)
    - Be relevant to brand strategy and advertising
 
+   SPECIFICITY RULE: A good tension is narrow enough that MOST signals do NOT intersect it.
+   If a tension intersects >40% of recent trends, it is too broad and should be split.
+   Do not propose broad tensions like "technology changing society" — propose the specific
+   conflict within that theme. Example: instead of "trust in institutions declining," propose
+   "healthcare system distrust vs. medical authority" or "media credibility crisis vs. citizen journalism."
+
 2. WEIGHT ADJUSTMENTS: For each existing tension, evaluate whether its weight should change based on signal volume and intensity. Only recommend changes of ±1 or ±2 — weights should shift gradually. Consider:
    - How many recent trends intersect this tension?
    - Are signals hitting this tension increasing or decreasing?

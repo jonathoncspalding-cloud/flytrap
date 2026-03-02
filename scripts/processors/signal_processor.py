@@ -90,7 +90,11 @@ def load_existing_trends() -> list:
         cps         = (props.get("Cultural Potency Score") or {}).get("number") or 0
         summary_rt  = (props.get("Summary") or {}).get("rich_text") or []
         summary     = summary_rt[0]["plain_text"] if summary_rt else ""
-        trends.append({"id": p["id"], "name": name, "type": trend_type, "cps": cps, "summary": summary})
+        # Load existing tension relations for collision detection seeding
+        tensions_rel = (props.get("Linked Tensions") or {}).get("relation") or []
+        tension_ids = [r["id"] for r in tensions_rel]
+        trends.append({"id": p["id"], "name": name, "type": trend_type, "cps": cps,
+                        "summary": summary, "tension_ids": tension_ids})
     return trends
 
 
@@ -143,7 +147,8 @@ For each signal, respond with a JSON array. Each item must have:
 {{
   "signal_title": "<exact title from input>",
   "trend_type": "<Macro Trend | Micro Trend | Emerging Signal | Scheduled Event | Predicted Moment>",
-  "cps": <0-100 integer>,
+  "cps_level": "<FLASHPOINT | HOT | NOTABLE | EARLY | NOISE>",
+  "cps": <mapped numeric: NOISE=10, EARLY=30, NOTABLE=50, HOT=70, FLASHPOINT=90>,
   "cps_reasoning": "<1 sentence: which tensions this hits and why>",
   "intersected_tensions": ["<tension name 1>", "<tension name 2>"],
   "linked_trend": "<exact name of existing trend this belongs to, or null>",
@@ -152,12 +157,12 @@ For each signal, respond with a JSON array. Each item must have:
   "sentiment": "<Positive | Negative | Neutral | Mixed>"
 }}
 
-SCORING GUIDE:
-- 80-100: Signals at the intersection of 3+ active tensions with strong velocity
-- 60-79: Signals hitting 2 tensions with clear cultural momentum
-- 40-59: Signals touching 1-2 tensions, notable but not urgent
-- 20-39: Early-stage signals with some cultural relevance
-- 0-19: Noise — mostly informational, low cultural charge
+CULTURAL POTENCY LEVELS (choose exactly one):
+- FLASHPOINT (cps: 90): Intersection of 3+ active tensions with strong velocity. Immediate cultural urgency.
+- HOT (cps: 70): Hits 2 tensions with clear cultural momentum. Worth tracking closely.
+- NOTABLE (cps: 50): Touches 1-2 tensions, meaningful but not urgent.
+- EARLY (cps: 30): Some cultural relevance, early-stage signal.
+- NOISE (cps: 10): Mostly informational, low cultural charge.
 
 PREDICTION MARKET SIGNALS (Platform: "Prediction Market"):
 These are Polymarket signals — real money bets on outcomes. They carry unique intelligence:
@@ -167,9 +172,9 @@ These are Polymarket signals — real money bets on outcomes. They carry unique 
 - RESOLUTION DATES are hard deadlines when attention will concentrate — events resolving within 14 days with high volume should be scored as Scheduled Events.
 
 IMPORTANT — how to score prediction market signals:
-- Some markets ARE directly cultural (e.g. "Will an AI film win an Oscar?", "Will a brand pull out of Pride Month?"). Score these on their cultural merits like any other signal — they can be high CPS if they intersect tensions.
-- Some markets are about world events that BECOME cultural catalysts (e.g. Fed decisions that fuel cost-of-living discourse, geopolitical events that trigger protest movements). Score based on the cultural dimension, not the event itself.
-- Some markets have no cultural dimension at all (crypto price bets, sports outcomes, pure financial instruments). Score these LOW (0-20) regardless of volume.
+- Some markets ARE directly cultural. Score on cultural merits — they can be FLASHPOINT if they intersect tensions.
+- Some markets are about world events that BECOME cultural catalysts. Score the cultural dimension, not the event itself.
+- Some markets have no cultural dimension. Score as NOISE regardless of volume.
 - CPS should always be grounded in TENSION INTERSECTION — volume and probability are supporting evidence, not substitutes for cultural relevance.
 
 Be selective about recommending new trends — only suggest one when the signal represents a genuinely
@@ -288,22 +293,44 @@ def update_signal_in_notion(signal_id: str, result: dict, trend_id: str = None):
 
 def detect_collisions(
     trends_with_tensions: list,
+    tension_weights: dict = None,
     min_combined_cps: int = 120,
     min_shared_tensions: int = 2,
+    max_cps_differential: int = 40,
+    min_tension_weight: int = 5,
 ) -> list:
     """
-    Find pairs of high-CPS trends that converge on 2+ shared tensions.
-    trends_with_tensions: list of {name, cps, tensions: [str]}
+    Find pairs of high-CPS trends that converge on shared tensions.
+
+    Filters (tightened 2026-03-01):
+    - Both trends must have CPS >= 60 (HOT or FLASHPOINT in bucket system)
+    - CPS differential must be <= max_cps_differential (40 = same/adjacent/2-step buckets)
+    - Shared tensions must have weight >= min_tension_weight (filters out low-signal tensions)
+    - Combined CPS must meet minimum threshold
     """
+    if tension_weights is None:
+        tension_weights = {}
+
     collisions = []
     high = [t for t in trends_with_tensions if t["cps"] >= 60 and t["tensions"]]
 
     for i in range(len(high)):
         for j in range(i + 1, len(high)):
             t1, t2  = high[i], high[j]
-            shared  = set(t1["tensions"]) & set(t2["tensions"])
+
+            # CPS differential check — wildly different intensity levels aren't colliding
+            if abs(t1["cps"] - t2["cps"]) > max_cps_differential:
+                continue
+
+            # Filter shared tensions by weight
+            shared_raw = set(t1["tensions"]) & set(t2["tensions"])
+            shared = {t for t in shared_raw
+                       if tension_weights.get(t, 5) >= min_tension_weight}
+
             combined = t1["cps"] + t2["cps"]
             if len(shared) >= min_shared_tensions and combined >= min_combined_cps:
+                # Score collisions by tension weight (not just CPS)
+                collision_score = combined * sum(tension_weights.get(t, 5) for t in shared) / 10
                 collisions.append({
                     "trend_a":        t1["name"],
                     "cps_a":          t1["cps"],
@@ -311,10 +338,11 @@ def detect_collisions(
                     "cps_b":          t2["cps"],
                     "shared_tensions": sorted(shared),
                     "combined_cps":   combined,
+                    "collision_score": round(collision_score, 1),
                     "detected_date":  TODAY,
                 })
 
-    return sorted(collisions, key=lambda x: -x["combined_cps"])
+    return sorted(collisions, key=lambda x: -x.get("collision_score", x["combined_cps"]))
 
 
 def save_collisions(collisions: list):
@@ -409,18 +437,15 @@ def update_linked_tensions(trend_id: str, trend_name: str, new_tension_names: se
 
 def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
     """
-    Full signal processing job:
-    1. Load tensions / trends / unprocessed signals
-    2. Batch through Claude
-    3. Immediately link signals to EXISTING trends (update CPS if higher)
-    4. Accumulate new trend recommendations — create only when threshold met
-    5. Detect trend collisions, save to data/collisions.json
-    6. Update CPS sparklines for all touched trends
+    Full signal processing job (v3 — tiered processing):
+    Tier 0: Embedding pre-filter (local, $0) → auto-link / discard / ambiguous
+    Tier 1: Haiku triage (cheap) → promoted / triaged-out
+    Tier 2: Sonnet deep analysis (expensive) → only on promoted signals
+    Then: collision detection, sparklines, velocity, CPS snapshot
     """
-    logger.info("Starting signal processing (v2 — evidence threshold + collision detection)...")
+    logger.info("Starting signal processing (v3 — tiered processing)...")
 
     # Safety cap: max signals per run to prevent runaway costs.
-    # 300 signals = 15 batches @ batch_size=20 ≈ $1.00 max per run.
     MAX_SIGNALS_PER_RUN = 300
 
     tensions = load_active_tensions()
@@ -441,27 +466,120 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
         return {"processed": 0, "new_trends": 0}
 
     tension_map = {t["name"]: t["id"] for t in tensions}
+    # Reverse map: tension_id → tension_name (for seeding trend_tensions_map)
+    tension_id_to_name = {t["id"]: t["name"] for t in tensions}
+
     processed       = 0
     new_trends      = 0
     high_cps_count  = 0
+    tier_stats      = {"auto_linked": 0, "discarded": 0, "triaged_out": 0, "sonnet_processed": 0}
 
     # pending_new_trends: normalised_name → [(signal_dict, result_dict), ...]
     pending_new_trends: dict = {}
-    # trend_tensions_map: trend_name → set of tension names seen this run
+    # trend_tensions_map: trend_name → set of tension names
+    # Seed from existing Notion tension relations (Oracle fix: durable collision detection)
     trend_tensions_map: dict = {}
+    for t in trends:
+        if t.get("tension_ids"):
+            known_tensions = {tension_id_to_name[tid] for tid in t["tension_ids"]
+                              if tid in tension_id_to_name}
+            if known_tensions:
+                trend_tensions_map[t["name"]] = known_tensions
+
     # touched_trends: trend_id → (trend_name, current_cps)
     touched_trends: dict = {}
     # trend_signal_counts: trend_name → number of signals linked today (for velocity)
     trend_signal_counts: dict = {}
 
-    # ── Batch processing ──────────────────────────────────────────────────────
-    for i in range(0, len(signals), batch_size):
-        batch   = signals[i:i + batch_size]
-        logger.info(f"Batch {i//batch_size + 1}: signals {i+1}–{i+len(batch)}")
+    # ══════════════════════════════════════════════════════════════════════════
+    # TIER 0: Embedding pre-filter (local, $0)
+    # ══════════════════════════════════════════════════════════════════════════
+    try:
+        from signal_filter import classify_signals
+        classified = classify_signals(signals, trends, tensions)
+    except ImportError:
+        logger.warning("signal_filter.py not available — skipping Tier 0, all signals → Sonnet")
+        classified = {"auto_link": [], "discard": [], "ambiguous": list(signals)}
+    except Exception as e:
+        logger.warning(f"Tier 0 failed: {e} — all signals → Sonnet")
+        classified = {"auto_link": [], "discard": [], "ambiguous": list(signals)}
+
+    logger.info(
+        f"Tier 0: {len(classified['auto_link'])} auto-linked, "
+        f"{len(classified['discard'])} discarded, "
+        f"{len(classified['ambiguous'])} ambiguous → Tier 1"
+    )
+
+    # ── Handle auto-linked signals (matched to existing trend, no Claude) ────
+    for signal, trend_name, trend_id, sim_score in classified["auto_link"]:
+        try:
+            if not dry_run:
+                update_signal_in_notion(signal["id"], {
+                    "summary": f"Auto-linked to '{trend_name}' (similarity: {sim_score:.2f})",
+                    "sentiment": "Neutral",
+                }, trend_id)
+            # Update velocity count for the matched trend
+            trend_signal_counts[trend_name] = trend_signal_counts.get(trend_name, 0) + 1
+            # Record as touched for sparkline update (write current CPS per Oracle)
+            matched = [t for t in trends if t["id"] == trend_id]
+            if matched:
+                touched_trends[trend_id] = (trend_name, matched[0]["cps"])
+            processed += 1
+            tier_stats["auto_linked"] += 1
+        except Exception as e:
+            logger.error(f"Error auto-linking signal '{signal['title'][:50]}': {e}")
+
+    # ── Handle discarded signals (noise, save minimal metadata) ──────────────
+    for signal in classified["discard"]:
+        try:
+            if not dry_run:
+                update_signal_in_notion(signal["id"], {
+                    "summary": "Low cultural relevance (auto-filtered)",
+                    "sentiment": "Neutral",
+                })
+            processed += 1
+            tier_stats["discarded"] += 1
+        except Exception as e:
+            logger.error(f"Error discarding signal '{signal['title'][:50]}': {e}")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # TIER 1: Haiku triage on ambiguous signals
+    # ══════════════════════════════════════════════════════════════════════════
+    ambiguous = classified["ambiguous"]
+    promoted_signals = ambiguous  # Default: if triage fails, all go to Sonnet
+
+    if ambiguous:
+        try:
+            from signal_triage import triage_signals
+            promoted_signals, triaged = triage_signals(ambiguous, trends)
+
+            # Handle triaged-out signals
+            for signal, triage_result in triaged:
+                try:
+                    if not dry_run:
+                        update_signal_in_notion(signal["id"], triage_result)
+                    processed += 1
+                    tier_stats["triaged_out"] += 1
+                except Exception as e:
+                    logger.error(f"Error saving triage for '{signal['title'][:50]}': {e}")
+
+        except ImportError:
+            logger.warning("signal_triage.py not available — all ambiguous signals → Sonnet")
+        except Exception as e:
+            logger.warning(f"Tier 1 failed: {e} — all ambiguous signals → Sonnet")
+
+    logger.info(f"Tier 2: {len(promoted_signals)} signals promoted to Sonnet processing")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # TIER 2: Full Sonnet processing (existing batch logic, only on promoted)
+    # ══════════════════════════════════════════════════════════════════════════
+    for i in range(0, len(promoted_signals), batch_size):
+        batch   = promoted_signals[i:i + batch_size]
+        logger.info(f"Sonnet batch {i//batch_size + 1}: signals {i+1}–{i+len(batch)}")
 
         results = process_signals_batch(batch, tensions, trends)
         if not results:
-            logger.warning(f"  No results for batch {i//batch_size + 1}")
+            logger.warning(f"  No results for Sonnet batch {i//batch_size + 1}")
             continue
 
         for signal, result in zip(batch, results):
@@ -514,11 +632,12 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
                         update_signal_in_notion(signal["id"], result, None)
 
                 processed += 1
+                tier_stats["sonnet_processed"] += 1
 
             except Exception as e:
                 logger.error(f"Error on signal '{signal['title'][:50]}': {e}")
 
-        if i + batch_size < len(signals):
+        if i + batch_size < len(promoted_signals):
             time.sleep(0.5)
 
     # ── Evidence threshold: decide which new trends to create ─────────────────
@@ -538,7 +657,8 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
             trend_id = None
             if not dry_run:
                 trend_id = find_or_create_trend(canonical, t_type, t_summary, t_cps, tensions, tension_map)
-                trends.append({"id": trend_id, "name": canonical, "type": t_type, "cps": t_cps, "summary": t_summary})
+                trends.append({"id": trend_id, "name": canonical, "type": t_type, "cps": t_cps,
+                                "summary": t_summary, "tension_ids": []})
                 for sig, res in pending_list:
                     update_signal_in_notion(sig["id"], res, trend_id)
                 trend_tensions_map.setdefault(canonical, set()).update(t_tensions)
@@ -555,6 +675,7 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
             logger.info(f"  ✗ '{norm_name}' — only {count}/{MIN_EVIDENCE_THRESHOLD} signals (skipped)")
 
     # ── Collision detection ────────────────────────────────────────────────────
+    # Uses trend_tensions_map seeded from Notion + enriched from this run's Sonnet output
     collisions_detected = 0
     if trend_tensions_map:
         enriched = [
@@ -566,7 +687,8 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
             for t in trends
             if trend_tensions_map.get(t["name"])
         ]
-        collisions = detect_collisions(enriched)
+        tension_weights = {t["name"]: t["weight"] for t in tensions}
+        collisions = detect_collisions(enriched, tension_weights=tension_weights)
         collisions_detected = len(collisions)
         save_collisions(collisions)
 
@@ -604,12 +726,25 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
         velocity = update_velocity(velocity, trend_signal_counts)
         save_velocity(velocity)
 
+    # ── CPS Snapshot (for briefing deltas) ────────────────────────────────
+    cps_snapshot_path = DATA_DIR / "cps_snapshot.json"
+    try:
+        snapshot = {
+            "date": TODAY,
+            "trends": {t["name"]: t["cps"] for t in trends},
+        }
+        cps_snapshot_path.write_text(json.dumps(snapshot, indent=2))
+        logger.info(f"Saved CPS snapshot ({len(snapshot['trends'])} trends) → {cps_snapshot_path}")
+    except Exception as e:
+        logger.warning(f"Could not save CPS snapshot: {e}")
+
     summary = {
         "processed":            processed,
         "new_trends":           new_trends,
         "high_cps":             high_cps_count,
         "total_signals":        len(signals),
         "collisions_detected":  collisions_detected,
+        "tiers":                tier_stats,
     }
     logger.info(f"\nSignal processing complete: {summary}")
     return summary

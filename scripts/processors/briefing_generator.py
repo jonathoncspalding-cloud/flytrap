@@ -41,17 +41,9 @@ DATA_DIR = Path(__file__).parent.parent.parent / "data"
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-CLIENTS = "A&W, VLEX, Four Roses, LegoLand, Cup Noodles, Busch Light, Natural Light"
-
-CLIENT_PROFILES = """
-- A&W: QSR/fast food chain. Family-friendly Americana, core audience 25-54. Known for root beer heritage, nostalgic brand identity, and all-American comfort food positioning.
-- VLEX: Legal tech / legal research platform. Audience is attorneys, law firms, legal departments 30-60. Brand is authoritative, modern, efficiency-focused. Cares about trust, institutions, regulation trends.
-- Four Roses: Premium bourbon. Craft spirits enthusiasts 28-45. Heritage storytelling, craftsmanship positioning. Culturally adjacent to Southern identity, maker culture, slow living.
-- LegoLand: Family entertainment / theme parks. Parents with kids 4-12, plus adult LEGO fans. Playful, creative, imagination-driven. Relevant to nostalgia, play culture, family experience trends.
-- Cup Noodles: Instant ramen / convenience food. Young adults 18-34, college students, budget-conscious. Brand leans into internet culture, late-night energy, irreverent humor.
-- Busch Light: Value beer, 21-34 male-skewing. Outdoor/rural identity, hunting and fishing culture. Humor-driven marketing, blue-collar authenticity, anti-pretension.
-- Natural Light: Value beer, 21-30 college/post-college. Party culture, tailgating, affordability pride. Self-aware, meme-friendly, does not take itself seriously.
-"""
+# Client profiles removed from daily briefing (2026-03-01).
+# Client-specific angles are now an on-demand chatbot feature,
+# not a daily overhead. See Task 3.3 in pipeline rebuild plan.
 
 
 # ── Data loading ───────────────────────────────────────────────────────────────
@@ -167,13 +159,56 @@ def load_active_moments() -> list:
         window_start = ((props.get("Predicted Window Start") or {}).get("date") or {}).get("start", "")
         window_end = ((props.get("Predicted Window End") or {}).get("date") or {}).get("start", "")
         moments.append({
-            "name": name, "narrative": narrative[:300], "type": mtype,
+            "name": name, "narrative": narrative[:600], "type": mtype,
             "horizon": horizon, "status": status, "confidence": confidence,
-            "magnitude": magnitude, "watch_for": watch[:200],
+            "magnitude": magnitude, "watch_for": watch[:400],
             "window_start": window_start, "window_end": window_end,
         })
     # Sort by confidence desc, then magnitude desc
     return sorted(moments, key=lambda x: (-x["confidence"], -x["magnitude"]))
+
+
+def load_cps_snapshot() -> dict:
+    """Load previous CPS snapshot for delta computation."""
+    path = DATA_DIR / "cps_snapshot.json"
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text())
+    except Exception:
+        return {}
+
+
+def compute_cps_deltas(current_trends: list, snapshot: dict) -> str:
+    """Compare current trend CPS values against snapshot. Returns formatted delta text.
+    Uses ±15 threshold — tighter deltas are noise at the prompt-based scoring level."""
+    if not snapshot or "trends" not in snapshot:
+        return "(no previous CPS snapshot available — deltas will appear after the next run)"
+
+    old_cps = snapshot["trends"]
+    deltas = []
+    new_trends = []
+
+    for t in current_trends:
+        name = t["name"]
+        current = t["cps"]
+        if name in old_cps:
+            diff = current - old_cps[name]
+            if abs(diff) >= 15:
+                arrow = "⬆️" if diff > 0 else "⬇️"
+                deltas.append(f"- \"{name}\" CPS: {old_cps[name]} → {current} ({'+' if diff > 0 else ''}{diff}) {arrow}")
+        else:
+            new_trends.append(f"- (new) \"{name}\" — first detected, CPS: {current}")
+
+    if not deltas and not new_trends:
+        return "(no significant CPS changes since last snapshot)"
+
+    parts = []
+    if deltas:
+        parts.extend(deltas[:10])  # Cap at 10 to keep prompt manageable
+    if new_trends:
+        parts.extend(new_trends[:5])  # Cap new trends shown
+    return "\n".join(parts)
 
 
 def load_collisions() -> list:
@@ -211,6 +246,9 @@ FRAMING: This is a DAILY briefing. Your reader saw yesterday's briefing. Lead wi
 - Calendar events that entered the 7-day window
 Do not re-explain trends your reader already knows. Say what is NEW about them today.
 
+CPS CHANGES SINCE LAST BRIEFING:
+{cps_deltas}
+
 PREDICTED CULTURAL MOMENTS (our forecaster's active predictions — LEAD WITH THESE):
 {moments_data}
 
@@ -231,9 +269,6 @@ NEW SIGNALS — LAST 24 HOURS:
 HISTORICAL CALIBRATION (past cultural moments for context):
 {historical_data}
 
-CLIENTS AND POSITIONING:
-{client_profiles}
-
 ---
 
 VOICE RULES — these are non-negotiable:
@@ -243,11 +278,6 @@ VOICE RULES — these are non-negotiable:
 - Bold ONLY the trend name — never include CPS scores or numbers inside bold text.
   CORRECT: **Broadcast Truth Suppression** — it's moving fast.
   WRONG: **Broadcast Truth Suppression (CPS: 89)** — don't do this.
-
-CLIENT RULES — keep clients contained:
-- Do NOT mention specific clients by name anywhere EXCEPT "The Brief" section at the end.
-- Flashpoints, What's Moving, Signals Worth Watching, etc. should be pure cultural analysis.
-- The Brief is the ONLY place where you connect trends to specific client opportunities.
 
 EVIDENCE RULES — every claim needs receipts:
 - Every claim in Flashpoints and What's Moving must reference at least one specific signal by platform and title. Example: "Reddit thread 'Why I quit streaming' + HN discussion on creator burnout = this is accelerating."
@@ -272,13 +302,16 @@ Write the briefing in EXACTLY this format. No deviations.
 ### 🔮 Predicted Moments
 
 **Tier 1 — High Conviction (Confidence 70%+):**
-[These are near-certainties. For each: **Moment Title** — The prediction in one sentence. Current status. The specific window. Which client must have a plan ready and by when.]
+[Present each prediction AS WRITTEN by the forecaster. Add only:
+- Whether confidence moved up/down since last briefing (use CPS delta data)
+- Whether any watch-for indicators have been observed in today's signals
+Do NOT rewrite the prediction narratives — they are already written.]
 
 **Tier 2 — Watch Closely (Confidence 40-69%):**
-[Worth monitoring. For each: **Moment Title** — The prediction in one sentence. The specific trigger event that would escalate this to Tier 1.]
+[Same format. Present forecaster's prediction verbatim. Add only delta commentary and watch-for indicator status.]
 
 **Tier 3 — Weak Signal (Confidence <40%):**
-[One line each. The moment name and what evidence would make you believe it more.]
+[One line each. The moment name and what evidence from today's signals would make you believe it more.]
 
 [If no moment predictions exist yet, write: "Moment forecaster initializing — predictions will appear after the next pipeline run."]
 
@@ -302,22 +335,15 @@ Lead with the signal, follow with the implication.]
 ### 🗓️ On Deck
 [Cultural moments in the next 14 days with real brand potential. One line each — the event and the angle.]
 
-### 💡 The Brief
-[3-4 specific, actionable creative angles. These should be good enough to start a real brief.]
-[Format: **[Client]** — [Trend] → [One sentence that could become a campaign thought.]]
-[Use the client profiles above. The angle must fit the client's audience, category, and brand voice. Generic angles like "could lean into this" are not acceptable — be specific about the execution.]
-
 ---
 *{trends_count} trends tracked · {signals_count} new signals · {moments_count} predicted moments · {today}*
 
 SELF-CHECK before submitting — verify all of these:
 1. Every Flashpoint cites at least one specific signal by name and platform.
-2. Every brand angle in The Brief references a specific client by name and fits their positioning.
-3. No sentence contains "may," "could," "might," "potentially," or "it remains to be seen."
-4. The Predicted Moments section is at least 25% of the briefing by length.
-5. No trend name inside bold text includes a CPS score or number.
-6. No client names appear ANYWHERE outside The Brief section.
-7. Every item mixing predictions with observations uses 📍 (observed) or 🔮 (prediction) markers so the reader always knows which is which."""
+2. No sentence contains "may," "could," "might," "potentially," or "it remains to be seen."
+3. The Predicted Moments section is at least 25% of the briefing by length.
+4. No trend name inside bold text includes a CPS score or number.
+5. Every item mixing predictions with observations uses 📍 (observed) or 🔮 (prediction) markers so the reader always knows which is which."""
 
 
 COLLISION_SECTION_TEMPLATE = """
@@ -358,6 +384,8 @@ def generate_briefing() -> str:
     collisions = load_collisions()
     historical = load_historical_flashpoints()
     moments    = load_active_moments()
+    snapshot   = load_cps_snapshot()
+    cps_deltas = compute_cps_deltas(trends, snapshot)
 
     logger.info(
         f"Data: {len(trends)} trends, {len(tensions)} tensions, "
@@ -423,6 +451,7 @@ def generate_briefing() -> str:
 
     prompt = BRIEFING_PROMPT.format(
         today=TODAY,
+        cps_deltas=cps_deltas,
         moments_data=moments_data,
         trends_data=trends_data,
         tensions_data=tensions_data,
@@ -431,7 +460,6 @@ def generate_briefing() -> str:
         collision_section=collision_section,
         collision_briefing_section=collision_briefing_section,
         historical_data=historical_data,
-        client_profiles=CLIENT_PROFILES,
         trends_count=len(trends),
         signals_count=len(signals),
         moments_count=len(moments),
