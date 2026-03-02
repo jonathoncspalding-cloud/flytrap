@@ -20,8 +20,8 @@ function AmbientTensionChip({ tension }: { tension: TensionEnriched }) {
       <div
         className="tension-hover tension-hover-gray"
         style={{
-          background: "rgba(255,130,0,0.04)",
-          border: "1px solid rgba(255,130,0,0.12)",
+          background: "rgba(255,130,0,0.10)",
+          border: "1px solid rgba(255,130,0,0.25)",
           borderRadius: 8,
           padding: "10px 14px",
           minWidth: 160,
@@ -32,8 +32,8 @@ function AmbientTensionChip({ tension }: { tension: TensionEnriched }) {
         <div
           style={{
             fontSize: 12,
-            fontWeight: 500,
-            color: "var(--text-secondary)",
+            fontWeight: 600,
+            color: "var(--text-primary)",
             lineHeight: 1.3,
             marginBottom: 8,
             display: "-webkit-box",
@@ -47,8 +47,8 @@ function AmbientTensionChip({ tension }: { tension: TensionEnriched }) {
         {/* Prevalence bar */}
         <div
           style={{
-            height: 3,
-            background: "var(--border)",
+            height: 4,
+            background: "rgba(255,130,0,0.12)",
             borderRadius: 2,
             overflow: "hidden",
             marginBottom: 4,
@@ -58,12 +58,12 @@ function AmbientTensionChip({ tension }: { tension: TensionEnriched }) {
             style={{
               width: `${pct}%`,
               height: "100%",
-              background: "rgba(255,130,0,0.35)",
+              background: "rgba(255,130,0,0.7)",
               borderRadius: 2,
             }}
           />
         </div>
-        <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
+        <div style={{ fontSize: 10, color: "rgba(255,130,0,0.5)" }}>
           {pct}% of trends
         </div>
       </div>
@@ -187,8 +187,8 @@ export default async function TensionsPage() {
       {ambient.length > 0 && (
         <section
           style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
+            background: "rgba(255,130,0,0.06)",
+            border: "1px solid rgba(255,130,0,0.18)",
             borderRadius: 12,
             padding: "16px 20px",
             marginBottom: 28,
@@ -196,13 +196,23 @@ export default async function TensionsPage() {
             overflow: "hidden",
           }}
         >
-          {/* Subtle radial glow */}
+          {/* Warm radial glow from top center */}
           <div
             style={{
               position: "absolute",
               inset: 0,
               background:
-                "radial-gradient(ellipse at 50% 0%, rgba(255,130,0,0.04), transparent 70%)",
+                "radial-gradient(ellipse at 50% 0%, rgba(255,130,0,0.12), transparent 70%)",
+              pointerEvents: "none",
+            }}
+          />
+          {/* Secondary glow from bottom for depth */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(ellipse at 50% 100%, rgba(255,130,0,0.05), transparent 60%)",
               pointerEvents: "none",
             }}
           />
@@ -223,7 +233,7 @@ export default async function TensionsPage() {
                   fontWeight: 700,
                   letterSpacing: "0.08em",
                   textTransform: "uppercase",
-                  color: "var(--text-tertiary)",
+                  color: "rgba(255,130,0,0.8)",
                 }}
               >
                 Cultural Atmosphere
@@ -231,14 +241,14 @@ export default async function TensionsPage() {
               <span
                 style={{
                   fontSize: 11,
-                  color: "var(--text-tertiary)",
+                  color: "rgba(255,130,0,0.45)",
                   marginLeft: 8,
                 }}
               >
                 Forces present in &gt;50% of active trends
               </span>
             </div>
-            <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+            <span style={{ fontSize: 11, color: "rgba(255,130,0,0.45)" }}>
               {ambient.length} background force
               {ambient.length !== 1 ? "s" : ""}
             </span>
