@@ -41,10 +41,21 @@ def decode_preview(data_uri: str) -> bytes:
     return base64.b64decode(data_uri)
 
 
-def make_asset_id(label: str) -> str:
-    """Convert option label like 'Midnight Garden' to 'CUSTOM_PAINTING_MIDNIGHT_GARDEN'."""
+CATEGORY_PREFIX = {
+    "Paintings": "CUSTOM_PAINTING_",
+    "Plants": "CUSTOM_PLANT_",
+    "Rug": "CUSTOM_RUG_",
+    "Bookcases": "CUSTOM_BOOKCASE_",
+    "Loveseats": "CUSTOM_LOVESEAT_",
+    "Coffee Table": "CUSTOM_COFFEE_TABLE_",
+}
+
+
+def make_asset_id(label: str, category: str) -> str:
+    """Convert option label like 'Midnight Garden' + category to 'CUSTOM_PAINTING_MIDNIGHT_GARDEN'."""
+    prefix = CATEGORY_PREFIX.get(category, "CUSTOM_")
     clean = re.sub(r"[^a-zA-Z0-9\s]", "", label)
-    return "CUSTOM_PAINTING_" + clean.strip().upper().replace(" ", "_")
+    return prefix + clean.strip().upper().replace(" ", "_")
 
 
 def save_png(asset_id: str, png_bytes: bytes) -> str:
@@ -159,7 +170,7 @@ def main():
     print()
 
     # 1. Decode and save the PNG
-    asset_id = make_asset_id(selected["label"])
+    asset_id = make_asset_id(selected["label"], proposal["category"])
     png_bytes = decode_preview(selected["preview"])
     filename = save_png(asset_id, png_bytes)
 

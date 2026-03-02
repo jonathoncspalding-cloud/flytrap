@@ -1,0 +1,204 @@
+{
+  "id": "2026-03-02",
+  "category": "Plants",
+  "description": "Ooh la la! The greenery situation needs a REFRESH. I've curated four botanical specimens that would make a Parisian conservatory weep with envy.",
+  "createdAt": "2026-03-02T04:14:09.905687+00:00",
+  "footprint": {
+    "w": 16,
+    "h": 32
+  },
+  "wallMounted": false,
+  "mustMatch": false,
+  "options": [
+    {
+      "label": "Tropical Fern",
+      "description": "Lush cascading fronds",
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAgCAYAAAAbifjMAAAC9klEQVR4nMVU20+SYRh/XpBxCNCBCgkhKHgA0dK0stOy1h/QRW2W2WHZ8aJWW/0HuVZtHW5arVZbtnXRum5d1GprDTXTVDIrpRmpDFkEBlOe9rz0fQmlUmPrd/G8z/fxHH+/9wPgf4OR2XxlJXZdH4SCujwwuHSgUCjg8TEP/63qUAlqbAqIjMZ5gv9lAFwtNpiZmYHnp/pYDn/ZF4BQb4SFeiPgdwZwxf5yMK0pROu2Qh749t4nCPaEmftwKTp2mGCkc4w3EbHuvBtXna1A8jddquVn2T4zUnfyHXtNSM/ka1wKfhrqdfxkZArq8nCyK8R9tVOOto1mUFlk4HsYgOnpaT6dudGA0WgUpFIpOHdZ4emJHh4vIROLxXiRDRdrUKlUAiJCcCgMs7OzPNnWYkCK0VYpgRp13/BCzVEHnyCHzLK1RsizLwFftx/s24tg5MEEkcXse4owHo+jXC4Hc7MBnp3s5V3D/d+ZXxlAcYL+ax8ZEalSqeDF6QFGahgb9GiqKQQiTSaTweDdUc6Xs83KE2k1sQBBq9Xys+lyHfEB+bW5fBWaRm6SiKxTYsluI1buLObPjNufrI57gqxodQEqyqS0Kx81161CjUYD4XAYiB9jg56v++T4KzFXhCClAOokvCd5S1uXpkgokiggkUgQ06hWq0HukMCHO18Y6R8bSwCYovD+tp+5DtqIWBj3QCoHBG+HDyqaLdw3Vulhy9V6pNtJCA0nT325Fr6+SRJIYJAG3XIN7+BuLeWqEJE9N4d44eH7n2Gicyolh6UXoBVoFZJu6vU3Vn3EjpFIhH9kjDGYGJiCd7fGficwHZUHilG49+svVCN9SKRQepwE5oGuTMM7EomTgyEY9wTFy7MonG1WFG6cAJpC+FIzQuM5lxicX5uLpMif4hiZ5gpV5pXnoMMbTf4jWSxJ7f8aXu8vGc9sTb3GAnw+37zdF1QhU0gEp/2Rd/HLkdY9pcC/QpLVAu0ZrDF3/OxPANkosNAa6eNnZYIfKSRB0Jxn7ZwAAAAASUVORK5CYII=",
+      "colors": [
+        [
+          20,
+          50,
+          15
+        ],
+        [
+          40,
+          100,
+          30
+        ],
+        [
+          60,
+          140,
+          45
+        ],
+        [
+          80,
+          170,
+          60
+        ],
+        [
+          120,
+          70,
+          40
+        ]
+      ]
+    },
+    {
+      "label": "Desert Succulent",
+      "description": "Chunky jade rosette in terracotta pot",
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAgCAYAAAAbifjMAAADCklEQVR4nMVTa0jTURQ/dw91W/jAsqm5oWYmZhaiIj00K0gxrVCyyHw0NI1KQ4wo/BAkhX2oNEJdKYkWlRFKFIVEYEn1xSh6GKtczZFbvtLNPeTGufafr81MBv3gf+/l3HvO+f3OOX+A/w2CS+7VXKp6owUXFxeQBrmzC6uVgFalh5BIf1DmKEl2XTbF+7rsOpJxcS91c+NDY0Ej82eILdxEcY85mEATjiWzc3RBPEV7jjKHYhK0pZzdyXYOPO4QHR/O9ojYYAhdGwAYBDO+uPKENCgaiMViYfcikQiSzqRSRYOC2gIkV6TR6sxqklWTRfl8PnR3fYfFMg/w8l8EW8pS2cPhYSPkX8+nY2Nj8OBkK6F0ggjBJbE0hYZFyUGnG4RbR5rIjvMZVK8eglUxQWAymUD9QQ/tlW2EkxgeHQj1B+qJjYHRaISu593Q874X0irTKUbvuPSIaLV6EAgEgPS3n9vFUq5YswzEYjEUNhVOSui83E6CI3xtGYe0BsiszqJms5lV3V0qgrbjd8nuqn3002sNS6jR9E0vYl/fAGDGh6fayBK5J+h6Bll2DPTjS/+EXkIgMi6E1aO1rGVSAsLV1ZXNAbbu9tFmgpoHe0cBWUiDvNkbT08JDAyMMJZcWwlMwcbibdTDV8zocrZ1h7dS/xAf4PF4gB3w8fGC2v21tnsCdpB3LY+Oj4/D0JCBSbFarcweECqFr+80TMqrmqfTJXCIL0mi6IizgJKeVT0mWFwcLoRQKATZSl/bewHMQGD4UpBIJNBScpN0/mGD9m8ff0JAqDfgDOC/AY6QXJHGHIqaiyh+nB0D4aTOfE/sBUm/sIeN7KjODDhUy1f7sRbfP3Fv1nuevQB3im+QkT4Tk4MtfPvyM8jlfrY/9q8BEktTKDr39/8Cg8HAgiAjLOa8JHCIO7SZRm0IY86OCkdwUciEs6jNB0q1hbA2ymSyhfgDqFWTEk6vD7bLQq1WO8zusIj/Ah53KO9QzVlQe9mnBVgoeE4NUD4PGVPpO58BOCPAXDJm0ncKg99mfUlmDdeTVAAAAABJRU5ErkJggg==",
+      "colors": [
+        [
+          60,
+          110,
+          70
+        ],
+        [
+          80,
+          140,
+          85
+        ],
+        [
+          100,
+          160,
+          100
+        ],
+        [
+          160,
+          80,
+          50
+        ],
+        [
+          130,
+          60,
+          35
+        ]
+      ]
+    },
+    {
+      "label": "Lavender Bloom",
+      "description": "Purple flowering plant in white pot",
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAgCAYAAAAbifjMAAADGUlEQVR4nMVUW0hUURRd5+I7LWIYHR1nMl9JqZVoappWpiUEVpJgKlhWRk+KSnOkMNNeVBBUWESKYikpRWJBaA8SB4tCMzBEtBF/ciJUEt8n9olro82EidD6uPecO2evvfZe+wzwv8Hkxfntd/jn7m4U688yeW9nZ4fR0VGcfLCLFSQWcR8fNWpfNsHf0xM2NjY4XLyDicM7w8/wJRoNbG1tMTY2BpVqPozGQSiV89DY3I7+/n44OTnBw9kZBqMRPmo1PnV24vbrXCYRwfj4OL709uJjRwfU6oVIu5bINBoFUq9uYzfqspi9vT0YY0JJTPhyHClJYaSMINEjyM8Pt16cYtbW1qDDhKGhIVTnPuMkfWRkBBqFAvvXX+A19Xrxe6C399QeEPatLeSDg4OiFMpAWWMjVqKusRl3G86Is1dSSjglGhgYgK4q81cJqcE5XC4lPjoESz08RDO3xEXCYDBieHgYD3NqefnxR7y9pwfUbAqmGIkeZe8KxWZdaACSLycwahAhIS+WESkpoZIkSUJkkB8WKZWoyHoikk7ieno5pxopC+0PbrjE00J0PCMij2dGF4hvVbqn4r1nTf5ksCQvyNPFLi54874NZceqRS8cHR1F7Z4qlfiWWBDPiJicSA87zacQEJrb24U88t5Pq4Wvuzvun3jMqSQqgxRNTEygu/vb5MBJMMGmqGBkVWSwvr4+4XmbwSB6ssrfH88bPqD0bQEjZTSFMiRTgt7eH+IdGhAg3kWvdGKEXVycRMYDMRe5g4ODGCQ5hmEa6A7QVMZFBqGn5zuaWltFZmok9Si7cveUGAYzIIvIf845vLxchX1b8zcKBd5ubjhammZZgQxqHl0ohcJeOLN6ha+4G5gGCWawN+oct7KyAnW8Xt+Cm/XZjILlOTCFlTkC8rmr66uwlaaUCKNDloHmYPpZBgugi0X33tV1gSCj/4ND95LNE1RW1vwhbSZIStrMRAlarXY28b8VEPT6FrMqDAaDxewWXfgXSPIiLCzQYkMtZZ9CMFtIc0oQNoMyTOXPvQLMBcHfypguf04U/AT/Pkn3WghsdAAAAABJRU5ErkJggg==",
+      "colors": [
+        [
+          100,
+          60,
+          130
+        ],
+        [
+          140,
+          90,
+          160
+        ],
+        [
+          170,
+          120,
+          180
+        ],
+        [
+          220,
+          220,
+          230
+        ],
+        [
+          200,
+          200,
+          210
+        ]
+      ]
+    },
+    {
+      "label": "Monstera Leaf",
+      "description": "Big split leaves in deep green",
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAgCAYAAAAbifjMAAAC8UlEQVR4nMVT60/SURh+DqIkogEKhiCohCLOW9bU5tIua25d/oC+tHVd9fe0Vn1prfkHdPlQH1wzW+u2ylJ0IsHPRLwQiCKIyGnvISTJW46t58P5nXN+532f53nPe4D/DUZD1TkHZ4zh++NhsbZfOcQD7gAq6iuwsLAApVIJ/+tJFFaWIDDmB+ccJTWlmOv3MhkFRLwhyDQyNFw/wvdVF3Nvvwtra2v4cvsNW5ldQTQaFUFl1jLk5eXB1F0t/hNkNMwN+RixTLwYha3XgaqTNiT8UVjO1nNKHv4UgPm4FYlEAhFXiFGytZlYJgFhelBCfn6+YIv4ImLufepk5UdN0HVUwOf0Yfjue6ayabj74Tem7zSKOLkYAajbdIjNxATL/Oi08FjX3spD3hCWPEHBTOdof2k8KAgJjAbHtcN88ccilAZlKqtcjtnxWVEkWhcdVPNkMomoO8zobCwWQ9ATRHBgKlXEkXsfGAXRISoOSTU6UhIpwHraLiyp63Wc6uR75YXaot5Yg8IDhUK+68EQK+2p5JMv3Wi62cGj/iiWl5eRb1AKgoKCAshkMix+/pmxkAZdYZFFjbgvIqoeiUTgeTTCaL+ypwbzE/PiGg12A8iy58kI25CAYOy1cWJR6BXCDkn3j/mhUqkgPRtljTfa+dc7b/+KW4fGoedK635e1mjgdZdbOdmh/fIWE9ccM4p59fkG8SUwZEHbbRJtrbfpEZ4MY2VqCUltHmhPoVDA99y1NXsaxbVaTkpoTiqoeeqvtol1863OdXYCQxZ0JyxcU6URlZ4a8Ig6UJvH43HRkYF3foScc9ur0Pz2WnupRXytFxtFPfTNqf0dUVJXyilY11QhpFNR04myz8o3S7C6uiraubhFC+f9jyztnV7hrmE+Y09d36lqTjez1TlGQ5cZ/5A6g0EJTFgwm817iQckKXONF7rMm6qQJGlL9g2vca+QpSd9g9LOLZrFnlsFOUnQtwsbf8rPvQLkIsF2NrLl50TBL8KNSEZdsFf1AAAAAElFTkSuQmCC",
+      "colors": [
+        [
+          15,
+          40,
+          20
+        ],
+        [
+          25,
+          70,
+          35
+        ],
+        [
+          40,
+          100,
+          50
+        ],
+        [
+          55,
+          130,
+          65
+        ],
+        [
+          90,
+          60,
+          30
+        ]
+      ]
+    }
+  ],
+  "targets": [
+    {
+      "uid": "f-1770831788343-fbxl",
+      "type": "ASSET_143",
+      "col": 1,
+      "row": 11
+    },
+    {
+      "uid": "f-1770831791526-md8k",
+      "type": "ASSET_142",
+      "col": 1,
+      "row": 19
+    },
+    {
+      "uid": "f-1771254122890-desz",
+      "type": "ASSET_142",
+      "col": 10,
+      "row": 19
+    },
+    {
+      "uid": "f-1771254147816-bpkr",
+      "type": "ASSET_140",
+      "col": 14,
+      "row": 15
+    },
+    {
+      "uid": "f-1771254151704-exrz",
+      "type": "ASSET_141",
+      "col": 17,
+      "row": 15
+    },
+    {
+      "uid": "f-1771277574471-hcv0",
+      "type": "ASSET_142",
+      "col": 3,
+      "row": 1
+    },
+    {
+      "uid": "f-1771277575299-mfxh",
+      "type": "ASSET_142",
+      "col": 8,
+      "row": 1
+    },
+    {
+      "uid": "f-1771277802319-1joi",
+      "type": "ASSET_140",
+      "col": 19,
+      "row": 19
+    },
+    {
+      "uid": "f-1771277804247-jvcl",
+      "type": "ASSET_141",
+      "col": 12,
+      "row": 19
+    },
+    {
+      "uid": "f-1772315438938-45z4",
+      "type": "ASSET_132",
+      "col": 9,
+      "row": 17
+    }
+  ]
+}

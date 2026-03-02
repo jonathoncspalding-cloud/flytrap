@@ -370,17 +370,29 @@ def img_to_base64(img: Image.Image) -> str:
     return f"data:image/png;base64,{b64}"
 
 
-def get_targets(layout_path: str, target_types: list[str]) -> list[dict]:
-    """Find furniture items in layout JSON matching target types."""
+def get_targets(layout_path: str, target_types: list[str], category_name: str) -> list[dict]:
+    """Find furniture items in layout JSON matching target types.
+    Also matches CUSTOM_ items that previously replaced originals in this category."""
+    # Map category names to their CUSTOM_ prefix patterns
+    custom_prefixes = {
+        "Paintings": "CUSTOM_PAINTING_",
+        "Plants": "CUSTOM_PLANT_",
+        "Rug": "CUSTOM_RUG_",
+        "Bookcases": "CUSTOM_BOOKCASE_",
+        "Loveseats": "CUSTOM_LOVESEAT_",
+        "Coffee Table": "CUSTOM_COFFEE_TABLE_",
+    }
+    prefix = custom_prefixes.get(category_name, "")
     try:
         with open(layout_path) as f:
             data = json.load(f)
         targets = []
         for item in data.get("furniture", []):
-            if item["type"] in target_types:
+            item_type = item["type"]
+            if item_type in target_types or (prefix and item_type.startswith(prefix)):
                 targets.append({
                     "uid": item["uid"],
-                    "type": item["type"],
+                    "type": item_type,
                     "col": item["col"],
                     "row": item["row"],
                 })
@@ -418,7 +430,7 @@ def generate_proposal(category_name: str | None = None) -> dict:
     # Find targets in the current layout
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     layout_path = os.path.join(project_root, "dashboard", "components", "pixel-office", "office-layout.json")
-    targets = get_targets(layout_path, cat["targets_query"])
+    targets = get_targets(layout_path, cat["targets_query"], cat["name"])
 
     proposal = {
         "id": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
