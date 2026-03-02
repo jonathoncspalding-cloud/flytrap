@@ -220,6 +220,14 @@ def process_signals_batch(signals: list, tensions: list, trends: list) -> list:
             max_tokens=6000,
             messages=[{"role": "user", "content": prompt}],
         )
+        # Token usage logging
+        usage = message.usage
+        logger.info(
+            f"  [TOKENS] signal_processor batch: "
+            f"input={usage.input_tokens} output={usage.output_tokens} "
+            f"total={usage.input_tokens + usage.output_tokens} "
+            f"cost=${usage.input_tokens * 3 / 1_000_000 + usage.output_tokens * 15 / 1_000_000:.4f}"
+        )
         raw = message.content[0].text.strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]

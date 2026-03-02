@@ -105,7 +105,7 @@ def run_processing() -> dict:
     """Run Claude signal processing on unprocessed Evidence Log entries."""
     from processors.signal_processor import run as process
     logger.info("=== STAGE 2: Signal Processing ===")
-    result = process(hours=24, batch_size=15)
+    result = process(hours=24, batch_size=20)
     logger.info(f"Processing complete: {result}")
     return result
 
@@ -135,6 +135,49 @@ def run_briefing() -> dict:
     result = brief()
     logger.info(f"Briefing complete: {result}")
     return result
+
+
+def _print_cost_summary():
+    """Parse [TOKENS] lines from the pipeline log and print a cost summary."""
+    import re
+    log_path = os.path.join(os.path.dirname(__file__), "..", "pipeline.log")
+    if not os.path.exists(log_path):
+        return
+    try:
+        total_input = 0
+        total_output = 0
+        total_cost = 0.0
+        stage_costs = {}
+        # Read only lines from this run (last N lines — scan backwards)
+        with open(log_path, "r") as f:
+            lines = f.readlines()
+        # Find lines from this run containing [TOKENS]
+        for line in lines:
+            if "[TOKENS]" not in line:
+                continue
+            m = re.search(
+                r"\[TOKENS\] (\w+).*?input=(\d+) output=(\d+).*?cost=\$([0-9.]+)",
+                line,
+            )
+            if m:
+                stage = m.group(1)
+                inp = int(m.group(2))
+                out = int(m.group(3))
+                cost = float(m.group(4))
+                total_input += inp
+                total_output += out
+                total_cost += cost
+                stage_costs[stage] = stage_costs.get(stage, 0.0) + cost
+
+        if total_cost > 0:
+            logger.info("=== 💰 COST SUMMARY ===")
+            for stage, cost in sorted(stage_costs.items(), key=lambda x: -x[1]):
+                logger.info(f"  {stage}: ${cost:.4f}")
+            logger.info(f"  ─────────────────")
+            logger.info(f"  TOTAL: ${total_cost:.4f} ({total_input:,} input + {total_output:,} output tokens)")
+            logger.info(f"  Projected monthly (1 run/day): ${total_cost * 30:.2f}")
+    except Exception as e:
+        logger.debug(f"Cost summary failed (non-fatal): {e}")
 
 
 def main():
@@ -212,6 +255,9 @@ def main():
     elapsed = (datetime.now(timezone.utc) - start).total_seconds()
     logger.info(f"=== Pipeline complete in {elapsed:.0f}s ===")
     logger.info(f"Summary: {results}")
+
+    # Aggregate token cost from [TOKENS] log lines emitted by processors
+    _print_cost_summary()
 
     # Update shared agent state
     if _update_pipeline:

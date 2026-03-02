@@ -167,6 +167,35 @@ def load_velocity() -> dict:
         return {}
 
 
+def load_prediction_market_signals(days: int = 7) -> list:
+    """
+    Load recent prediction market signals from the Evidence DB.
+    These carry unique intelligence: probabilities, resolution dates, volume, volatility.
+    """
+    if not EVIDENCE_DB:
+        return []
+    cutoff = (date.today() - timedelta(days=days)).isoformat()
+    pages = query_database(
+        EVIDENCE_DB,
+        filter_obj={
+            "and": [
+                {"property": "Source Platform", "select": {"equals": "Prediction Market"}},
+                {"property": "Date Captured", "date": {"on_or_after": cutoff}},
+            ]
+        },
+    )
+    signals = []
+    for p in pages:
+        props = p["properties"]
+        title = get_page_title(p)
+        raw_rt = (props.get("Raw Content") or {}).get("rich_text") or []
+        raw = raw_rt[0]["plain_text"] if raw_rt else ""
+        summary_rt = (props.get("Summary") or {}).get("rich_text") or []
+        summary = summary_rt[0]["plain_text"] if summary_rt else ""
+        signals.append({"title": title, "raw": raw[:400], "summary": summary[:200]})
+    return signals[:20]
+
+
 def load_existing_moments() -> list:
     """Load all non-Passed, non-Missed moment predictions."""
     if not MOMENTS_DB:
@@ -270,6 +299,33 @@ Today: {today}
 ═══ ACTIVE COLLISIONS (converging trends — explosion points) ═══
 {collision_data}
 
+═══ PREDICTION MARKET INTELLIGENCE (money-backed probabilities) ═══
+{prediction_market_data}
+
+HOW TO USE PREDICTION MARKETS:
+Polymarket data serves two distinct roles depending on what the market is about:
+
+1. SOME MARKETS ARE CULTURAL MOMENTS THEMSELVES:
+   "Will an AI-generated film win a major award?" — that IS a cultural flashpoint. The market existing with $500k volume tells you the cultural tension is real and money-backed. Use probability + volume as direct evidence for confidence scoring.
+   "Will a major brand exit International Women's Day?" — same. The market IS the cultural signal.
+   When a market is directly about culture, identity, media, or consumer behavior, treat it as high-quality moment evidence.
+
+2. SOME MARKETS ARE CATALYSTS FOR CULTURAL MOMENTS:
+   "Fed cuts rates" is a world event. But it CATALYZES cultural moments: "Rate cut triggers generational housing despair discourse" or "Financial influencers clash over 'told you so' narratives."
+   "Ukraine ceasefire" is geopolitics. But it catalyzes: "Ceasefire becomes backdrop for fractured trust-in-institutions debate."
+   For these, use resolution dates for TIMING and probabilities to assess WHETHER the catalyst fires — but predict the CULTURAL FALLOUT, not the event.
+
+USE prediction markets for:
+- TIMING: Resolution dates = when attention concentrates. Combine with calendar events and tensions.
+- CONVICTION: High volume ($500k+) = significant public stakes. Use as evidence density.
+- NARRATIVE SHIFT: Large price swings (10%+) = something just changed. Ask what cultural conversation this accelerates.
+- PROBABILITY: Factor into whether a catalyst will fire and calibrate confidence accordingly.
+
+GUARD AGAINST:
+- Filling predictions with events that lack cultural dimension (pure finance, sports outcomes, crypto)
+- Every prediction must still intersect 2+ cultural tensions — Polymarket data strengthens the case but doesn't replace the tension requirement
+- If a prediction reads like a betting slip rather than a cultural forecast, rewrite it
+
 ═══ EXISTING PREDICTIONS (update or retire these) ═══
 {existing_moments}
 
@@ -339,8 +395,10 @@ Respond with a JSON object. No other text. Format:
 }}"""
 
 
-def generate_moments(tensions, trends, velocity_summaries, events, collisions, existing_moments):
+def generate_moments(tensions, trends, velocity_summaries, events, collisions, existing_moments, prediction_market_signals=None):
     """Call Claude to generate/update moment predictions."""
+    if prediction_market_signals is None:
+        prediction_market_signals = []
 
     tensions_data = "\n".join([
         f"- {t['name']} (weight: {t['weight']}/10): {t['description']}"
@@ -371,6 +429,11 @@ def generate_moments(tensions, trends, velocity_summaries, events, collisions, e
         for c in collisions[:8]
     ]) or "(no active collisions)"
 
+    prediction_market_data = "\n".join([
+        f"- {s['title']}\n  {s['raw']}"
+        for s in prediction_market_signals
+    ]) or "(no prediction market data available)"
+
     existing_str = "\n".join([
         f"- [{m['id']}] \"{m['name']}\" ({m['type']}, {m['horizon']}, {m['status']}) "
         f"confidence:{m['confidence']} magnitude:{m['magnitude']}"
@@ -390,6 +453,7 @@ def generate_moments(tensions, trends, velocity_summaries, events, collisions, e
         velocity_data=velocity_data,
         calendar_data=calendar_data,
         collision_data=collision_data,
+        prediction_market_data=prediction_market_data,
         existing_moments=existing_str,
         max_moments=MAX_ACTIVE_MOMENTS,
     )
@@ -416,6 +480,14 @@ def generate_moments(tensions, trends, velocity_summaries, events, collisions, e
                 model="claude-sonnet-4-5",
                 max_tokens=8192,
                 messages=messages,
+            )
+            # Token usage logging
+            usage = message.usage
+            logger.info(
+                f"  [TOKENS] moment_forecaster: "
+                f"input={usage.input_tokens} output={usage.output_tokens} "
+                f"total={usage.input_tokens + usage.output_tokens} "
+                f"cost=${usage.input_tokens * 3 / 1_000_000 + usage.output_tokens * 15 / 1_000_000:.4f}"
             )
             raw = message.content[0].text.strip()
             stop_reason = message.stop_reason
@@ -863,11 +935,14 @@ def run() -> dict:
     velocity_summaries = compute_velocity_summary(velocity)
     existing_moments = load_existing_moments()
 
+    prediction_market_signals = load_prediction_market_signals(days=7)
+
     logger.info(
         f"Context: {len(tensions)} tensions, {len(trends)} trends, "
         f"{len(events)} events, {len(collisions)} collisions, "
         f"{len(velocity_summaries)} velocity entries, "
-        f"{len(existing_moments)} existing moments"
+        f"{len(existing_moments)} existing moments, "
+        f"{len(prediction_market_signals)} prediction market signals"
     )
 
     # Auto-retire expired predictions
@@ -879,7 +954,8 @@ def run() -> dict:
 
     # Generate / update via Claude
     result = generate_moments(
-        tensions, trends, velocity_summaries, events, collisions, existing_moments
+        tensions, trends, velocity_summaries, events, collisions, existing_moments,
+        prediction_market_signals=prediction_market_signals,
     )
 
     updates = result.get("updates", [])

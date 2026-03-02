@@ -447,6 +447,17 @@ def generate_briefing() -> str:
                     max_tokens=3000,
                     messages=[{"role": "user", "content": prompt}],
                 )
+                # Token usage logging — price depends on model
+                usage = message.usage
+                input_rate = 15 if "opus" in model else 3  # $/MTok
+                output_rate = 75 if "opus" in model else 15
+                cost = usage.input_tokens * input_rate / 1_000_000 + usage.output_tokens * output_rate / 1_000_000
+                logger.info(
+                    f"  [TOKENS] briefing_generator ({model}): "
+                    f"input={usage.input_tokens} output={usage.output_tokens} "
+                    f"total={usage.input_tokens + usage.output_tokens} "
+                    f"cost=${cost:.4f}"
+                )
                 if attempt == 2:
                     logger.info(f"Briefing generated with fallback model: {model}")
                 return message.content[0].text.strip()
