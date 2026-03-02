@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getTension, getTrendsForTension, getEvidenceForTension } from "@/lib/notion";
+import { getTension, getTrends, getTrendsForTension, getEvidenceForTension } from "@/lib/notion";
 import TrendCard from "@/components/TrendCard";
 import { cpsTextColor, cpsLabel } from "@/components/CpsBar";
+
+/** Tensions linked to >= this fraction of active trends are "ambient" */
+const AMBIENT_THRESHOLD = 0.5;
 
 export const revalidate = 300;
 
@@ -41,10 +44,11 @@ const SENTIMENT_COLOR: Record<string, string> = {
 
 export default async function TensionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [tension, linkedTrends, evidence] = await Promise.all([
+  const [tension, linkedTrends, evidence, allTrends] = await Promise.all([
     getTension(id),
     getTrendsForTension(id),
     getEvidenceForTension(id),
+    getTrends(),
   ]);
 
   if (!tension) notFound();
@@ -52,6 +56,11 @@ export default async function TensionDetailPage({ params }: { params: Promise<{ 
   const color = weightColor(tension.weight);
   const flashpoints = linkedTrends.filter(t => t.cps >= 80);
   const risingHeat = linkedTrends.filter(t => t.cps >= 60 && t.cps < 80);
+
+  // Prevalence: what fraction of all active trends does this tension touch?
+  const prevalence = allTrends.length > 0 ? linkedTrends.length / allTrends.length : 0;
+  const isAmbient = prevalence >= AMBIENT_THRESHOLD;
+  const prevalencePct = Math.round(prevalence * 100);
 
   return (
     <div>
@@ -71,8 +80,20 @@ export default async function TensionDetailPage({ params }: { params: Promise<{ 
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20, marginBottom: 16 }}>
           <div>
-            <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginBottom: 6, letterSpacing: "0.06em" }}>
+            <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginBottom: 6, letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 8 }}>
               CULTURAL TENSION
+              {isAmbient && (
+                <span style={{
+                  fontSize: 10, fontWeight: 600,
+                  padding: "2px 8px", borderRadius: 4,
+                  background: "rgba(255,130,0,0.1)",
+                  color: "rgba(255,130,0,0.6)",
+                  border: "1px solid rgba(255,130,0,0.15)",
+                  letterSpacing: "0.04em",
+                }}>
+                  AMBIENT FORCE &mdash; {prevalencePct}% of trends
+                </span>
+              )}
             </div>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0, lineHeight: 1.3 }}>
               {tension.name}
@@ -116,6 +137,10 @@ export default async function TensionDetailPage({ params }: { params: Promise<{ 
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{evidence.length}</div>
             <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>evidence pieces</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: isAmbient ? "rgba(255,130,0,0.6)" : "var(--text-primary)" }}>{prevalencePct}%</div>
+            <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>prevalence</div>
           </div>
         </div>
       </div>
