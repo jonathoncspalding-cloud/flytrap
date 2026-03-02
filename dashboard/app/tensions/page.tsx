@@ -74,11 +74,16 @@ function AmbientTensionChip({ tension }: { tension: TensionEnriched }) {
 export default async function TensionsPage() {
   const [tensions, trends] = await Promise.all([getTensions(), getTrends()]);
 
-  // Count linked flashpoints per tension
+  // Count how many trends link to each tension (computed from the Trends side,
+  // since Notion reverse relations aren't populated in query results)
+  const trendCountByTension = new Map<string, number>();
   const flashpointsByTension = new Map<string, number>();
-  for (const t of trends.filter((tr) => tr.cps >= 80)) {
-    for (const tid of t.linkedTensions ?? []) {
-      flashpointsByTension.set(tid, (flashpointsByTension.get(tid) ?? 0) + 1);
+  for (const tr of trends) {
+    for (const tid of tr.linkedTensions ?? []) {
+      trendCountByTension.set(tid, (trendCountByTension.get(tid) ?? 0) + 1);
+      if (tr.cps >= 80) {
+        flashpointsByTension.set(tid, (flashpointsByTension.get(tid) ?? 0) + 1);
+      }
     }
   }
 
@@ -86,7 +91,7 @@ export default async function TensionsPage() {
   const activeTrendCount = trends.length;
 
   const tensionsEnriched: TensionEnriched[] = tensions.map((t) => {
-    const linkedCount = t.linkedTrendIds?.length ?? 0;
+    const linkedCount = trendCountByTension.get(t.id) ?? 0;
     const prevalence =
       activeTrendCount > 0 ? linkedCount / activeTrendCount : 0;
     return {
