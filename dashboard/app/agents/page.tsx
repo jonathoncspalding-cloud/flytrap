@@ -1,6 +1,7 @@
 import { getAgentActivity, getTrends, getAllMoments, AgentActivity, AgentName } from "@/lib/notion";
 import CommandCenter from "@/components/CommandCenter";
 import TriggerButton from "@/components/TriggerButton";
+import IsabelProposal from "@/components/IsabelProposal";
 
 export const revalidate = 0; // Always fresh
 
@@ -126,6 +127,7 @@ export default async function AgentsPage() {
             const latest = latestByAgent.get(agent.name) ?? null;
             return <AgentStatusCard key={agent.name} agent={agent} latest={latest} />;
           })}
+          <IsabelProposal />
         </div>
 
         <StandupDigest digest={digest} />

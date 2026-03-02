@@ -29,6 +29,16 @@ on:
           - optimize
           - strategist
           - architect
+      mode:
+        description: "Run mode (normal or implement)"
+        required: false
+        type: string
+        default: "normal"
+      selection:
+        description: "Proposal selection index (0-3) for implement mode"
+        required: false
+        type: string
+        default: ""
 
   # Sentinel reviews agent PRs
   pull_request:
@@ -41,42 +51,32 @@ permissions:
   id-token: write
 
 jobs:
-  # ── Isabel: Weekly Office Refresh ─────────────────────────────────────────
-  isabel-weekly-refresh:
+  # ── Isabel: Weekly Proposal Generation ───────────────────────────────────
+  isabel-weekly-proposal:
     if: >-
       (github.event.schedule == '0 15 * * 1') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.agent == 'isabel')
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.agent == 'isabel' && github.event.inputs.mode != 'implement')
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
-      - uses: anthropics/claude-code-action@v1
-        with:
-          prompt: |
-            Before starting, read data/agent_state.json to understand current system health and what other agents have reported. Factor this context into your decisions.
+      - name: Install dependencies
+        run: pip install Pillow python-dotenv requests
 
-            You are Isabel, the interior designer agent. Read your full agent config from .claude/agents/isabel.md and follow its design philosophy.
+      - name: Generate proposal
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+        run: python3 scripts/agents/isabel_proposal.py
 
-            This is your weekly office refresh. Your task:
-            1. Read dashboard/components/pixel-office/office-layout.ts — understand the current buildFurnitureList()
-            2. Read dashboard/components/pixel-office/sprites.ts — check available FURNITURE_DEFS
-            3. Make 2-4 small, intentional changes to buildFurnitureList():
-               - Swap a painting position or replace one furniture item with another
-               - Rotate plants to different spots
-               - Add a seasonal accent (move a lamp, add a plant to an empty corner)
-               - Restyle a corner that feels stale
-            4. Run `npx tsc --noEmit` to verify no TypeScript errors
-            5. Describe what you changed and why, in Isabel Ladd's confident voice
-
-            Rules:
-            - Only modify office-layout.ts (furniture placement). Do NOT modify sprites.ts or types.ts.
-            - Only use furniture types that exist in FURNITURE_DEFS
-            - Don't block walkways — check buildWalkableMap logic
-            - Keep changes small and reversible
-          branch_prefix: "agent/isabel/"
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          claude_args: "--max-turns 15"
+      - name: Commit proposal to main
+        run: |
+          git config user.name "flytrap-bot"
+          git config user.email "flytrap-bot@users.noreply.github.com"
+          git add dashboard/public/proposals/isabel.json || true
+          git diff --cached --quiet || git commit -m "feat: Isabel's weekly furniture proposal [skip ci]"
+          git push origin main || true
 
       - name: Update agent state
         if: always()
@@ -85,7 +85,7 @@ jobs:
           python3 -c "
           import sys; sys.path.insert(0, 'scripts/agents')
           from agent_state import update_agent
-          update_agent('isabel', 'healthy' if '${{ job.status }}' == 'success' else 'error', ['Autonomy run: ${{ job.status }}'])
+          update_agent('isabel', 'healthy' if '${{ job.status }}' == 'success' else 'error', ['Proposal generated: ${{ job.status }}'])
           "
 
       - name: Commit state changes
@@ -102,6 +102,71 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: claude-execution-${{ github.job }}-${{ github.run_id }}
+          path: /home/runner/work/_temp/claude-execution-output.json
+          retention-days: 7
+
+  # ── Isabel: Implement Selected Proposal ──────────────────────────────────
+  isabel-implement-proposal:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.agent == 'isabel' &&
+      github.event.inputs.mode == 'implement'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          prompt: |
+            You are Isabel, the interior designer agent. Read your full agent config from .claude/agents/isabel.md.
+
+            The user has selected option ${{ github.event.inputs.selection }} from your weekly proposal.
+
+            Your task:
+            1. Read dashboard/public/proposals/isabel.json to get the proposal details
+            2. The selected option index is ${{ github.event.inputs.selection }} (0-based)
+            3. Read the pixel-agents-furniture skill for sprite creation guidance
+            4. Create the production PNG sprite(s) using Python/Pillow based on the selected option's colors and design
+            5. Save the PNG(s) to dashboard/public/sprites/furniture/ with a descriptive CUSTOM_* filename
+            6. Add the new asset to FURNITURE_ASSETS in dashboard/components/pixel-office/sprites.ts
+            7. Update dashboard/components/pixel-office/office-layout.json — replace the target furniture items with the new custom type
+            8. Run `npx tsc --noEmit` to verify TypeScript compiles
+            9. Delete dashboard/public/proposals/isabel.json (proposal is now implemented)
+            10. Describe what you implemented in Isabel's dramatic voice
+
+            Rules:
+            - The replacement MUST have the same footprint as what it replaces
+            - Follow all constraints from your agent config (replaceable categories, matching rules)
+            - Use CUSTOM_ prefix for new asset IDs
+            - Commit directly to main (no branch/PR needed)
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--max-turns 25"
+
+      - name: Update agent state
+        if: always()
+        run: |
+          pip install python-dotenv 2>/dev/null || true
+          python3 -c "
+          import sys; sys.path.insert(0, 'scripts/agents')
+          from agent_state import update_agent
+          update_agent('isabel', 'healthy' if '${{ job.status }}' == 'success' else 'error', ['Proposal implemented: ${{ job.status }}'])
+          "
+
+      - name: Commit all changes
+        if: always()
+        run: |
+          git config user.name "flytrap-bot"
+          git config user.email "flytrap-bot@users.noreply.github.com"
+          git add -A || true
+          git diff --cached --quiet || git commit -m "feat: Isabel implemented furniture proposal"
+          git push origin main || true
+
+      - name: Upload execution log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-execution-implement-${{ github.run_id }}
           path: /home/runner/work/_temp/claude-execution-output.json
           retention-days: 7
 

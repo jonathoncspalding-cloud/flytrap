@@ -1,0 +1,156 @@
+{
+  "id": "2026-03-02",
+  "category": "Paintings",
+  "description": "Mon dieu! Those walls deserve FRESH art, darling. I've painted four masterpieces -- each one more dramatic than the last!",
+  "createdAt": "2026-03-02T03:10:01.387038+00:00",
+  "footprint": {
+    "w": 32,
+    "h": 32
+  },
+  "wallMounted": true,
+  "mustMatch": false,
+  "options": [
+    {
+      "label": "Midnight Garden",
+      "description": "Lush botanicals in deep navy & emerald",
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFSklEQVR4nMXX2W6URxAF4J7Ny4y38RAwEjiKggADNzFC4oZHz5PkKtdhB2OM7ZnoK/t0bOUBaGlm/r+7uurUqaV7Bk8P76zaTxxjX3+fHLThcNguLi7a5uZmPf/48aOtVqu2tbXVzs7OSvjbt29tNpu1tUcX9T4YDNr5+XntIWu/OZ/Ly8v2/fv3tru72z58+NDuPpvX3nfv3rXFYlFroz//ugIwnU7beDwuZaenp6VgfX29ra2tleLlclmAvANHxrpn4+vXr/VsjuKNjY2aH41GJQuEeaAmk0npZMMoDTYz7sNIhLzzHvLt7e1amx0NSiEF1gBnON5jDCB7zdG13D8rJ8mRef/+fTnUQ3ByclJGIKYQZbyIt8CUZ4+X7fx81r58+VKAKOGVfX4/f/5cejDGsHUgp6NJ6aXLvoRoGQBQ22wj726yYAMDW8+u8oJ3wHm2LzTv7e11oAzYP5/P22px5al9ZDEDDGCThKBeJpMS4B10NhCk0FzYYRS1SVIs+TUot5ecufHBqmgPGPvYojN7hikH1N1URElX9vCkGAIqCZmsT64ACIzfUnz3st4rB5bLkjUSgryPfUFEmEEhYDR03zmetulqXmvK0LyEQnuS1B4sGcJDLhUE+M7OTuni5MePH0te6Z6HAQIMoBe6m4ZCFy+g9wssJYyhGGAGrXlePNkpDz0nH5I3qRjgewigYgQIn4REyQVAys4vQzxO6VoHwPPGg1HPqYRUlQEDeJL0FoD5fF4TKR1D3Aknhii3hjoMJa7Yo1iHwxiq9/f3S4bXYZF8HAQ+TWzoyyTFBk8o9puGIo7mUgHplD7WQu30cFKAgbH/06dPlZTCRY6d9JuerK21nuHp+dOnrTzmSeLn2WAoSoBR/2TvPd8vmjGSZPRMd2X7eNzDEFZ6FVhgiCLdjgAvGAPKJpSm0QDTu9lyWfPWMZRQ0gUgXWQwTB9ZzPwvBIYsJ6BXy4skHWEe5XRM7cfw4fH9mhdb1GOHPHYCQJgkY5Lw+fN7/wHYvT6tBr9e9X3vjEMMCAUqJYdLGpVQ3Hm6W/NpWm/fvi0Zg6feGUyOpTQB7gDQJe7J+hzLPApiZ3haNG8AqrK7PnrTeIDmqT2JOZ0pRXuOjw974xr7qkvI+hVK9EEeZtIfJJM1bDDqee/RrFOb4zrnfF04RqOeD3TT8fr1o5LPGPo6WfxTG9Pfc5h49knGi6eP593fp92zHM28TzcEMj0jRzEb+bWnA0gzsWhDupjftFgxy/mQg8u9IbTG8/QOwCq002nlk7kXLw7KVsLVAYQ6kwQI25hcYBh93ium91vJynID0MRerpDnoTCExTdvjgo4Hbmw9BxIjFNi3pM80NdVbDareReM5ECUGZIyRzgQac3xNuuxh6nOAO8lHOQM80z89IM0D+V0s61SQBEDRupdAmMi+UDny5e/FiM5CXOqdgaURGLO41BZCIfDTplezxNriXvKKdc3+z2noh48uDqyc5qao//WWbB53SaTfLzKBTJZ/PCPg9oQBTf/O6RjYiZJmQtpLrmAspF75K1r+enpaT8qc1lI7ClKs2G4mLguxdS6fRRGLn0A9YAmN4DIVSztfxwGQk8OJp7nCHbJ4B0jAFGeC2puTrk1BdSTJ4vegABPe8/BlIQcpwzTAeM15N73H293VgDLvZ/SzHlOv8hfu+RPWE0H5QjnEoKxLyXDA8csQUjFP/07f6lS8/kHFY+AMq9qjKOjX3onzZHNmfzZIX/rOG7XR3Fux6kGJ11uL/nkP2Jq3FwyH82vXv3WQaVx5fbkPXeG9IHBz/57/i82WAr33hrRGQAAAABJRU5ErkJggg==",
+      "colors": [
+        [
+          15,
+          25,
+          50
+        ],
+        [
+          20,
+          60,
+          45
+        ],
+        [
+          35,
+          95,
+          55
+        ],
+        [
+          80,
+          140,
+          80
+        ],
+        [
+          200,
+          180,
+          120
+        ]
+      ]
+    },
+    {
+      "label": "Sunset Coast",
+      "description": "Warm amber horizon over violet sea",
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFiElEQVR4nMXXTW8cRRAG4N7xOrvxR7xOHBwUJREiB04cuCQgoQD5UlBCgCAIB4TEL+M3cedDQhwQTrz2xInXXtvo6eWdePkDGWl2drq7qt56q7q6pvfe1Y2T8gavvp/R9P2ysrJSXr16VQ4ODsqZM2fK8fFxmUwm5dy5c+Xo6KgcHh6WxcXFMhgMypcbS2U8Hpd+v1/vpaWl8uzZs6rDPD1k9vf3y/nz58v29nb56elx2dnZKb1er6yurlb9937+pTQAUGygaZoyHA7LyclJWVhYqMLGKJpOp1WpuZcvX9Y5Y8Cat84NmHHX2tpa1XvhwoX69G7OejpcFQDFe3t7dcKTt2GDQMB45z0vzAPr8s4AcBgBik4ek7/94e91Lnf0diFwoXp3d7cKnz17tnpDATCUMvDju2+XFy9e1P/GUNm2bVW4vr5eZWJcKDDr3VM4AQbWujkA0+m0GqOQMCChLF49HM0Ue6fcf3QDSymgjLmsYZShB7f+qgDJYBeT9C8vL78G0O/36wCllAFkjKLQvdvs11BItMSPR/57Ysba0DwajcqnN34tR0eLFQyA8do6Yx2AZCxFslk4oEWvheIOUJJM1hs3RqnxGHdx5pvPx2UymbFjLRY4ADB5jHcAkq2nYwkUbx+sLnSGKNrY2KhrgQtLGBIK457mbD06hJVeFwBkhIDuDgAFkEGLhWwptA4vblbj2aae3rsY/geCMesx+d2jtiwvjzoQQIVl3ieHum1ogZvS7HfXk83VqpyQiyfm8kQj8C5e8+r7x3tzyQqwNYB6txsA8X9uG8aATHZ/dXEG5v9zciPJGgYoBTLP58+fVyOMW4dd70LAsJ2ArQ6AxJJ4UDPgnizOyiohF+PCw1MZnp2S8lpL9L2tcng4qGxmW5KxDgtCCKRn8qLJvuWVCcI/vLNZleYGyDghQHnEoDm0e6I+W5DnmCBX82g4rMktITkEfJKwyb5k3Ba8M5zFjCGKeBilPOKZXEmFNOY9VZBB8ihnMFvQZY5hsglBkzKcUglpihGliS0A2UapnDF056M/qhFKhYdRhswZwy7W6Mh2vHb/2uscaNu2oldwAkheUMQ7gql+aAUiiu5//GeVTa4k9ltbW1WPO2wFcM6HDoCBr99a6U5E8T19LoR2c4pWEo/ywWDclWd5wmMhyzqGUsTM+792Y63b6v0kIaMMecoFT/QLA+OhMAcLRY/v/lN2dg5qiOiwNiHkrf90MsxJzly+fbnqSF70/dxf7tWqlayPEgohpwzF2V4APHmwXcbj2Thvkpi8DkDrsZbDyHvAprg1KTSSJ7Sj0UKgxE5ymsv+TWuG+sSfDJbIA8xAeoeEb/PWZpXNtu8Y0DK50nolQbBAefrDhOWzm7+VyWRWZBL76k3TVEfIMZ7ej8Gr9652+cFGSnHjh/KUXV6lDQtyN0H0yvrU95z73sOI3YOl9I5kMyZpo3euDrRt253lEgWAbDuCBNKq8TqVDgjK0z/mOE4Ll6S9/vB6ZcMZkaY3/WSTfQ8ZJiQgr7znAGGAsm8fvm7Vsqd5bU1ygWJMJV8ufXKpq6TmJaN77ixo27YOMp6uOKff6Q4nvUBqR/o7gMmZx0jab096jJlLs5oqO3cYUSjrJSBAqWo8Mp6mJAmWrhm1wkUHBpNDWF36YNbCA5jGBBgySdx+GpJkfIz6D7131DfNoBo1fvpDhueRpQcjrit3r1TgdCVc6SGS2HMMSJB0LamMEu3pFzNveQ0MD1MHQisj+YQTrnyoeKfzdAOT0pzzpB8GCKI+jQNjOc2yA1KEUs1QiYF8nvlPj3KbA468XAiYdEg5vPopIBjIR2nK8KPbf5deb9ZA8jKHk4sXbkBRDRCQo5uj7lshuZUPlbT0adtqsXvTn+f/AjMqJke5YxbtAAAAAElFTkSuQmCC",
+      "colors": [
+        [
+          60,
+          30,
+          70
+        ],
+        [
+          140,
+          50,
+          80
+        ],
+        [
+          220,
+          120,
+          60
+        ],
+        [
+          240,
+          180,
+          80
+        ],
+        [
+          250,
+          220,
+          160
+        ]
+      ]
+    },
+    {
+      "label": "Abstract Noir",
+      "description": "Bold geometric shapes in crimson & gold",
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFR0lEQVR4nMXXSW9jRRQF4PIQx4mdOE6gkdIoa1gihBgFSCxAYs2mxQIxbFj1ig2T2LX4qSijM8cZ0FfxKTm/oJ/0/N6runXvuecOVe68s/fGQ3mNV9/Pf2e9sra2Vk5PT+vz7u6u3N/fl5WVlbK6ulrOz8/L+vp6OTw8rPMv5vOyublZZrNZHR8Oh+Xo6KiMRqNydXVVFWe+3++XwWBQPlrMkb29vS03Nzflr3LyCMBgr9erE9fX1/X78vKyCs3n8/Lw8FCflHofDQZVfjKZVLCAA3p2dlaf3W63XFxclI2NjaqDjHE6OBCdZV5KFwBIeUyIAAW82draqiz4ZoTSn/r9KkfeNwMM8W5nZ6d0Op3qtfncvLeeYY5xkg5XBWABCgkz5j4+Pq7AeAot738ZDOpiSijDgKcQRSEAmAQKePKcESo3fXk2ABZQlsGTk5Oyvb1dFTDAS3FnJPEzh/IABJ5x4Mxh5ODgoHy9u9vyydrY4HRLQoqTeATcjBCikPebw2HzzhwZucI45S7jLnPWfjweN4AAGcMsduhqDCR7xX/ZMFDo+v7ursY7WU3OOwYo2t/frxWSxET7e/1+GY/HFTAZTAKaMZXRGBB/xgglgULnzysrpT8aVaU8YXQ6nTYPxN8aXtHDSBIxaxIy7+RTeY0BXvLKAgYI8wZaioxlgcqQI8JGJs8A4shXz5613DFHr++EJ3djgAGZz3OlJE6+fx2NGs1ChF4yQhYQKUkyAH+5s1OVAwK8UHGIjIujyYsGQDwg5B2DFP3Y69XaTacDwHfkKWQgipIDxgParZqERoisE1bOpWN2UwWEob5bJJw7HiSReGLMu8pgkDFGKf90McZAumDWAioU5rDHTgOQy6SJHzqd9o5uikJd6KUkFUP2w/X1lg/ma8sejep8QAGKAWF+0gldEPMW9VGavp2FWEl3SyNKiBjzTHNCsYwHElverc++kt7R9ROq5YASo4gXDMkH48a88xxYBiWl2Ov1adEMZsdze7eGDmGKUxu/L5Xhw6KVfndxUT2gLJsSIKqCDKChnwyvvnn+vJUsA0lEazkjcTGQ8k5JY6MB8PFyOq2eMRAlnox4N85blCeb0zlTYq5sTmm7SezIVoZ/e9yQGgDoEzNUQQ8pJdmogEzjMSYEn2xstCaDoXiVjSaMkE/+TP8eVzBPWvELXWrR/ZRMcsAFMW+xkz2d3Bfb23XcRZZ3vMquJ6eqh93HPAc4PYIuMo0BipL5mEAdzyjWRHLaScbz1pokqIvCVAgd5jQhl/X1TPHHWl2ffaIBQAcFAKR+GeOxOQqD3ti3e3tVzn6fGrcmyZw9xROj6Ee9d/p8Z2/pB2GSKUnjnQfegZPJxj4YDiu9aHRJTMaBYDBMZrMxlw2JUxjN2bIxQIBC8YUytZpDKdQ5E2bfcPNSgroYIL+8sWULnvz5mPHe6TaX3bHvJ4pCYTI5XqkO7fP9hfGc97I2h8/tpcQEtp4vXz4mc5I15w7MNAaEAK0AJNtzVKeE1+8usjb1y0AOF/HOdyqJAzmaA5lNLqfo7Kx9P7xJrC2GLt/pA6sLxcsHyzQtlYABIIwlmVGf/wNJ9PSFVE93WVEOj0FHMIfLgCKDrWR0uqK5nAM4tPvqzcqWkk6J5r9HtuUnIcifBTRqPtkFP5tMWlPJTibWQpQe7z30eyZ3gGIYSOM5rudPTQsBQUrSOpVKxkOncmOQ4pRrmAIquYKBnX8224YVPdgIU/Q96QOz2az9n3OZpOjz6bQlYuY9AUw5ZuNKKb7971vtzwk9Wbe8IWVPcXVe99/z/wHMK/Xl7434CQAAAABJRU5ErkJggg==",
+      "colors": [
+        [
+          20,
+          20,
+          25
+        ],
+        [
+          120,
+          25,
+          30
+        ],
+        [
+          180,
+          40,
+          45
+        ],
+        [
+          200,
+          170,
+          60
+        ],
+        [
+          240,
+          230,
+          200
+        ]
+      ]
+    },
+    {
+      "label": "Botanical Dream",
+      "description": "Trailing vines in sage & terracotta",
+      "preview": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAFZUlEQVR4nMXXy24dRRAG4PH4JMeXxI59rChBxPIFYsuJrRCRSCDEq7BhAQtWSLBgwcvwCNmAECBAgETEk/geO77H6Cv5H2zyABlpzsx0d1X99Vd1VZ+h5dmZ8+YNXj0/g4mJZmtrq2nbtrlx40bz8uXL5vr167Xg8PCw6fV6zdHRUc0Z/3x5pnn16lVzcHDQnJ2d1fi1a9dqbH9/vxkbG2uGhoa6NeT/errQ6aTL+PPvnjetgfPz82Z4eLgWvnjxohkdHW329vY6A8bdFDAAlPGJiYmm3+8XYGt3dnbK8OnpaRkhMz4+XkbJbW5u1rj36enpGm8zCQBlbgampqYKiHHzN2/eLAVfP10oQWAYYgRz3mdmZpqTk5Niw0XW9fvj2WZkZKSYAjQgOwCoMmiSNxbz0BgvAdnd3W2+/XilhCjClPWMMwQQgL6Pj4/rptfTnHGOedKPiS4HGAltlAHBMwZ8817cjaN0Y2Ojnok5j8OGMUbICC3v+23bATeHpeRDmxAYTDJNTk6WIkiBIySx3IwnNFFCJmwl8Xj708M7BUo+YZAMO256OgDiThCtBAlA7934J7NjlWB2CoUUWOtdMlkHALpv3bpVMr+svVXrOGcd0NZkh1nXhQD1vAh16JQDxr54eKfeoQeKYYB9UwgY5hjnJUBdhrdtyTC+vb1d38Cxlxxo/VjAiMWJIYUuT14AxbAwxDhGojAXD397717pw8zl/CDvMneFgcPDw4qb2KOfACOfLQ2KLkaMMRgmKMt24gAQlP7x/lyzs71dSWqOvDshcmH5NQb6/X7FTCJZ/M2H9zvEvs1B7skb71GYEAKa5GU8IKzjWGrDayHY3NzsQpCYMgo5Y4QGg0GNUW6c8tCYHPl+aVDvQLjCpFtYw1pqQQeAQUIx9uXj2UooYCghADEQKbnAmiMnL35YnrlS0lPW5QSj1mBCmH2H3V6QZv9+9WS+jKVgoNaTcgp4LmRYCyPWYoUR64wnT6LbM4zQyYmOAUoSL4IMEuIxMAyjNmU6rIXaZwsTJWOeYs/0C/PxmH6s0Le6uvgfgPMLtBLPjgAmvUDyMJptpIIxkCT8ceV2zfMK2PQRc9bR7ZnCpcmlR1wB8OniZAmGCQrTbORDihP6k4jZhuQBJZOqmO1HnpzwpAzPzd2uXLhSB5JMnpSlwDDmPbT6ZpDSfz5abgajo0W7cQzxLBWPA2nNGBCypaV7ZS/6en5Qr9qlNedOrNO9wgYAf3/wrv1XawCn8HLGh016PMNmktJ8FwJKsxXTxx0u0imzHRlGHQMU+jbPOwUs2zCnIWDiPYMrK3PlfYpdB4B36+vr3fZDJ69TOHK0IkzZz6t3uxAlFziRigkkg+bTZxYX717JLcl4pRSragxTwotURMY9eef688l8gYyRnAPTqIxzJuU4icuwNSnZ2QU9P1FiYRKMsnRBYxpIDphpvTm8JJEZvdywrPdcXp7t2GGD3jjUS2YzJPvFxzPJF6SUKrdnR0ddOTWfJgN0Esxl3JoHD+YLqPOA76MLebJdCAijNQcIAgx7FwJs/Pro7aJQ7HKKFrZUyQDizOVDjXXWcCw7Rg7kONfLySUJlT8NqfOhN0cr4FLz3amSjBuPPmAfPbpfnjNOL/Bp3bna9HOxScNgnBfJC+c734DIl9Cewwgv8w8qVRP1KfHC4pkdxkHAOgby14sydKXEEvSXanCReDlqp9WG8hSdJFYak+/8m5JTwGPj8om6DQP5h5Manv+CsprHack5N4ahdMQcxcmq9TppuqxDKhn6XGl2HQCoDKAvx6UcrZPV/z+o5qiWgpPdtLb2Thk3DgydaVCcQH1OSaXjTf89/xf9mQyxsoGt0AAAAABJRU5ErkJggg==",
+      "colors": [
+        [
+          50,
+          35,
+          25
+        ],
+        [
+          160,
+          80,
+          50
+        ],
+        [
+          100,
+          130,
+          80
+        ],
+        [
+          140,
+          170,
+          110
+        ],
+        [
+          210,
+          200,
+          170
+        ]
+      ]
+    }
+  ],
+  "targets": [
+    {
+      "uid": "f-1771117697507-gcxt",
+      "type": "ASSET_101",
+      "col": 15,
+      "row": 14
+    },
+    {
+      "uid": "f-1771277556757-gadp",
+      "type": "ASSET_102",
+      "col": 5,
+      "row": 0
+    }
+  ]
+}
