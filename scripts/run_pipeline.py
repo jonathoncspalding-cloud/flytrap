@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 run_pipeline.py
 ---------------
@@ -35,6 +37,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "processors"))
 
 from dotenv import load_dotenv
 load_dotenv(override=True)
+
+# Import agent state helper (optional — only fails if file doesn't exist yet)
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "agents"))
+    from agent_state import update_pipeline as _update_pipeline
+except ImportError:
+    _update_pipeline = None
 
 # Configure logging
 LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
@@ -168,8 +177,15 @@ def main():
             update_state("complete", status="complete")
             logger.info(f"=== Sync complete in {elapsed:.0f}s ===")
             logger.info(f"Summary: {results}")
+
+            # Update shared agent state
+            if _update_pipeline:
+                signals = results.get("collection", {}).get("total", 0)
+                _update_pipeline(success=True, signals_24h=signals, duration_sec=int(elapsed))
         except Exception as e:
             update_state("error", status="error", error=str(e))
+            if _update_pipeline:
+                _update_pipeline(success=False)
             logger.error(f"Sync failed: {e}", exc_info=True)
             raise
         return results
@@ -196,6 +212,11 @@ def main():
     elapsed = (datetime.now(timezone.utc) - start).total_seconds()
     logger.info(f"=== Pipeline complete in {elapsed:.0f}s ===")
     logger.info(f"Summary: {results}")
+
+    # Update shared agent state
+    if _update_pipeline:
+        signals = results.get("collection", {}).get("total", 0)
+        _update_pipeline(success=True, signals_24h=signals, duration_sec=int(elapsed))
 
     return results
 
