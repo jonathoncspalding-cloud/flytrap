@@ -82,6 +82,8 @@ jobs:
           NOTION_BRIEFING_DB: ${{ secrets.NOTION_BRIEFING_DB }}
           NOTION_CALENDAR_DB: ${{ secrets.NOTION_CALENDAR_DB }}
           NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+          GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
+          GITHUB_REPO: jonathoncspalding-cloud/flytrap
         run: python scripts/agents/operations_report.py
 
       - name: Strategist — Briefing Self-Eval
@@ -158,6 +160,8 @@ jobs:
           NOTION_BRIEFING_DB: ${{ secrets.NOTION_BRIEFING_DB }}
           NOTION_CALENDAR_DB: ${{ secrets.NOTION_CALENDAR_DB }}
           NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
+          GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
+          GITHUB_REPO: jonathoncspalding-cloud/flytrap
         run: python scripts/agents/operations_report.py
 
   briefing-eval:

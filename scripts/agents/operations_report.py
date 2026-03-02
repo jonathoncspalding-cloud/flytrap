@@ -87,6 +87,51 @@ def parse_pipeline_log() -> dict:
     return stats
 
 
+def estimate_actions_cost() -> dict:
+    """Estimate GitHub Actions usage from recent workflow runs via API."""
+    import requests
+
+    token = os.getenv("GITHUB_PAT") or os.getenv("GITHUB_TOKEN")
+    repo = os.getenv("GITHUB_REPO", "jonathoncspalding-cloud/flytrap")
+
+    if not token:
+        return {"error": "No GITHUB_PAT set", "total_minutes": 0}
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+    }
+
+    total_minutes = 0
+    workflow_breakdown = {}
+
+    try:
+        resp = requests.get(
+            f"https://api.github.com/repos/{repo}/actions/runs?per_page=50",
+            headers=headers,
+        )
+        resp.raise_for_status()
+        runs = resp.json().get("workflow_runs", [])
+
+        for run in runs:
+            name = run.get("name", "Unknown")
+            if run.get("run_started_at") and run.get("updated_at"):
+                start = datetime.fromisoformat(run["run_started_at"].replace("Z", "+00:00"))
+                end = datetime.fromisoformat(run["updated_at"].replace("Z", "+00:00"))
+                minutes = (end - start).total_seconds() / 60
+                total_minutes += minutes
+                workflow_breakdown[name] = workflow_breakdown.get(name, 0) + minutes
+
+    except Exception as e:
+        return {"error": str(e), "total_minutes": 0}
+
+    return {
+        "total_minutes": round(total_minutes, 1),
+        "by_workflow": {k: round(v, 1) for k, v in workflow_breakdown.items()},
+        "estimated_cost": round(total_minutes * 0.008, 2),
+    }
+
+
 def main():
     print("=== Optimize: Operations Report ===")
 
@@ -106,6 +151,10 @@ def main():
     # Parse pipeline log
     print("  Parsing pipeline log...")
     log_stats = parse_pipeline_log()
+
+    # Estimate Actions cost
+    print("  Estimating GitHub Actions cost...")
+    actions_cost = estimate_actions_cost()
 
     # Build report
     lines = [f"Operations Report — {datetime.now(timezone.utc).strftime('%Y-%m-%d')}"]
@@ -134,6 +183,16 @@ def main():
             rows_to_limit = max(0, 10000 - db_sizes["Evidence"])
             days_to_limit = rows_to_limit / daily_estimate if daily_estimate > 0 else float("inf")
             lines.append(f"  Days until 10k: ~{days_to_limit:.0f}")
+
+    lines.append("COST TRACKING:")
+    if actions_cost.get("error"):
+        lines.append(f"  Actions: Could not fetch ({actions_cost['error']})")
+    else:
+        lines.append(f"  Actions minutes (recent runs): {actions_cost['total_minutes']} min")
+        lines.append(f"  Estimated Actions cost: ${actions_cost['estimated_cost']}")
+        for wf, mins in actions_cost.get("by_workflow", {}).items():
+            lines.append(f"    {wf}: {mins} min")
+    lines.append("")
 
     # Alerts
     alerts = []
