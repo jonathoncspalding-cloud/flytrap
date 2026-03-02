@@ -54,6 +54,8 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           prompt: |
+            Before starting, read data/agent_state.json to understand current system health and what other agents have reported. Factor this context into your decisions.
+
             You are Isabel, the interior designer agent. Read your full agent config from .claude/agents/isabel.md and follow its design philosophy.
 
             This is your weekly office refresh. Your task:
@@ -76,6 +78,33 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_args: "--max-turns 15"
 
+      - name: Update agent state
+        if: always()
+        run: |
+          pip install python-dotenv 2>/dev/null || true
+          python3 -c "
+          import sys; sys.path.insert(0, 'scripts/agents')
+          from agent_state import update_agent
+          update_agent('isabel', 'healthy' if '${{ job.status }}' == 'success' else 'error', ['Autonomy run: ${{ job.status }}'])
+          "
+
+      - name: Commit state changes
+        if: always()
+        run: |
+          git config user.name "flytrap-bot"
+          git config user.email "flytrap-bot@users.noreply.github.com"
+          git add data/agent_state.json || true
+          git diff --cached --quiet || git commit -m "chore: update agent state [skip ci]"
+          git push origin main || true
+
+      - name: Upload execution log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-execution-${{ github.job }}-${{ github.run_id }}
+          path: /home/runner/work/_temp/claude-execution-output.json
+          retention-days: 7
+
   # ── Scout: Weekly Source Review ───────────────────────────────────────────
   scout-source-review:
     if: >-
@@ -96,6 +125,8 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           prompt: |
+            Before starting, read data/agent_state.json to understand current system health and what other agents have reported. Factor this context into your decisions.
+
             You are Scout, the source intelligence agent. Read your full agent config from .claude/agents/scout.md.
 
             This is your weekly source review. Your task:
@@ -117,6 +148,33 @@ jobs:
           NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
           NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
 
+      - name: Update agent state
+        if: always()
+        run: |
+          pip install python-dotenv 2>/dev/null || true
+          python3 -c "
+          import sys; sys.path.insert(0, 'scripts/agents')
+          from agent_state import update_agent
+          update_agent('scout', 'healthy' if '${{ job.status }}' == 'success' else 'error', ['Autonomy run: ${{ job.status }}'])
+          "
+
+      - name: Commit state changes
+        if: always()
+        run: |
+          git config user.name "flytrap-bot"
+          git config user.email "flytrap-bot@users.noreply.github.com"
+          git add data/agent_state.json || true
+          git diff --cached --quiet || git commit -m "chore: update agent state [skip ci]"
+          git push origin main || true
+
+      - name: Upload execution log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-execution-${{ github.job }}-${{ github.run_id }}
+          path: /home/runner/work/_temp/claude-execution-output.json
+          retention-days: 7
+
   # ── Oracle: Bi-monthly Calibration ───────────────────────────────────────
   oracle-calibration:
     if: >-
@@ -137,6 +195,8 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           prompt: |
+            Before starting, read data/agent_state.json to understand current system health and what other agents have reported. Factor this context into your decisions.
+
             You are Oracle, the prediction engine agent. Read your full agent config from .claude/agents/oracle.md.
 
             This is your bi-monthly calibration review. Your task:
@@ -160,6 +220,33 @@ jobs:
           NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
           NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
 
+      - name: Update agent state
+        if: always()
+        run: |
+          pip install python-dotenv 2>/dev/null || true
+          python3 -c "
+          import sys; sys.path.insert(0, 'scripts/agents')
+          from agent_state import update_agent
+          update_agent('oracle', 'healthy' if '${{ job.status }}' == 'success' else 'error', ['Autonomy run: ${{ job.status }}'])
+          "
+
+      - name: Commit state changes
+        if: always()
+        run: |
+          git config user.name "flytrap-bot"
+          git config user.email "flytrap-bot@users.noreply.github.com"
+          git add data/agent_state.json || true
+          git diff --cached --quiet || git commit -m "chore: update agent state [skip ci]"
+          git push origin main || true
+
+      - name: Upload execution log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-execution-${{ github.job }}-${{ github.run_id }}
+          path: /home/runner/work/_temp/claude-execution-output.json
+          retention-days: 7
+
   # ── Optimize: Weekly Efficiency Review ───────────────────────────────────
   optimize-efficiency:
     if: >-
@@ -180,6 +267,8 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           prompt: |
+            Before starting, read data/agent_state.json to understand current system health and what other agents have reported. Factor this context into your decisions.
+
             You are Optimize, the efficiency agent. Read your full agent config from .claude/agents/optimize.md.
 
             This is your weekly efficiency review. Your task:
@@ -207,6 +296,33 @@ jobs:
           NOTION_CALENDAR_DB: ${{ secrets.NOTION_CALENDAR_DB }}
           NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
 
+      - name: Update agent state
+        if: always()
+        run: |
+          pip install python-dotenv 2>/dev/null || true
+          python3 -c "
+          import sys; sys.path.insert(0, 'scripts/agents')
+          from agent_state import update_agent
+          update_agent('optimize', 'healthy' if '${{ job.status }}' == 'success' else 'error', ['Autonomy run: ${{ job.status }}'])
+          "
+
+      - name: Commit state changes
+        if: always()
+        run: |
+          git config user.name "flytrap-bot"
+          git config user.email "flytrap-bot@users.noreply.github.com"
+          git add data/agent_state.json || true
+          git diff --cached --quiet || git commit -m "chore: update agent state [skip ci]"
+          git push origin main || true
+
+      - name: Upload execution log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-execution-${{ github.job }}-${{ github.run_id }}
+          path: /home/runner/work/_temp/claude-execution-output.json
+          retention-days: 7
+
   # ── Strategist: Weekly Briefing Quality ──────────────────────────────────
   strategist-briefing-quality:
     if: >-
@@ -227,6 +343,8 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           prompt: |
+            Before starting, read data/agent_state.json to understand current system health and what other agents have reported. Factor this context into your decisions.
+
             You are Strategist, the cultural intelligence agent. Read your full agent config from .claude/agents/strategist.md.
 
             This is your weekly briefing quality review. Your task:
@@ -249,6 +367,33 @@ jobs:
           NOTION_BRIEFING_DB: ${{ secrets.NOTION_BRIEFING_DB }}
           NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
 
+      - name: Update agent state
+        if: always()
+        run: |
+          pip install python-dotenv 2>/dev/null || true
+          python3 -c "
+          import sys; sys.path.insert(0, 'scripts/agents')
+          from agent_state import update_agent
+          update_agent('strategist', 'healthy' if '${{ job.status }}' == 'success' else 'error', ['Autonomy run: ${{ job.status }}'])
+          "
+
+      - name: Commit state changes
+        if: always()
+        run: |
+          git config user.name "flytrap-bot"
+          git config user.email "flytrap-bot@users.noreply.github.com"
+          git add data/agent_state.json || true
+          git diff --cached --quiet || git commit -m "chore: update agent state [skip ci]"
+          git push origin main || true
+
+      - name: Upload execution log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-execution-${{ github.job }}-${{ github.run_id }}
+          path: /home/runner/work/_temp/claude-execution-output.json
+          retention-days: 7
+
   # ── Architect: Monthly UI Audit ──────────────────────────────────────────
   architect-ui-review:
     if: >-
@@ -268,6 +413,8 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           prompt: |
+            Before starting, read data/agent_state.json to understand current system health and what other agents have reported. Factor this context into your decisions.
+
             You are Architect, the design and UX agent. Read your full agent config from .claude/agents/architect.md.
 
             This is your monthly UI audit. Your task:
@@ -287,6 +434,33 @@ jobs:
           branch_prefix: "agent/architect/"
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_args: "--max-turns 15"
+
+      - name: Update agent state
+        if: always()
+        run: |
+          pip install python-dotenv 2>/dev/null || true
+          python3 -c "
+          import sys; sys.path.insert(0, 'scripts/agents')
+          from agent_state import update_agent
+          update_agent('architect', 'healthy' if '${{ job.status }}' == 'success' else 'error', ['Autonomy run: ${{ job.status }}'])
+          "
+
+      - name: Commit state changes
+        if: always()
+        run: |
+          git config user.name "flytrap-bot"
+          git config user.email "flytrap-bot@users.noreply.github.com"
+          git add data/agent_state.json || true
+          git diff --cached --quiet || git commit -m "chore: update agent state [skip ci]"
+          git push origin main || true
+
+      - name: Upload execution log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-execution-${{ github.job }}-${{ github.run_id }}
+          path: /home/runner/work/_temp/claude-execution-output.json
+          retention-days: 7
 
   # ── Sentinel: Auto-review Agent PRs ──────────────────────────────────────
   sentinel-review:
