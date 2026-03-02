@@ -33,6 +33,58 @@ const VALID_CATEGORIES = [
   "prediction", "source", "performance", "other",
 ];
 
+const VALID_STATUSES = ["new", "triaged", "in_progress", "resolved", "wont_fix"];
+
+/**
+ * PATCH /api/feedback
+ * Update a feedback item's status (resolve, dismiss, etc.)
+ *
+ * Request body:
+ * { id: string; status: "resolved" | "wont_fix" | ... }
+ */
+export async function PATCH(req: NextRequest) {
+  if (!FEEDBACK_DB) {
+    return NextResponse.json({ error: "Feedback DB not configured" }, { status: 500 });
+  }
+
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const { id, status } = body;
+
+  if (!id || typeof id !== "string") {
+    return NextResponse.json({ error: "id is required" }, { status: 400 });
+  }
+  if (!status || !VALID_STATUSES.includes(status)) {
+    return NextResponse.json({ error: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}` }, { status: 400 });
+  }
+
+  try {
+    const res = await fetch(`${NOTION_BASE}/pages/${id}`, {
+      method: "PATCH",
+      headers: notionHeaders(),
+      body: JSON.stringify({
+        properties: {
+          Status: { select: { name: status } },
+        },
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Notion error (${res.status}): ${err.slice(0, 300)}`);
+    }
+
+    return NextResponse.json({ success: true, id, status });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   if (!FEEDBACK_DB) {
     return NextResponse.json(

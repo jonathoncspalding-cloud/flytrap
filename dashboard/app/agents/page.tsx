@@ -1,7 +1,8 @@
-import { getAgentActivity, getTrends, getAllMoments, AgentActivity, AgentName } from "@/lib/notion";
+import { getAgentActivity, getTrends, getAllMoments, getUserFeedback, AgentActivity, AgentName } from "@/lib/notion";
 import CommandCenter from "@/components/CommandCenter";
 import TriggerButton from "@/components/TriggerButton";
 import IsabelProposal from "@/components/IsabelProposal";
+import FeedbackQueue from "@/components/FeedbackQueue";
 
 export const revalidate = 0; // Always fresh
 
@@ -45,10 +46,11 @@ function timeAgo(dateStr: string | null): string {
 }
 
 export default async function AgentsPage() {
-  const [activity, trends, moments] = await Promise.all([
+  const [activity, trends, moments, feedback] = await Promise.all([
     getAgentActivity(50),
     getTrends(),
     getAllMoments(),
+    getUserFeedback(),
   ]);
 
   // Latest report per agent
@@ -107,9 +109,10 @@ export default async function AgentsPage() {
         })}
       />
 
-      {/* Pipeline Health + Agent Status + Standup Digest — below office + chat */}
+      {/* Pipeline Health + Feedback + Agent Status + Standup Digest — below office + chat */}
       <div style={{ marginTop: 24 }}>
         <PipelineHealth digest={digest} />
+        <FeedbackQueue feedback={feedback} />
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
           <div style={{ width: 3, height: 14, borderRadius: 2, background: "var(--text-tertiary)", flexShrink: 0 }} />

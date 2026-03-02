@@ -102,7 +102,7 @@ export async function GET() {
   const [redditResults, wiki, notionSignals] = await Promise.all([
     Promise.all(CULTURE_SUBREDDITS.map(fetchRedditSubreddit)),
     fetchWikipediaTrending(),
-    getLatestNewsSignals(15),
+    getLatestNewsSignals(15).catch(() => [] as { id: string; title: string; url: string | null }[]),
   ]);
 
   const redditItems = redditResults.flat();

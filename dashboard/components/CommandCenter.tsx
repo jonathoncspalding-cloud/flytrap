@@ -15,19 +15,28 @@ type AgentData = {
 
 export default function CommandCenter({ agents }: { agents: AgentData[] }) {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
-  const [isabelPrompt, setIsabelPrompt] = useState<string | undefined>(undefined);
+  const [initialPrompt, setInitialPrompt] = useState<string | undefined>(undefined);
   const commandCenterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleIsabelFeedback(e: Event) {
       const detail = (e as CustomEvent).detail;
       setSelectedAgent("isabel");
-      setIsabelPrompt(detail.prompt);
-      // Scroll CommandCenter into view
+      setInitialPrompt(detail.prompt);
+      commandCenterRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    function handleOpenAgentChat(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      setSelectedAgent(detail.agent);
+      setInitialPrompt(detail.prompt);
       commandCenterRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
     window.addEventListener("isabel-feedback", handleIsabelFeedback);
-    return () => window.removeEventListener("isabel-feedback", handleIsabelFeedback);
+    window.addEventListener("open-agent-chat", handleOpenAgentChat);
+    return () => {
+      window.removeEventListener("isabel-feedback", handleIsabelFeedback);
+      window.removeEventListener("open-agent-chat", handleOpenAgentChat);
+    };
   }, []);
 
   return (
@@ -107,8 +116,8 @@ export default function CommandCenter({ agents }: { agents: AgentData[] }) {
           {selectedAgent ? (
             <AgentChat
               agent={selectedAgent}
-              onClose={() => { setSelectedAgent(null); setIsabelPrompt(undefined); }}
-              initialPrompt={selectedAgent === "isabel" ? isabelPrompt : undefined}
+              onClose={() => { setSelectedAgent(null); setInitialPrompt(undefined); }}
+              initialPrompt={initialPrompt}
             />
           ) : (
             <div

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { renderDesign, DesignSpec } from "@/lib/isabel-canvas";
+import { renderMarkdown } from "@/lib/markdown";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -62,7 +63,14 @@ export default function AgentChat({
   onClose: () => void;
   initialPrompt?: string;
 }) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const storageKey = `agent-chat-${agent}`;
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem(storageKey);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -71,16 +79,48 @@ export default function AgentChat({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const meta = AGENT_META[agent] ?? { emoji: "?", label: agent, color: "#6b7280" };
 
+  // Persist messages to localStorage
+  useEffect(() => {
+    try {
+      if (messages.length > 0) {
+        localStorage.setItem(storageKey, JSON.stringify(messages));
+      }
+    } catch { /* storage full or unavailable */ }
+  }, [messages, storageKey]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [messages]);
 
+  const pendingPromptRef = useRef<string | null>(null);
+
+  // Load saved messages when switching agents
   useEffect(() => {
-    setMessages([]);
-    setInput(initialPrompt || "");
+    try {
+      const saved = localStorage.getItem(`agent-chat-${agent}`);
+      setMessages(saved ? JSON.parse(saved) : []);
+    } catch { setMessages([]); }
+    setInput("");
     setAttachments([]);
     setMessageAttachments(new Map());
+
+    // If there's an initial prompt (e.g. from feedback queue), clear history
+    // and stash it for auto-send on next render.
+    if (initialPrompt) {
+      setMessages([]);
+      pendingPromptRef.current = initialPrompt;
+    }
   }, [agent, initialPrompt]);
+
+  // Auto-send the pending prompt once messages are cleared
+  useEffect(() => {
+    if (pendingPromptRef.current && messages.length === 0 && !streaming) {
+      const prompt = pendingPromptRef.current;
+      pendingPromptRef.current = null;
+      // Delay to let state settle, then call send with override text
+      setTimeout(() => send(prompt), 50);
+    }
+  }, [messages, streaming]);
 
   function parseDesignSpecs(text: string): { cleanText: string; designs: DesignSpec | null } {
     const match = text.match(/<!-- ISABEL_DESIGNS\n([\s\S]*?)\n-->/);
@@ -96,7 +136,7 @@ export default function AgentChat({
 
   async function handleDesignSelect(designs: DesignSpec, index: number) {
     const selected = designs.options[index];
-    renderDesign(designs.category, designs.footprint.w, designs.footprint.h, selected.colors);
+    renderDesign(designs.category, designs.footprint.w, designs.footprint.h, selected.colors || [], selected);
 
     // Fetch current proposal to get targets
     let targets: { uid: string; type: string; col: number; row: number }[] = [];
@@ -119,12 +159,28 @@ export default function AgentChat({
       mustMatch: false,
       options: designs.options.map((opt) => ({
         ...opt,
-        preview: renderDesign(designs.category, designs.footprint.w, designs.footprint.h, opt.colors),
+        preview: renderDesign(designs.category, designs.footprint.w, designs.footprint.h, opt.colors || [], opt),
       })),
       targets,
     };
 
-    // Save proposal and trigger implement
+    // Live-update the pixel office immediately (before backend deploy)
+    const selectedPreview = renderDesign(
+      designs.category, designs.footprint.w, designs.footprint.h,
+      selected.colors || [], selected
+    );
+    if (targets.length > 0) {
+      window.dispatchEvent(new CustomEvent("update-furniture", {
+        detail: {
+          imageDataUri: selectedPreview,
+          targetTypes: targets.map((t) => t.type),
+          width: designs.footprint.w,
+          height: designs.footprint.h,
+        },
+      }));
+    }
+
+    // Save proposal and trigger implement (makes it permanent after deploy)
     try {
       const resp = await fetch("/api/isabel-proposal", {
         method: "POST",
@@ -135,7 +191,7 @@ export default function AgentChat({
       if (resp.ok) {
         setMessages((prev) => [...prev, {
           role: "assistant" as const,
-          content: `Magnifique! Installing "${selected.label}" now. The office will update after a quick deploy, darling! ✨`,
+          content: `Magnifique! "${selected.label}" is live in the office! The permanent deploy is running in the background, darling. ✨`,
         }]);
       }
     } catch {
@@ -187,8 +243,8 @@ export default function AgentChat({
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   }
 
-  async function send() {
-    const text = input.trim();
+  async function send(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if ((!text && attachments.length === 0) || streaming) return;
 
     // Build API content blocks for this message
@@ -358,15 +414,32 @@ export default function AgentChat({
             </span>
           </div>
         </div>
-        <button
-          onClick={onClose}
-          style={{
-            background: "none", border: "none", cursor: "pointer",
-            color: "var(--text-tertiary)", fontSize: 16, padding: "2px 6px",
-          }}
-        >
-          ×
-        </button>
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          {messages.length > 0 && (
+            <button
+              onClick={() => {
+                setMessages([]);
+                try { localStorage.removeItem(storageKey); } catch {}
+              }}
+              style={{
+                background: "none", border: "1px solid var(--border)", cursor: "pointer",
+                color: "var(--text-tertiary)", fontSize: 10, padding: "2px 8px",
+                borderRadius: 4,
+              }}
+            >
+              Clear
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "var(--text-tertiary)", fontSize: 16, padding: "2px 6px",
+            }}
+          >
+            ×
+          </button>
+        </div>
       </div>
 
       {/* Messages */}
@@ -431,11 +504,11 @@ export default function AgentChat({
                   const { cleanText, designs } = parseDesignSpecs(msg.content);
                   return (
                     <>
-                      {cleanText}
+                      {renderMarkdown(cleanText)}
                       {designs && (
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 10 }}>
                           {designs.options.map((opt, oi) => {
-                            const preview = renderDesign(designs.category, designs.footprint.w, designs.footprint.h, opt.colors);
+                            const preview = renderDesign(designs.category, designs.footprint.w, designs.footprint.h, opt.colors || [], opt);
                             return (
                               <div key={oi} style={{
                                 background: "var(--bg)",
@@ -481,7 +554,7 @@ export default function AgentChat({
                     </>
                   );
                 }
-                return msg.content;
+                return msg.role === "user" ? msg.content : renderMarkdown(msg.content);
               })()}
               {streaming && i === messages.length - 1 && msg.role === "assistant" && (
                 <span style={{
@@ -607,7 +680,7 @@ export default function AgentChat({
           }}
         />
         <button
-          onClick={send}
+          onClick={() => send()}
           disabled={!canSend}
           style={{
             padding: "8px 14px",

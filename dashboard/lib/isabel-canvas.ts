@@ -4,14 +4,19 @@ type RGB = [number, number, number];
 
 type DrawCategory = "Paintings" | "Plants" | "Rug" | "Bookcases" | "Loveseats" | "Coffee Table";
 
+export interface DesignOption {
+  label: string;
+  description: string;
+  colors?: RGB[];      // template mode
+  palette?: RGB[];     // pixel mode
+  rows?: string[];     // pixel mode — palette-indexed row strings
+}
+
 export interface DesignSpec {
+  mode?: "template" | "pixel";
   category: DrawCategory;
   footprint: { w: number; h: number };
-  options: {
-    label: string;
-    description: string;
-    colors: RGB[];
-  }[];
+  options: DesignOption[];
 }
 
 /** Render a single design option to a base64 PNG data URI. */
@@ -19,13 +24,21 @@ export function renderDesign(
   category: DrawCategory,
   w: number,
   h: number,
-  colors: RGB[]
+  colors: RGB[],
+  option?: DesignOption
 ): string {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d")!;
 
+  // Pixel mode: option has palette + rows
+  if (option?.palette && option?.rows) {
+    renderPixelDesign(ctx, w, h, option.palette, option.rows);
+    return canvas.toDataURL("image/png");
+  }
+
+  // Template mode: use category-specific draw functions
   switch (category) {
     case "Paintings": drawPainting(ctx, w, h, colors); break;
     case "Plants": drawPlant(ctx, w, h, colors); break;
@@ -45,6 +58,30 @@ function px(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, g: n
 
 function clamp(v: number, lo = 0, hi = 255) { return Math.max(lo, Math.min(hi, v)); }
 function noise(v: number, range = 10) { return clamp(v + Math.floor(Math.random() * range * 2) - range); }
+
+/**
+ * Render pixel art from a palette-indexed row grid.
+ * Each char in a row maps to a palette index (0-f hex) or '.' for transparent.
+ */
+function renderPixelDesign(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  palette: RGB[],
+  rows: string[]
+) {
+  for (let y = 0; y < Math.min(rows.length, h); y++) {
+    const row = rows[y];
+    for (let x = 0; x < Math.min(row.length, w); x++) {
+      const ch = row[x];
+      if (ch === ".") continue; // transparent
+      const idx = parseInt(ch, 16);
+      if (isNaN(idx) || idx >= palette.length) continue;
+      const [r, g, b] = palette[idx];
+      px(ctx, x, y, r, g, b);
+    }
+  }
+}
 
 function drawPainting(ctx: CanvasRenderingContext2D, w: number, h: number, colors: RGB[]) {
   const frame: RGB = [40, 30, 20];

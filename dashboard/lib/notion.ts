@@ -22,6 +22,7 @@ const EVIDENCE_DB = process.env.NOTION_EVIDENCE_DB!;
 const CALENDAR_DB = process.env.NOTION_CALENDAR_DB!;
 const BRIEFING_DB = process.env.NOTION_BRIEFING_DB!;
 const MOMENTS_DB = process.env.NOTION_MOMENTS_DB!;
+const FEEDBACK_DB = process.env.NOTION_FEEDBACK_DB;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -423,8 +424,8 @@ export async function getEvidenceForTrend(trendId: string): Promise<Evidence[]> 
 }
 
 export async function getLatestBriefings(limit = 5): Promise<Briefing[]> {
-  // Briefings are written once daily — bypass cache so new ones appear immediately
-  const pages = await queryAll(BRIEFING_DB, undefined, { noStore: true });
+  // Briefings are written once daily — short cache is fine
+  const pages = await queryAll(BRIEFING_DB, undefined, { revalidate: 300 });
 
   return pages
     .map((p: any) => {
@@ -583,7 +584,7 @@ export async function getActiveMoments(): Promise<CulturalMoment[]> {
         { property: "Status", select: { does_not_equal: "Missed" } },
       ],
     },
-    { noStore: true }
+    { revalidate: 300 }
   );
 
   return pages
@@ -667,7 +668,7 @@ function parseAgentActivity(p: any): AgentActivity {
 export async function getAgentActivity(limit = 30): Promise<AgentActivity[]> {
   if (!AGENT_ACTIVITY_DB) return [];
 
-  const pages = await queryAll(AGENT_ACTIVITY_DB, undefined, { noStore: true });
+  const pages = await queryAll(AGENT_ACTIVITY_DB, undefined, { revalidate: 300 });
 
   return pages
     .map(parseAgentActivity)
@@ -681,7 +682,7 @@ export async function getLatestAgentReport(agent: AgentName): Promise<AgentActiv
   const pages = await queryAll(
     AGENT_ACTIVITY_DB,
     { property: "Agent", select: { equals: agent } },
-    { noStore: true }
+    { revalidate: 300 }
   );
 
   const sorted = pages
@@ -689,6 +690,164 @@ export async function getLatestAgentReport(agent: AgentName): Promise<AgentActiv
     .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
 
   return sorted[0] ?? null;
+}
+
+// ── Sync Recap ────────────────────────────────────────────────────────────
+
+export interface SyncRecap {
+  /** Signals collected today, grouped by platform */
+  signalsByPlatform: Record<string, number>;
+  /** Total new signals today */
+  totalSignals: number;
+  /** Trends updated today with their CPS */
+  updatedTrends: { name: string; cps: number; status: string }[];
+  /** Active moments (Predicted/Forming/Happening) created or updated today */
+  recentMoments: { name: string; type: string; status: string; confidence: number }[];
+  /** Top CPS trend overall */
+  topTrend: { name: string; cps: number } | null;
+  /** When the data was fetched */
+  timestamp: string;
+}
+
+/**
+ * Get a recap of changes since the last sync.
+ * Queries Evidence (today), Trends (updated today), Moments (updated today).
+ */
+export async function getSyncRecap(): Promise<SyncRecap> {
+  const today = new Date().toISOString().split("T")[0];
+
+  // Evidence collected today — 5 min cache is plenty for a daily pulse
+  const evidencePages = await queryAll(
+    EVIDENCE_DB,
+    { property: "Date Captured", date: { equals: today } },
+    { revalidate: 300 }
+  );
+
+  const signalsByPlatform: Record<string, number> = {};
+  for (const p of evidencePages) {
+    const platform = selectName(p.properties["Source Platform"]) || "Unknown";
+    signalsByPlatform[platform] = (signalsByPlatform[platform] || 0) + 1;
+  }
+
+  // Trends updated today
+  const trendPages = await queryAll(
+    TRENDS_DB,
+    {
+      and: [
+        { property: "Last Updated", date: { on_or_after: today } },
+        { property: "Status", select: { does_not_equal: "Archived" } },
+      ],
+    },
+    { revalidate: 300 }
+  );
+
+  const updatedTrends = trendPages
+    .map((p: any) => ({
+      name: titleText(p.properties),
+      cps: numberProp(p.properties["Cultural Potency Score"]),
+      status: selectName(p.properties.Status),
+    }))
+    .sort((a, b) => b.cps - a.cps)
+    .slice(0, 8);
+
+  // Moments updated today
+  let recentMoments: SyncRecap["recentMoments"] = [];
+  if (MOMENTS_DB) {
+    const momentPages = await queryAll(
+      MOMENTS_DB,
+      {
+        and: [
+          { property: "Last Updated", date: { on_or_after: today } },
+          { property: "Status", select: { does_not_equal: "Passed" } },
+          { property: "Status", select: { does_not_equal: "Missed" } },
+        ],
+      },
+      { revalidate: 300 }
+    );
+
+    recentMoments = momentPages
+      .map((p: any) => ({
+        name: titleText(p.properties),
+        type: selectName(p.properties.Type) || "Catalyst",
+        status: selectName(p.properties.Status) || "Predicted",
+        confidence: numberProp(p.properties.Confidence),
+      }))
+      .sort((a, b) => b.confidence - a.confidence)
+      .slice(0, 5);
+  }
+
+  // Top trend overall
+  const allTrends = trendPages
+    .map((p: any) => ({
+      name: titleText(p.properties),
+      cps: numberProp(p.properties["Cultural Potency Score"]),
+    }))
+    .sort((a, b) => b.cps - a.cps);
+
+  return {
+    signalsByPlatform,
+    totalSignals: evidencePages.length,
+    updatedTrends,
+    recentMoments,
+    topTrend: allTrends[0] ?? null,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+// ── User Feedback ─────────────────────────────────────────────────────────
+
+export type FeedbackStatus = "new" | "triaged" | "in_progress" | "resolved" | "wont_fix";
+export type FeedbackCategory = "bug" | "feature" | "data_quality" | "design" | "prediction" | "source" | "performance" | "other";
+
+export interface UserFeedback {
+  id: string;
+  message: string;
+  page: string;
+  category: FeedbackCategory;
+  priority: string;
+  status: FeedbackStatus;
+  routedTo: AgentName | "";
+  response: string;
+  submitted: string | null;
+}
+
+function parseFeedbackPage(p: any): UserFeedback {
+  const props = p.properties;
+  return {
+    id: p.id,
+    message: titleText(props),
+    page: selectName(props.Page),
+    category: (selectName(props.Category) || "other") as FeedbackCategory,
+    priority: selectName(props.Priority) || "medium",
+    status: (selectName(props.Status) || "new") as FeedbackStatus,
+    routedTo: (selectName(props["Routed To"]) || "") as AgentName | "",
+    response: richText(props.Response),
+    submitted: dateStart(props.Submitted),
+  };
+}
+
+/**
+ * Get user feedback items. By default returns only active items (new/triaged/in_progress).
+ * Pass includeResolved=true to get all feedback.
+ */
+export async function getUserFeedback(includeResolved = false): Promise<UserFeedback[]> {
+  if (!FEEDBACK_DB) return [];
+
+  const filter = includeResolved
+    ? undefined
+    : {
+        or: [
+          { property: "Status", select: { equals: "new" } },
+          { property: "Status", select: { equals: "triaged" } },
+          { property: "Status", select: { equals: "in_progress" } },
+        ],
+      };
+
+  const pages = await queryAll(FEEDBACK_DB, filter, { noStore: true });
+
+  return pages
+    .map(parseFeedbackPage)
+    .sort((a, b) => (b.submitted ?? "").localeCompare(a.submitted ?? ""));
 }
 
 export async function getResearchInsights(limit = 6): Promise<Evidence[]> {
