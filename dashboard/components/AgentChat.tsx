@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { renderDesign, DesignSpec } from "@/lib/isabel-canvas";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -55,9 +56,11 @@ function resizeImage(file: File, maxDim = 1024): Promise<string> {
 export default function AgentChat({
   agent,
   onClose,
+  initialPrompt,
 }: {
   agent: string;
   onClose: () => void;
+  initialPrompt?: string;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -74,10 +77,74 @@ export default function AgentChat({
 
   useEffect(() => {
     setMessages([]);
-    setInput("");
+    setInput(initialPrompt || "");
     setAttachments([]);
     setMessageAttachments(new Map());
-  }, [agent]);
+  }, [agent, initialPrompt]);
+
+  function parseDesignSpecs(text: string): { cleanText: string; designs: DesignSpec | null } {
+    const match = text.match(/<!-- ISABEL_DESIGNS\n([\s\S]*?)\n-->/);
+    if (!match) return { cleanText: text, designs: null };
+    try {
+      const designs = JSON.parse(match[1]) as DesignSpec;
+      const cleanText = text.replace(/<!-- ISABEL_DESIGNS\n[\s\S]*?\n-->/, "").trim();
+      return { cleanText, designs };
+    } catch {
+      return { cleanText: text, designs: null };
+    }
+  }
+
+  async function handleDesignSelect(designs: DesignSpec, index: number) {
+    const selected = designs.options[index];
+    renderDesign(designs.category, designs.footprint.w, designs.footprint.h, selected.colors);
+
+    // Fetch current proposal to get targets
+    let targets: { uid: string; type: string; col: number; row: number }[] = [];
+    try {
+      const resp = await fetch("/proposals/isabel.json");
+      if (resp.ok) {
+        const proposal = await resp.json();
+        targets = proposal.targets || [];
+      }
+    } catch { /* no targets available */ }
+
+    // Build and save proposal, then trigger implement
+    const newProposal = {
+      id: new Date().toISOString().split("T")[0],
+      category: designs.category,
+      description: "User-refined design via chat feedback",
+      createdAt: new Date().toISOString(),
+      footprint: designs.footprint,
+      wallMounted: designs.category === "Paintings",
+      mustMatch: false,
+      options: designs.options.map((opt) => ({
+        ...opt,
+        preview: renderDesign(designs.category, designs.footprint.w, designs.footprint.h, opt.colors),
+      })),
+      targets,
+    };
+
+    // Save proposal and trigger implement
+    try {
+      const resp = await fetch("/api/isabel-proposal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selection: index, proposal: newProposal }),
+      });
+
+      if (resp.ok) {
+        setMessages((prev) => [...prev, {
+          role: "assistant" as const,
+          content: `Magnifique! Installing "${selected.label}" now. The office will update after a quick deploy, darling! ✨`,
+        }]);
+      }
+    } catch {
+      setMessages((prev) => [...prev, {
+        role: "assistant" as const,
+        content: "Oh non! Something went wrong saving the design. Try again, mon chou.",
+      }]);
+    }
+  }
 
   async function handleFiles(files: FileList) {
     const newAttachments: Attachment[] = [];
@@ -359,7 +426,63 @@ export default function AgentChat({
                   ))}
                 </div>
               )}
-              {msg.content}
+              {(() => {
+                if (msg.role === "assistant" && msg.content) {
+                  const { cleanText, designs } = parseDesignSpecs(msg.content);
+                  return (
+                    <>
+                      {cleanText}
+                      {designs && (
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, marginTop: 10 }}>
+                          {designs.options.map((opt, oi) => {
+                            const preview = renderDesign(designs.category, designs.footprint.w, designs.footprint.h, opt.colors);
+                            return (
+                              <div key={oi} style={{
+                                background: "var(--bg)",
+                                border: "1px solid var(--border)",
+                                borderRadius: 6,
+                                padding: 8,
+                                textAlign: "center",
+                              }}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={preview}
+                                  alt={opt.label}
+                                  width={designs.footprint.w * 4}
+                                  height={designs.footprint.h * 4}
+                                  style={{ imageRendering: "pixelated", display: "block", margin: "0 auto 6px" }}
+                                />
+                                <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>
+                                  {opt.label}
+                                </div>
+                                <div style={{ fontSize: 8, color: "var(--text-tertiary)", marginBottom: 6, lineHeight: 1.4 }}>
+                                  {opt.description}
+                                </div>
+                                <button
+                                  onClick={() => handleDesignSelect(designs, oi)}
+                                  style={{
+                                    fontSize: 9,
+                                    padding: "3px 10px",
+                                    borderRadius: 4,
+                                    border: "1px solid #2dd4bf44",
+                                    background: "transparent",
+                                    color: "#2dd4bf",
+                                    cursor: "pointer",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  Select
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  );
+                }
+                return msg.content;
+              })()}
               {streaming && i === messages.length - 1 && msg.role === "assistant" && (
                 <span style={{
                   display: "inline-block",
