@@ -125,7 +125,7 @@ jobs:
           git config user.email "flytrap-bot@users.noreply.github.com"
           git add dashboard/public/sprites/furniture/ dashboard/components/pixel-office/sprites.ts dashboard/components/pixel-office/office-layout.json || true
           git rm dashboard/public/proposals/isabel.json 2>/dev/null || true
-          git diff --cached --quiet || git commit -m "feat: Isabel installed new decor [skip ci]"
+          git diff --cached --quiet || git commit -m "feat: Isabel installed new decor"
           git push origin main || true
 
   # ── Scout: Weekly Source Review ───────────────────────────────────────────
