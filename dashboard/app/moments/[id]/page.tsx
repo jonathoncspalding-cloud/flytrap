@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getMoment, getTrend, getTension, getUpcomingEvents, Trend, Tension, CalendarEvent } from "@/lib/notion";
+import { getMoment, getTrend, getTension, getUpcomingEvents, getEvidenceForTrend, Trend, Tension, CalendarEvent, Evidence } from "@/lib/notion";
 
 export const revalidate = 300;
 
@@ -24,6 +24,17 @@ const HORIZON_CONFIG: Record<string, { color: string }> = {
   "This Week":  { color: "#E8127A" },
   "2-4 Weeks":  { color: "#FF8200" },
   "1-3 Months": { color: "rgba(232,18,122,0.7)" },
+};
+
+const PLATFORM_ICONS: Record<string, string> = {
+  Reddit: "🟠",
+  RSS: "📡",
+  "Hacker News": "🟧",
+  Bluesky: "🦋",
+  YouTube: "▶️",
+  Wikipedia: "📖",
+  "Google Trends": "📈",
+  "Prediction Market": "💰",
 };
 
 function confidenceColor(c: number): string {
@@ -68,6 +79,23 @@ export default async function MomentDetailPage({ params }: { params: Promise<{ i
   const trends = linkedTrends.filter((t): t is Trend => t !== null);
   const tensions = linkedTensions.filter((t): t is Tension => t !== null);
   const events = allEvents.filter((e: CalendarEvent) => moment.linkedEventIds.includes(e.id));
+
+  // Load evidence for all linked trends, deduplicate, cap at 15
+  const evidenceLists = await Promise.all(
+    moment.linkedTrendIds.slice(0, 5).map((tid) => getEvidenceForTrend(tid))
+  );
+  const seenIds = new Set<string>();
+  const evidence: Evidence[] = [];
+  for (const list of evidenceLists) {
+    for (const e of list) {
+      if (!seenIds.has(e.id)) {
+        seenIds.add(e.id);
+        evidence.push(e);
+      }
+    }
+  }
+  evidence.sort((a, b) => (b.dateCaptured ?? "").localeCompare(a.dateCaptured ?? ""));
+  const cappedEvidence = evidence.slice(0, 15);
 
   // Parse watch-for items
   const watchItems = moment.watchFor
@@ -415,6 +443,94 @@ export default async function MomentDetailPage({ params }: { params: Promise<{ i
                 >
                   {moment.reasoning}
                 </p>
+              </div>
+            </section>
+          )}
+
+          {/* Sources & Evidence */}
+          {cappedEvidence.length > 0 && (
+            <section style={{ marginBottom: 24 }}>
+              <h2
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "var(--text-secondary)",
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  margin: "0 0 12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <span>Sources &amp; Evidence</span>
+                <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-tertiary)" }}>
+                  ({evidence.length}{evidence.length > cappedEvidence.length ? `, showing ${cappedEvidence.length}` : ""})
+                </span>
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {cappedEvidence.map((e) => (
+                  <div
+                    key={e.id}
+                    style={{
+                      background: "var(--surface)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      padding: "10px 14px",
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                      <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }} title={e.platform}>
+                        {PLATFORM_ICONS[e.platform] ?? "🔗"}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {e.url ? (
+                          <a
+                            href={e.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="source-link"
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 500,
+                              color: "var(--text-primary)",
+                              textDecoration: "none",
+                              display: "block",
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            {e.title}
+                          </a>
+                        ) : (
+                          <span
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 500,
+                              color: "var(--text-primary)",
+                              display: "block",
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            {e.title}
+                          </span>
+                        )}
+                        <div style={{ display: "flex", gap: 10, marginTop: 3, alignItems: "center" }}>
+                          <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{e.platform}</span>
+                          {e.dateCaptured && (
+                            <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+                              {new Date(e.dateCaptured).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </span>
+                          )}
+                        </div>
+                        {e.summary && (
+                          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5, margin: "6px 0 0", opacity: 0.8 }}>
+                            {e.summary}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </section>
           )}

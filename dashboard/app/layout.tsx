@@ -7,6 +7,7 @@ import Sidebar from "@/components/Sidebar";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import Chatbot from "@/components/Chatbot";
 import FloatingPanelProvider from "@/components/FloatingPanels";
+import SplashScreen from "@/components/SplashScreen";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -31,16 +32,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ background: "var(--bg)", minHeight: "100vh", margin: 0 }}>
         <ThemeProvider>
           <SyncProvider>
-            <div className="app-shell">
-              <Sidebar />
-              <main className="main-content">
-                {children}
-              </main>
-            </div>
-            <FloatingPanelProvider>
-              <Chatbot />
-              <FeedbackWidget />
-            </FloatingPanelProvider>
+            <SplashScreen>
+              <div className="app-shell">
+                <Sidebar />
+                <main className="main-content">
+                  {children}
+                </main>
+              </div>
+              <FloatingPanelProvider>
+                <Chatbot />
+                <FeedbackWidget />
+              </FloatingPanelProvider>
+            </SplashScreen>
           </SyncProvider>
         </ThemeProvider>
       </body>

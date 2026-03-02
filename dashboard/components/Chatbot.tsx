@@ -8,6 +8,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import AgentAvatar from "@/components/AgentAvatar";
 import { useFloatingPanel } from "@/components/FloatingPanels";
+import { renderMarkdown } from "@/lib/markdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -52,7 +53,7 @@ function MessageBubble({ message, isStreaming }: { message: Message; isStreaming
         borderRadius: isUser ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
         padding: "10px 14px",
       }}>
-        <p style={{
+        <div style={{
           fontSize: 13,
           color: isUser ? "var(--chat-text-primary, rgba(255,255,255,0.88))" : "var(--chat-text-secondary, rgba(255,255,255,0.82))",
           lineHeight: 1.55,
@@ -60,7 +61,7 @@ function MessageBubble({ message, isStreaming }: { message: Message; isStreaming
           whiteSpace: "pre-wrap",
           wordBreak: "break-word",
         }}>
-          {message.content}
+          {isUser ? message.content : renderMarkdown(message.content)}
           {isStreaming && (
             <span style={{
               display: "inline-block",
@@ -72,7 +73,7 @@ function MessageBubble({ message, isStreaming }: { message: Message; isStreaming
               animation: "blink 0.9s step-end infinite",
             }} />
           )}
-        </p>
+        </div>
       </div>
     </div>
   );

@@ -233,10 +233,10 @@ export default function FeedbackWidget() {
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           ) : (
-            <AgentAvatar agent="architect" size={34} />
+            <AgentAvatar agent="sentinel" size={34} />
           )}
         </button>
-        {!open && <div className="fab-tooltip">Feedback? Tell the Architect</div>}
+        {!open && <div className="fab-tooltip">Feedback? Tell the Sentinel</div>}
       </div>
     </div>
   );
