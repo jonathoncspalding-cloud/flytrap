@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 TRENDS24_URL = "https://trends24.in/united-states/"
 
 # How many unique trends to return (most recent first)
-MAX_TRENDS = 50
+MAX_TRENDS = 30
 
 # Request timeout
 REQUEST_TIMEOUT = 15

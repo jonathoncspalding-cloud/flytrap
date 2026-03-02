@@ -189,6 +189,7 @@ def main():
     parser.add_argument("--brief", action="store_true", help="Briefing stage only")
     parser.add_argument("--no-brief", action="store_true", help="Skip briefing (for intraday runs)")
     parser.add_argument("--novelty", action="store_true", help="Weekly novelty scan on auto-filtered signals")
+    parser.add_argument("--review", action="store_true", help="Weekly prediction review against recent signals")
     parser.add_argument("--sync", action="store_true", help="Dashboard sync: collect → process → moments")
     parser.add_argument("--sync-state", action="store_true", help="Write progress to data/sync_state.json")
     parser.add_argument("--force", action="store_true", help="Force tension evaluation regardless of weekly cadence")
@@ -246,6 +247,10 @@ def main():
         from processors.novelty_scanner import run as novelty_scan
         logger.info("=== Novelty Scan (weekly) ===")
         results["novelty"] = novelty_scan()
+    elif args.review:
+        from agents.prediction_reviewer import run as prediction_review
+        logger.info("=== Prediction Review (weekly) ===")
+        results["prediction_review"] = prediction_review()
     elif args.brief:
         results["briefing"] = run_briefing()
     else:

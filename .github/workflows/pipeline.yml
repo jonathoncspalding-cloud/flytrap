@@ -1,13 +1,13 @@
 name: Flytrap Pipeline
 
 on:
-  # Full pipeline with briefing Mon/Wed/Fri at noon UTC
+  # Full pipeline with briefing — daily at noon UTC
   schedule:
-    - cron: "0 12 * * 1,3,5"
-  # Collection + processing (no briefing) Tue/Thu/Sat/Sun at noon UTC
-    - cron: "0 12 * * 0,2,4,6"
+    - cron: "0 12 * * *"
   # Intraday collection-only runs (no Claude API calls)
     - cron: "0 6,18,0 * * *"
+  # Weekly maintenance: novelty scan + prediction review (Sundays 3 PM UTC)
+    - cron: "0 15 * * 0"
   # Manual trigger
   workflow_dispatch:
     inputs:
@@ -22,6 +22,8 @@ on:
           - process
           - brief
           - sync
+          - novelty
+          - review
   # Dashboard trigger via API
   repository_dispatch:
     types: [run-pipeline]
@@ -84,13 +86,17 @@ jobs:
             echo "args=--brief" >> $GITHUB_OUTPUT
           elif [ "$INPUT" = "sync" ]; then
             echo "args=--sync" >> $GITHUB_OUTPUT
+          elif [ "$INPUT" = "novelty" ]; then
+            echo "args=--novelty" >> $GITHUB_OUTPUT
+          elif [ "$INPUT" = "review" ]; then
+            echo "args=--review" >> $GITHUB_OUTPUT
+          elif [ "$HOUR" = "15" ] && [ "$DOW" = "7" ]; then
+            # Sunday 3 PM: weekly novelty scan + prediction review
+            echo "args=--novelty" >> $GITHUB_OUTPUT
+            echo "weekly_review=true" >> $GITHUB_OUTPUT
           elif [ "$HOUR" = "12" ]; then
-            # Noon run: full pipeline on Mon/Wed/Fri, no-brief on other days
-            if [ "$DOW" = "1" ] || [ "$DOW" = "3" ] || [ "$DOW" = "5" ]; then
-              echo "args=" >> $GITHUB_OUTPUT
-            else
-              echo "args=--no-brief" >> $GITHUB_OUTPUT
-            fi
+            # Noon: full pipeline with briefing (daily)
+            echo "args=" >> $GITHUB_OUTPUT
           else
             # Intraday: collection only — no Claude API calls
             echo "args=--collect" >> $GITHUB_OUTPUT
@@ -112,6 +118,16 @@ jobs:
           REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
         run: |
           source venv/bin/activate && cd scripts && python run_pipeline.py ${{ steps.stage.outputs.args }}
+
+      - name: Run weekly prediction review (Sundays only)
+        if: steps.stage.outputs.weekly_review == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+        run: |
+          source venv/bin/activate && cd scripts && python run_pipeline.py --review
 
       - name: Upload pipeline log
         if: always()

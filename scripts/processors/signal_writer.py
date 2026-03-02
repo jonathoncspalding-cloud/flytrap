@@ -78,15 +78,24 @@ def write_signals(signals: list, source_label: str = "") -> int:
         platform = signal.get("source_platform", "Other")
         url = signal.get("source_url", None)
         raw = signal.get("raw_content", "")[:2000]
-        summary = signal.get("summary", "")[:2000]
+        collector_summary = signal.get("summary", "")[:2000]
         sentiment = signal.get("sentiment", "Neutral")
+
+        # Combine raw_content + collector summary into Raw Content.
+        # Keep Summary field EMPTY — it's reserved for Claude's analysis
+        # and used by signal_processor to detect unprocessed signals.
+        if collector_summary and raw:
+            combined_raw = f"{raw}\n\n---\n{collector_summary}"[:2000]
+        elif collector_summary:
+            combined_raw = collector_summary
+        else:
+            combined_raw = raw
 
         properties = {
             "Title": {"title": [{"text": {"content": title}}]},
             "Source Platform": {"select": {"name": platform}},
             "Date Captured": {"date": {"start": TODAY}},
-            "Raw Content": {"rich_text": [{"text": {"content": raw}}]},
-            "Summary": {"rich_text": [{"text": {"content": summary}}]},
+            "Raw Content": {"rich_text": [{"text": {"content": combined_raw}}]},
             "Sentiment": {"select": {"name": sentiment}},
         }
         if url:

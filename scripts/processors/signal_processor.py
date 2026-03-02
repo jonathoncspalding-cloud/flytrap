@@ -294,55 +294,100 @@ def update_signal_in_notion(signal_id: str, result: dict, trend_id: str = None):
 def detect_collisions(
     trends_with_tensions: list,
     tension_weights: dict = None,
-    min_combined_cps: int = 120,
-    min_shared_tensions: int = 2,
-    max_cps_differential: int = 40,
+    min_combined_cps: int = 150,
+    min_shared_tensions: int = 3,
+    max_cps_differential: int = 25,
     min_tension_weight: int = 5,
+    ambient_prevalence_threshold: float = 0.50,
+    max_collisions: int = 20,
 ) -> list:
     """
-    Find pairs of high-CPS trends that converge on shared tensions.
+    Find pairs of high-CPS trends that converge on shared *specific* tensions.
+
+    Key concept: "ambient" tensions (linked to >50% of active trends) are excluded
+    from the shared tension count. They're cultural background radiation — real, but
+    not predictive of where a flashpoint will be.
 
     Filters (tightened 2026-03-01):
-    - Both trends must have CPS >= 60 (HOT or FLASHPOINT in bucket system)
-    - CPS differential must be <= max_cps_differential (40 = same/adjacent/2-step buckets)
-    - Shared tensions must have weight >= min_tension_weight (filters out low-signal tensions)
+    - Both trends must have CPS >= 75
+    - CPS differential must be <= 25 (collisions are between peers)
+    - Only non-ambient tensions with weight >= 5 count as "shared"
+    - Need >= 3 shared specific tensions
     - Combined CPS must meet minimum threshold
+    - Output capped at top 20 by specificity-weighted score
     """
     if tension_weights is None:
         tension_weights = {}
 
-    collisions = []
-    high = [t for t in trends_with_tensions if t["cps"] >= 60 and t["tensions"]]
+    # Pre-pass: compute tension prevalence across all candidate trends
+    high = [t for t in trends_with_tensions if t["cps"] >= 75 and t["tensions"]]
+    if not high:
+        return []
 
+    tension_trend_count = {}
+    for t in high:
+        for tension in t["tensions"]:
+            tension_trend_count[tension] = tension_trend_count.get(tension, 0) + 1
+
+    n_trends = len(high)
+    ambient_tensions = {
+        t for t, count in tension_trend_count.items()
+        if count / n_trends > ambient_prevalence_threshold
+    }
+    if ambient_tensions:
+        logger.info(
+            f"  Collision filter: {len(ambient_tensions)} ambient tensions excluded "
+            f"(linked to >{ambient_prevalence_threshold*100:.0f}% of {n_trends} candidate trends)"
+        )
+
+    # Compute specificity for non-ambient tensions: specificity = 1 - prevalence
+    tension_specificity = {
+        t: 1.0 - (count / n_trends)
+        for t, count in tension_trend_count.items()
+        if t not in ambient_tensions
+    }
+
+    collisions = []
     for i in range(len(high)):
         for j in range(i + 1, len(high)):
-            t1, t2  = high[i], high[j]
+            t1, t2 = high[i], high[j]
 
-            # CPS differential check — wildly different intensity levels aren't colliding
+            # CPS differential check — collisions are between peers
             if abs(t1["cps"] - t2["cps"]) > max_cps_differential:
                 continue
 
-            # Filter shared tensions by weight
+            # Shared tensions: exclude ambient, filter by weight
             shared_raw = set(t1["tensions"]) & set(t2["tensions"])
-            shared = {t for t in shared_raw
-                       if tension_weights.get(t, 5) >= min_tension_weight}
+            shared = {
+                t for t in shared_raw
+                if t not in ambient_tensions
+                and tension_weights.get(t, 5) >= min_tension_weight
+            }
 
             combined = t1["cps"] + t2["cps"]
             if len(shared) >= min_shared_tensions and combined >= min_combined_cps:
-                # Score collisions by tension weight (not just CPS)
-                collision_score = combined * sum(tension_weights.get(t, 5) for t in shared) / 10
+                # Specificity-weighted score: rewards rare tension overlaps
+                specificity_sum = sum(tension_specificity.get(t, 0.5) for t in shared)
+                collision_score = combined * specificity_sum / 10
                 collisions.append({
-                    "trend_a":        t1["name"],
-                    "cps_a":          t1["cps"],
-                    "trend_b":        t2["name"],
-                    "cps_b":          t2["cps"],
+                    "trend_a":         t1["name"],
+                    "cps_a":           t1["cps"],
+                    "trend_b":         t2["name"],
+                    "cps_b":           t2["cps"],
                     "shared_tensions": sorted(shared),
-                    "combined_cps":   combined,
+                    "combined_cps":    combined,
                     "collision_score": round(collision_score, 1),
-                    "detected_date":  TODAY,
+                    "detected_date":   TODAY,
                 })
 
-    return sorted(collisions, key=lambda x: -x.get("collision_score", x["combined_cps"]))
+    sorted_collisions = sorted(collisions, key=lambda x: -x["collision_score"])
+
+    if len(sorted_collisions) > max_collisions:
+        logger.info(
+            f"  Collision cap: {len(sorted_collisions)} found, returning top {max_collisions}"
+        )
+
+    return sorted_collisions[:max_collisions]
 
 
 def save_collisions(collisions: list):
@@ -546,14 +591,45 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
     # TIER 1: Haiku triage on ambiguous signals
     # ══════════════════════════════════════════════════════════════════════════
     ambiguous = classified["ambiguous"]
-    promoted_signals = ambiguous  # Default: if triage fails, all go to Sonnet
 
-    if ambiguous:
+    # Separate low-context signals (Trends24/X Trending) — these get Haiku triage
+    # as their FINAL stop. They're bare topic names with no content for Sonnet to
+    # analyze. Haiku decides if they match a trend; if not, they're triaged out.
+    haiku_only = [s for s in ambiguous if s.get("title", "").startswith("X Trending")]
+    full_pipeline = [s for s in ambiguous if not s.get("title", "").startswith("X Trending")]
+
+    if haiku_only:
+        logger.info(f"  {len(haiku_only)} low-context signals (Trends24) → Haiku-only triage")
+
+    promoted_signals = full_pipeline  # Default: if triage fails, all go to Sonnet
+
+    # Triage both pools through Haiku, but only full_pipeline signals get promoted
+    all_ambiguous = full_pipeline + haiku_only
+    if all_ambiguous:
         try:
             from signal_triage import triage_signals
-            promoted_signals, triaged = triage_signals(ambiguous, trends)
+            promoted_all, triaged = triage_signals(all_ambiguous, trends)
 
-            # Handle triaged-out signals
+            # Filter: only non-Trends24 signals can be promoted to Sonnet
+            promoted_signals = [s for s in promoted_all
+                                if not s.get("title", "").startswith("X Trending")]
+
+            # Trends24 signals that Haiku scored high get auto-linked metadata
+            trends24_promoted = [s for s in promoted_all
+                                 if s.get("title", "").startswith("X Trending")]
+            for signal in trends24_promoted:
+                try:
+                    if not dry_run:
+                        update_signal_in_notion(signal["id"], {
+                            "summary": "X/Twitter trending topic (Haiku-classified as culturally relevant)",
+                            "sentiment": "Neutral",
+                        })
+                    processed += 1
+                    tier_stats["triaged_out"] += 1  # Counted as triaged (didn't hit Sonnet)
+                except Exception as e:
+                    logger.error(f"Error saving Trends24 signal '{signal['title'][:50]}': {e}")
+
+            # Handle triaged-out signals (from both pools)
             for signal, triage_result in triaged:
                 try:
                     if not dry_run:
@@ -565,8 +641,10 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
 
         except ImportError:
             logger.warning("signal_triage.py not available — all ambiguous signals → Sonnet")
+            promoted_signals = full_pipeline  # Still exclude Trends24 from Sonnet fallback
         except Exception as e:
             logger.warning(f"Tier 1 failed: {e} — all ambiguous signals → Sonnet")
+            promoted_signals = full_pipeline
 
     logger.info(f"Tier 2: {len(promoted_signals)} signals promoted to Sonnet processing")
 

@@ -58,6 +58,12 @@ NOISE_PATTERNS = [
     # Esports / sports betting minutiae
     "bo3", "counter-strike", "goalscorer", "kills over", "total kills",
     "map winner", "round handicap",
+    # Mainstream sports betting (high volume, low cultural signal)
+    " nba ", " nfl ", " mlb ", " nhl ", "premier league", "champions league",
+    "world cup", "super bowl winner", " mvp ", "championship",
+    "world series", "stanley cup", "ballon d'or", "grand slam",
+    # Weather / natural disaster gambling
+    "category 5", "hurricane", "earthquake magnitude",
     # Tweet counting (no cultural value)
     "# tweets", "number of tweets",
     # Meta-market noise

@@ -174,6 +174,15 @@ Your tasks:
    conflict within that theme. Example: instead of "trust in institutions declining," propose
    "healthcare system distrust vs. medical authority" or "media credibility crisis vs. citizen journalism."
 
+   DEDUPLICATION CHECK: Before proposing a new tension, compare it against EVERY existing
+   tension listed above. If the two sides of your proposed tension map to the same conceptual
+   poles as an existing tension — even with different wording — it is a duplicate. Do NOT
+   propose it. Instead, note in your summary that the existing tension already covers this
+   territory. Examples of duplicates that should NOT be proposed:
+   - "Institutional hollowing vs. direct citizen coordination" duplicates "Institutional authority vs. decentralized coordination"
+   - "AI safety constraints vs. institutional coercion to remove them" duplicates "AI safety guardrails vs. institutional coercion"
+   If in doubt, it's a duplicate. Err on the side of NOT proposing.
+
 2. WEIGHT ADJUSTMENTS: For each existing tension, evaluate whether its weight should change based on signal volume and intensity. Only recommend changes of ±1 or ±2 — weights should shift gradually. Consider:
    - How many recent trends intersect this tension?
    - Are signals hitting this tension increasing or decreasing?
@@ -264,14 +273,50 @@ def evaluate_tensions(tensions: list, trends: list, signals: list) -> dict:
 
 # ── Apply changes ─────────────────────────────────────────────────────────────
 
+def _check_semantic_duplicate(name: str, existing_names: set, threshold: float = 0.80) -> str | None:
+    """Check if a proposed tension name is semantically similar to any existing one.
+    Returns the existing tension name if duplicate, None if unique.
+    Uses sentence-transformers if available, falls back to prompt-only dedup."""
+    try:
+        from sentence_transformers import SentenceTransformer
+        import numpy as np
+        model = SentenceTransformer("all-MiniLM-L6-v2")
+        existing_list = list(existing_names)
+        if not existing_list:
+            return None
+        embeddings = model.encode([name] + existing_list)
+        # Cosine similarity between proposed and each existing
+        proposed_emb = embeddings[0]
+        for i, existing_emb in enumerate(embeddings[1:]):
+            sim = float(np.dot(proposed_emb, existing_emb) /
+                       (np.linalg.norm(proposed_emb) * np.linalg.norm(existing_emb)))
+            if sim >= threshold:
+                return existing_list[i]
+        return None
+    except ImportError:
+        logger.debug("sentence-transformers not available — skipping embedding dedup check")
+        return None
+    except Exception as e:
+        logger.warning(f"Embedding dedup check failed: {e} — skipping")
+        return None
+
+
 def apply_new_tensions(new_tensions: list, existing_names: set) -> int:
-    """Create new tensions in Notion. Returns count created."""
+    """Create new tensions in Notion. Returns count created.
+    Includes semantic dedup gate: rejects tensions >0.80 similar to existing ones."""
     created = 0
     for t in new_tensions:
         name = t.get("name", "").strip()
         if not name or name in existing_names:
             logger.info(f"  Skipping '{name}' — already exists or empty")
             continue
+
+        # Semantic dedup gate: reject near-duplicates
+        duplicate_of = _check_semantic_duplicate(name, existing_names)
+        if duplicate_of:
+            logger.info(f"  Skipping '{name}' — semantic duplicate of '{duplicate_of}'")
+            continue
+
         try:
             create_page(TENSIONS_DB, {
                 "Name":        {"title": [{"text": {"content": name}}]},
@@ -279,6 +324,7 @@ def apply_new_tensions(new_tensions: list, existing_names: set) -> int:
                 "Status":      {"select": {"name": "Active"}},
                 "Description": {"rich_text": rich_text(t.get("description", ""))},
             })
+            existing_names.add(name)  # Prevent within-batch duplicates
             logger.info(f"  + New tension: '{name}' (weight: {t.get('weight', 5)})")
             created += 1
         except Exception as e:
