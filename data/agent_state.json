@@ -1,5 +1,5 @@
 {
-  "last_updated": null,
+  "last_updated": "2026-03-02T15:42:04.999626+00:00",
   "pipeline": {
     "last_success": null,
     "last_failure": null,
@@ -8,13 +8,50 @@
     "streak": 0
   },
   "agents": {
-    "sentinel": { "last_run": null, "status": "idle", "findings": [], "next_scheduled": null },
-    "scout": { "last_run": null, "status": "idle", "findings": [], "next_scheduled": null },
-    "oracle": { "last_run": null, "status": "idle", "findings": [], "next_scheduled": null },
-    "architect": { "last_run": null, "status": "idle", "findings": [], "next_scheduled": null },
-    "optimize": { "last_run": null, "status": "idle", "findings": [], "next_scheduled": null },
-    "strategist": { "last_run": null, "status": "idle", "findings": [], "next_scheduled": null },
-    "isabel": { "last_run": null, "status": "idle", "findings": [], "next_scheduled": null }
+    "sentinel": {
+      "last_run": null,
+      "status": "idle",
+      "findings": [],
+      "next_scheduled": null
+    },
+    "scout": {
+      "last_run": null,
+      "status": "idle",
+      "findings": [],
+      "next_scheduled": null
+    },
+    "oracle": {
+      "last_run": null,
+      "status": "idle",
+      "findings": [],
+      "next_scheduled": null
+    },
+    "architect": {
+      "last_run": null,
+      "status": "idle",
+      "findings": [],
+      "next_scheduled": null
+    },
+    "optimize": {
+      "last_run": null,
+      "status": "idle",
+      "findings": [],
+      "next_scheduled": null
+    },
+    "strategist": {
+      "last_run": null,
+      "status": "idle",
+      "findings": [],
+      "next_scheduled": null
+    },
+    "isabel": {
+      "last_run": "2026-03-02T15:42:04.999613+00:00",
+      "status": "healthy",
+      "findings": [
+        "Proposal generated: success"
+      ],
+      "next_scheduled": null
+    }
   },
   "digest": {
     "last_generated": null,
