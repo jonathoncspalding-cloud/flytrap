@@ -183,6 +183,72 @@ def main():
         findings=findings_list,
     )
 
+    # === Team Standup Digest ===
+    from agent_state import read_state, update_digest
+
+    state = read_state()
+    digest_lines = [f"Team Standup — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"]
+    digest_lines.append("")
+
+    # Pipeline health
+    p = state.get("pipeline", {})
+    p_status = "HEALTHY" if p.get("streak", 0) > 0 else "UNKNOWN" if p.get("last_success") is None else "FAILING"
+    digest_lines.append(f"PIPELINE: {p_status}")
+    digest_lines.append(f"  Last success: {p.get('last_success', 'never')}")
+    digest_lines.append(f"  Signals (24h): {p.get('signals_24h', 0)}")
+    digest_lines.append(f"  Success streak: {p.get('streak', 0)}")
+    if p.get("last_failure"):
+        digest_lines.append(f"  Last failure: {p['last_failure']}")
+    digest_lines.append("")
+
+    # Per-agent status
+    digest_lines.append("AGENT STATUS:")
+    action_items = []
+    for agent_name, info in state.get("agents", {}).items():
+        a_status = info.get("status", "idle")
+        last_run = info.get("last_run", "never")
+        a_findings = info.get("findings", [])
+        icon = {"healthy": "+", "warning": "!", "error": "X", "idle": "?"}.get(a_status, "?")
+        digest_lines.append(f"  [{icon}] {agent_name}: {a_status} (last: {last_run})")
+        for finding in a_findings[:2]:
+            digest_lines.append(f"      {finding}")
+        if a_status == "idle" or last_run == "never" or last_run is None:
+            action_items.append(f"{agent_name} has never run — check workflow")
+        if a_status in ("warning", "error"):
+            for finding in a_findings[:1]:
+                action_items.append(f"{agent_name}: {finding}")
+    digest_lines.append("")
+
+    # Merge with integrity issues
+    for issue in issues:
+        action_items.append(f"Integrity: {issue}")
+
+    if action_items:
+        digest_lines.append(f"ACTION ITEMS ({len(action_items)}):")
+        for item in action_items:
+            digest_lines.append(f"  > {item}")
+    else:
+        digest_lines.append("No action items. All systems nominal.")
+
+    digest_text = "\n".join(digest_lines)
+    print("\n" + digest_text)
+
+    # Write digest to Notion as a separate report entry
+    write_report(
+        agent="sentinel",
+        report_type="synthesis",
+        title=f"Team Standup — {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
+        summary=f"{len(action_items)} action item(s). Pipeline: {p_status}.",
+        details=digest_text[:2000],
+        priority="high" if action_items else "low",
+    )
+
+    # Update shared state digest section
+    update_digest(
+        summary=f"Pipeline: {p_status}. {len(action_items)} action items.",
+        action_items=action_items,
+    )
+
     return {"issues": issues, "stats": stats}
 
 
