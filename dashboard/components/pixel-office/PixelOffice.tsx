@@ -23,6 +23,7 @@ import {
 import {
   loadAllSheets,
   loadFurnitureImages,
+  furnitureImages,
   getCharacterFrame,
   AGENT_APPEARANCES,
 } from "./sprites";
@@ -41,6 +42,8 @@ import {
   buildWallRenderables,
 } from "./tile-renderer";
 import { WALL_HSB } from "./office-layout";
+import { detectPois } from "./tendencies";
+import type { Poi } from "./tendencies";
 
 // ── Agent Greetings ─────────────────────────────────────────────────────────
 
@@ -116,6 +119,7 @@ export default function PixelOffice({
     characters: Character[];
     furniture: FurnitureItem[];
     walkable: boolean[][];
+    pois: Poi[];
     zoom: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -178,6 +182,7 @@ export default function PixelOffice({
 
       const furniture = buildFurnitureList();
       const walkable = buildWalkableMap(furniture);
+      const pois = detectPois(furniture, walkable, GRID_ROWS, GRID_COLS);
 
       const characters: Character[] = agents.map((agent) => {
         const assignment = DESK_ASSIGNMENTS[agent.id];
@@ -192,7 +197,7 @@ export default function PixelOffice({
         return char;
       });
 
-      stateRef.current = { characters, furniture, walkable, zoom: BASE_ZOOM };
+      stateRef.current = { characters, furniture, walkable, pois, zoom: BASE_ZOOM };
       setLoading(false);
 
       const loop = createGameLoop(
@@ -200,7 +205,7 @@ export default function PixelOffice({
           const s = stateRef.current;
           if (!s) return;
           for (const c of s.characters) {
-            updateCharacter(c, dt, s.walkable);
+            updateCharacter(c, dt, s.walkable, s.pois, s.characters);
           }
         },
         () => render()
@@ -216,6 +221,42 @@ export default function PixelOffice({
       cleanup.then((stop) => stop?.());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Live furniture update (from Isabel chat) ─────────────────────────
+
+  useEffect(() => {
+    function handleFurnitureUpdate(e: Event) {
+      const { imageDataUri, targetTypes, width, height } = (e as CustomEvent).detail as {
+        imageDataUri: string;
+        targetTypes: string[];
+        width: number;
+        height: number;
+      };
+      const s = stateRef.current;
+      if (!s) return;
+
+      const img = new Image();
+      img.onload = () => {
+        // Update the furniture image cache for all target asset types
+        for (const assetType of targetTypes) {
+          furnitureImages.set(assetType, img);
+        }
+        // Update any furniture items that reference these asset types
+        for (const item of s.furniture) {
+          if (targetTypes.includes(item.type)) {
+            item.image = img;
+            item.imageWidthPx = width;
+            item.imageHeightPx = height;
+          }
+        }
+        // Game loop picks up the new images on the next frame
+      };
+      img.src = imageDataUri;
+    }
+
+    window.addEventListener("update-furniture", handleFurnitureUpdate);
+    return () => window.removeEventListener("update-furniture", handleFurnitureUpdate);
   }, []);
 
   // ── Sync agent props ──────────────────────────────────────────────────
@@ -409,10 +450,12 @@ export default function PixelOffice({
     ctx.globalAlpha = 1;
 
     // Character sprite is 32×32, centered on pos.x, bottom aligned to pos.y + TILE_SIZE/2
+    // Sitting at POI (rug/couch) shifts character down to look seated on the floor
+    const sittingOffset = char.sittingAtPoi ? 4 : 0;
     const drawW = 32 * z;
     const drawH = 32 * z;
     const drawX = (char.pos.x - 16) * z;
-    const drawY = (char.pos.y - 24) * z;
+    const drawY = (char.pos.y - 24 + sittingOffset) * z;
 
     ctx.drawImage(charCanvas, drawX, drawY, drawW, drawH);
 
@@ -656,6 +699,9 @@ function createCharacter(
     greetTimer: 0,
     isActive: agent.isActive,
     status: agent.status,
+    currentActivity: null,
+    sittingAtPoi: false,
+    socialTarget: null,
   };
 }
 

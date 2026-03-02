@@ -2580,7 +2580,7 @@
       "uid": "f-1771117638479-ddcx",
       "type": "ASSET_84",
       "col": 15,
-      "row": 9,
+      "row": 10,
       "color": {
         "h": -167,
         "s": -52,
@@ -2923,6 +2923,12 @@
       "type": "CUSTOM_PAINTING_PERSIAN_RUBY",
       "col": 15,
       "row": 20
+    },
+    {
+      "uid": "f-1709337600000-club",
+      "type": "CUSTOM_ARMCHAIR_CLUB",
+      "col": 15,
+      "row": 16
     }
   ]
 }

@@ -2,6 +2,8 @@
 
 import type { Character, Vec2, Renderable, FurnitureItem } from "./types";
 import { TILE_SIZE, GRID_COLS, GRID_ROWS } from "./office-layout";
+import type { Poi } from "./tendencies";
+import { pickActivity, getIdleDuration } from "./tendencies";
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -188,7 +190,9 @@ export function stopCharacter(char: Character): void {
 export function updateCharacter(
   char: Character,
   dt: number,
-  walkable: boolean[][]
+  walkable: boolean[][],
+  pois: Poi[],
+  allCharacters: Character[],
 ): void {
   // Greeting timer — keep character still while greeting popup shows
   if (char.greetTimer > 0) {
@@ -206,8 +210,27 @@ export function updateCharacter(
 
   switch (char.state) {
     case "idle": {
+      // Social interaction: face toward partner while socializing
+      if (char.currentActivity === "social" && char.socialTarget) {
+        const partner = allCharacters.find((c) => c.id === char.socialTarget);
+        if (partner) {
+          const dx = partner.pos.x - char.pos.x;
+          const dy = partner.pos.y - char.pos.y;
+          if (Math.abs(dx) > Math.abs(dy)) {
+            char.facing = dx > 0 ? "right" : "left";
+          } else {
+            char.facing = dy > 0 ? "down" : "up";
+          }
+        }
+      }
+
       char.idleTimer -= dt;
       if (char.idleTimer <= 0) {
+        // Clear sitting state when leaving idle
+        char.sittingAtPoi = false;
+        char.currentActivity = null;
+        char.socialTarget = null;
+
         if (char.isActive) {
           // Go to desk
           const curTile = posToTile(char.pos);
@@ -224,16 +247,110 @@ export function updateCharacter(
             char.animTimer = 0;
           }
         } else {
-          // Wander
-          const target = randomWalkableTile(walkable);
+          // Tendency-driven idle decision
+          const activity = pickActivity(char.id, pois, allCharacters, walkable);
           const curTile = posToTile(char.pos);
-          char.path = bfsPath(curTile, target, walkable);
-          if (char.path.length > 0) {
-            char.state = "walk";
-            char.animFrame = 0;
-            char.animTimer = 0;
+
+          switch (activity.kind) {
+            case "desk": {
+              char.currentActivity = "desk_rest";
+              char.path = bfsPath(curTile, char.deskTile, walkable);
+              if (char.path.length > 0) {
+                char.state = "walk";
+                char.animFrame = 0;
+                char.animTimer = 0;
+              } else {
+                // Already at desk — sit for a while
+                char.state = "type";
+                char.facing = "up";
+                char.animFrame = 0;
+                char.animTimer = 0;
+                char.idleTimer = getIdleDuration(char.id);
+              }
+              break;
+            }
+
+            case "poi": {
+              char.currentActivity = "poi";
+              char.path = bfsPath(curTile, activity.poi.tile, walkable);
+              if (char.path.length > 0) {
+                char.state = "walk";
+                char.animFrame = 0;
+                char.animTimer = 0;
+                // Store POI info for arrival behavior
+                char._targetPoi = activity.poi;
+              } else {
+                // Already at POI tile
+                char.facing = activity.poi.facing;
+                char.sittingAtPoi = activity.poi.sitting;
+                char.idleTimer = getIdleDuration(char.id);
+                char.animFrame = 1; // standing frame
+              }
+              break;
+            }
+
+            case "social": {
+              char.currentActivity = "social";
+              char.socialTarget = activity.targetAgent;
+              const target = allCharacters.find((c) => c.id === activity.targetAgent);
+              if (target) {
+                // Walk to a tile near the target
+                const targetTile = posToTile(target.pos);
+                // Try adjacent tiles
+                const adjacentOptions = [
+                  { x: targetTile.x + 1, y: targetTile.y },
+                  { x: targetTile.x - 1, y: targetTile.y },
+                  { x: targetTile.x, y: targetTile.y + 1 },
+                  { x: targetTile.x, y: targetTile.y - 1 },
+                ];
+                let found = false;
+                for (const adj of adjacentOptions) {
+                  if (
+                    adj.y >= 0 && adj.y < GRID_ROWS &&
+                    adj.x >= 0 && adj.x < GRID_COLS &&
+                    walkable[adj.y][adj.x]
+                  ) {
+                    char.path = bfsPath(curTile, adj, walkable);
+                    if (char.path.length > 0) {
+                      char.state = "walk";
+                      char.animFrame = 0;
+                      char.animTimer = 0;
+                      found = true;
+                      break;
+                    }
+                  }
+                }
+                if (!found) {
+                  // Can't reach — just wander
+                  char.currentActivity = "wander";
+                  char.socialTarget = null;
+                  const wanderTarget = randomWalkableTile(walkable);
+                  char.path = bfsPath(curTile, wanderTarget, walkable);
+                  if (char.path.length > 0) {
+                    char.state = "walk";
+                    char.animFrame = 0;
+                    char.animTimer = 0;
+                  }
+                  char.idleTimer = getIdleDuration(char.id);
+                }
+              }
+              break;
+            }
+
+            case "wander":
+            default: {
+              char.currentActivity = "wander";
+              const target = randomWalkableTile(walkable);
+              char.path = bfsPath(curTile, target, walkable);
+              if (char.path.length > 0) {
+                char.state = "walk";
+                char.animFrame = 0;
+                char.animTimer = 0;
+              }
+              char.idleTimer = getIdleDuration(char.id);
+              break;
+            }
           }
-          char.idleTimer = 3 + Math.random() * 5;
         }
       }
       break;
@@ -252,9 +369,44 @@ export function updateCharacter(
           char.facing = "up";
           char.animFrame = 0;
           char.animTimer = 0;
+        } else if (char.currentActivity === "desk_rest" &&
+          curTile.x === char.deskTile.x &&
+          curTile.y === char.deskTile.y) {
+          // Arrived at desk for voluntary rest
+          char.state = "type";
+          char.facing = "up";
+          char.animFrame = 0;
+          char.animTimer = 0;
+          // Use a desk-rest timer — will transition back to idle when it expires
+          char.idleTimer = getIdleDuration(char.id);
+          // Temporarily mark as "active-looking" so type animation plays
+          char._deskResting = true;
+        } else if (char.currentActivity === "poi" && char._targetPoi) {
+          // Arrived at POI — face it and linger
+          char.state = "idle";
+          char.facing = char._targetPoi.facing;
+          char.sittingAtPoi = char._targetPoi.sitting;
+          char.idleTimer = getIdleDuration(char.id);
+          char.animFrame = 1; // standing frame
+          char._targetPoi = undefined;
+        } else if (char.currentActivity === "social") {
+          // Arrived near social target — face them and chat
+          char.state = "idle";
+          const partner = allCharacters.find((c) => c.id === char.socialTarget);
+          if (partner) {
+            const dx = partner.pos.x - char.pos.x;
+            const dy = partner.pos.y - char.pos.y;
+            if (Math.abs(dx) > Math.abs(dy)) {
+              char.facing = dx > 0 ? "right" : "left";
+            } else {
+              char.facing = dy > 0 ? "down" : "up";
+            }
+          }
+          char.idleTimer = 15 + Math.random() * 30; // chat for 15-45 sec
+          char.animFrame = 1;
         } else {
           char.state = "idle";
-          char.idleTimer = 2 + Math.random() * 4;
+          char.idleTimer = getIdleDuration(char.id);
           char.animFrame = 0;
         }
       }
@@ -267,9 +419,21 @@ export function updateCharacter(
         char.animTimer -= TYPE_FRAME_DUR;
         char.animFrame = (char.animFrame + 1) % 2;
       }
+      // Desk resting (voluntary) — leave after timer expires
+      if (char._deskResting) {
+        char.idleTimer -= dt;
+        if (char.idleTimer <= 0) {
+          char._deskResting = false;
+          char.currentActivity = null;
+          char.state = "idle";
+          char.idleTimer = 10 + Math.random() * 20; // brief pause before next activity
+          char.animFrame = 0;
+        }
+        break;
+      }
       if (!char.isActive) {
         char.state = "idle";
-        char.idleTimer = 1 + Math.random() * 3;
+        char.idleTimer = 10 + Math.random() * 20; // don't immediately start moving
         char.animFrame = 0;
       }
       break;
@@ -296,8 +460,29 @@ export function buildRenderList(
   const list: Renderable[] = [];
 
   for (const f of furniture) {
+    let bottomY = (f.tileY + f.heightTiles) * TILE_SIZE;
+
+    // Surface item z-boost: small non-solid items sitting on solid furniture
+    // get their z pushed above the container (like PA's surface item logic)
+    if (!f.solid && !f.wallMounted) {
+      for (const container of furniture) {
+        if (container === f || !container.solid) continue;
+        // Check if this item overlaps the container's tile footprint
+        const fx = f.tileX, fy = f.tileY;
+        const cx = container.tileX, cy = container.tileY;
+        const cw = container.widthTiles, ch = container.heightTiles;
+        if (fx >= cx && fx < cx + cw && fy >= cy && fy < cy + ch) {
+          const containerBottom = (cy + ch) * TILE_SIZE;
+          if (bottomY <= containerBottom) {
+            bottomY = containerBottom + 0.5;
+          }
+          break;
+        }
+      }
+    }
+
     list.push({
-      bottomY: (f.tileY + f.heightTiles) * TILE_SIZE,
+      bottomY,
       draw: (ctx, zoom) => drawFurnFn(ctx, f, zoom),
     });
   }

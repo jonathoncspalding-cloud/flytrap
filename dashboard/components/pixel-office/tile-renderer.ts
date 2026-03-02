@@ -202,18 +202,17 @@ export function clearTileCache(): void {
  * Get wall sprite for a tile based on its 4 cardinal neighbors.
  * Bitmask: N=1, E=2, S=4, W=8
  */
-/** Check if a tile is a wall (0) or void (8) — both are non-floor */
-function isWallOrVoid(col: number, row: number): boolean {
-  const t = TILE_MAP[row]?.[col];
-  return t === 0 || t === 8 || t === undefined;
+/** Check if a tile is a wall (0) — matches Pixel Agents bitmask behavior */
+function isWall(col: number, row: number): boolean {
+  return TILE_MAP[row]?.[col] === 0;
 }
 
 function getWallMask(col: number, row: number): number {
   let mask = 0;
-  if (row > 0 && isWallOrVoid(col, row - 1)) mask |= 1; // N
-  if (col < GRID_COLS - 1 && isWallOrVoid(col + 1, row)) mask |= 2; // E
-  if (row < GRID_ROWS - 1 && isWallOrVoid(col, row + 1)) mask |= 4; // S
-  if (col > 0 && isWallOrVoid(col - 1, row)) mask |= 8; // W
+  if (row > 0 && isWall(col, row - 1)) mask |= 1; // N
+  if (col < GRID_COLS - 1 && isWall(col + 1, row)) mask |= 2; // E
+  if (row < GRID_ROWS - 1 && isWall(col, row + 1)) mask |= 4; // S
+  if (col > 0 && isWall(col - 1, row)) mask |= 8; // W
   return mask;
 }
 

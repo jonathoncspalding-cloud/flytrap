@@ -236,6 +236,7 @@ export const FURNITURE_ASSETS: Record<string, FurnitureAsset> = {
   ASSET_101: { file: "PAINTING_LANDSCAPE.png",   widthPx: 32, heightPx: 32, footprintW: 2, footprintH: 2, solid: false, wallMounted: true },
   ASSET_102: { file: "PAINTING_LANDSCAPE_2.png", widthPx: 32, heightPx: 32, footprintW: 2, footprintH: 2, solid: false, wallMounted: true },
   CUSTOM_PAINTING_PERSIAN_RUBY: { file: "CUSTOM_PAINTING_PERSIAN_RUBY.png", widthPx: 32, heightPx: 16, footprintW: 2, footprintH: 1, solid: false },
+  CUSTOM_ARMCHAIR_CLUB: { file: "ARMCHAIR_CLUB.png", widthPx: 32, heightPx: 32, footprintW: 2, footprintH: 2, solid: false },
 };
 
 // ── Furniture Image Loading ─────────────────────────────────────────────────

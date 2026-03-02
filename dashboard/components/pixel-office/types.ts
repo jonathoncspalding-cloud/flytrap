@@ -95,6 +95,16 @@ export interface Character {
   greetTimer: number;
   isActive: boolean;
   status: string;
+  /** Current idle activity type (for tendency-driven behavior) */
+  currentActivity: "poi" | "social" | "wander" | "desk_rest" | null;
+  /** Whether the character is sitting at a non-desk POI (rug, couch) */
+  sittingAtPoi: boolean;
+  /** ID of the agent this character is socializing with */
+  socialTarget: string | null;
+  /** Transient: POI target while walking to it */
+  _targetPoi?: import("./tendencies").Poi;
+  /** Transient: true when voluntarily resting at desk (not actually working) */
+  _deskResting?: boolean;
 }
 
 // ── Renderable (for z-sorting) ──────────────────────────────────────────────

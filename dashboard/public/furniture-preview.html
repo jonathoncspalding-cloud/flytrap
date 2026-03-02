@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Isabel's Armchair Collection -- Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e8d5b7;
+    font-family: 'Georgia', serif;
+    padding: 40px;
+    min-height: 100vh;
+  }
+  h1 {
+    text-align: center;
+    font-size: 2.5em;
+    color: #f0c674;
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+  }
+  .subtitle {
+    text-align: center;
+    font-style: italic;
+    color: #b8a080;
+    font-size: 1.1em;
+    margin-bottom: 50px;
+  }
+  .chair-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .chair-card {
+    background: #16213e;
+    border: 2px solid #0f3460;
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    transition: border-color 0.3s;
+  }
+  .chair-card:hover {
+    border-color: #f0c674;
+  }
+  .chair-card h2 {
+    color: #f0c674;
+    font-size: 1.3em;
+    margin-bottom: 3px;
+  }
+  .chair-card .dims {
+    color: #7a7a9a;
+    font-size: 0.85em;
+    margin-bottom: 6px;
+  }
+  .chair-card .vibe {
+    color: #b8a080;
+    font-style: italic;
+    font-size: 0.9em;
+    margin-bottom: 20px;
+  }
+  .zoom-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 20px;
+    min-height: 260px;
+    flex-wrap: wrap;
+  }
+  .zoom-item {
+    text-align: center;
+  }
+  .zoom-item img {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    display: block;
+    margin: 0 auto 6px;
+    background: rgba(255,255,255,0.03);
+  }
+  .zoom-label {
+    color: #7a7a9a;
+    font-size: 0.75em;
+    font-family: monospace;
+  }
+  .context-section {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #0f3460;
+  }
+  .context-section h3 {
+    color: #b8a080;
+    font-size: 0.85em;
+    margin-bottom: 10px;
+  }
+  .floor-preview {
+    display: inline-block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    padding: 24px 32px;
+    background-color: #3a2a14;
+  }
+  .floor-preview img {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    display: block;
+  }
+  .comparison {
+    max-width: 1200px;
+    margin: 50px auto 0;
+    background: #16213e;
+    border: 2px solid #0f3460;
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+  }
+  .comparison h2 {
+    color: #f0c674;
+    margin-bottom: 20px;
+  }
+  .comparison-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .comparison-item {
+    text-align: center;
+  }
+  .comparison-item img {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    display: block;
+    margin: 0 auto 8px;
+  }
+  .comparison-item .comp-label {
+    color: #b8a080;
+    font-size: 0.8em;
+  }
+  .notes {
+    max-width: 1200px;
+    margin: 40px auto 0;
+    background: #16213e;
+    border: 2px solid #0f3460;
+    border-radius: 12px;
+    padding: 30px;
+  }
+  .notes h2 {
+    color: #f0c674;
+    margin-bottom: 15px;
+  }
+  .notes p {
+    line-height: 1.8;
+    margin-bottom: 12px;
+  }
+  .hl { color: #f0c674; font-weight: bold; }
+  .palette {
+    display: inline-flex;
+    gap: 4px;
+    vertical-align: middle;
+    margin-left: 8px;
+  }
+  .swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.2);
+    display: inline-block;
+  }
+</style>
+</head>
+<body>
+
+<h1>Isabel's Armchair Collection</h1>
+<p class="subtitle">"More is More; Less is a Bore" -- Custom pixel art armchairs for the Flytrap Command Center</p>
+
+<div class="chair-grid">
+
+  <div class="chair-card">
+    <h2>Emerald Wingback <span class="palette"><span class="swatch" style="background:#143c1e"></span><span class="swatch" style="background:#235f37"></span><span class="swatch" style="background:#3c8c50"></span><span class="swatch" style="background:#50a564"></span></span></h2>
+    <div class="dims">16x32px -- 1 tile wide x 2 tiles tall</div>
+    <div class="vibe">"Regal. Dramatic. The chair of someone who makes DECISIONS."</div>
+    <div class="zoom-row">
+      <div class="zoom-item">
+        <img src="sprites/furniture/ARMCHAIR_WINGBACK.png" width="16" height="32" alt="Emerald Wingback 1x">
+        <span class="zoom-label">1x</span>
+      </div>
+      <div class="zoom-item">
+        <img src="sprites/furniture/ARMCHAIR_WINGBACK.png" width="64" height="128" alt="Emerald Wingback 4x">
+        <span class="zoom-label">4x</span>
+      </div>
+      <div class="zoom-item">
+        <img src="sprites/furniture/ARMCHAIR_WINGBACK.png" width="128" height="256" alt="Emerald Wingback 8x">
+        <span class="zoom-label">8x</span>
+      </div>
+    </div>
+    <div class="context-section">
+      <h3>On Floor (4x zoom)</h3>
+      <div class="floor-preview">
+        <img src="sprites/furniture/ARMCHAIR_WINGBACK.png" width="64" height="128" alt="Emerald Wingback on floor">
+      </div>
+    </div>
+  </div>
+
+  <div class="chair-card">
+    <h2>Burnt Orange Mid-Century <span class="palette"><span class="swatch" style="background:#501e0a"></span><span class="swatch" style="background:#a54b1e"></span><span class="swatch" style="background:#d27837"></span><span class="swatch" style="background:#e6914b"></span></span></h2>
+    <div class="dims">16x32px -- 1 tile wide x 2 tiles tall</div>
+    <div class="vibe">"Sleek. Cool. Palm Springs poolside energy."</div>
+    <div class="zoom-row">
+      <div class="zoom-item">
+        <img src="sprites/furniture/ARMCHAIR_MIDCENTURY.png" width="16" height="32" alt="Burnt Orange Mid-Century 1x">
+        <span class="zoom-label">1x</span>
+      </div>
+      <div class="zoom-item">
+        <img src="sprites/furniture/ARMCHAIR_MIDCENTURY.png" width="64" height="128" alt="Burnt Orange Mid-Century 4x">
+        <span class="zoom-label">4x</span>
+      </div>
+      <div class="zoom-item">
+        <img src="sprites/furniture/ARMCHAIR_MIDCENTURY.png" width="128" height="256" alt="Burnt Orange Mid-Century 8x">
+        <span class="zoom-label">8x</span>
+      </div>
+    </div>
+    <div class="context-section">
+      <h3>On Floor (4x zoom)</h3>
+      <div class="floor-preview">
+        <img src="sprites/furniture/ARMCHAIR_MIDCENTURY.png" width="64" height="128" alt="Burnt Orange Mid-Century on floor">
+      </div>
+    </div>
+  </div>
+
+  <div class="chair-card">
+    <h2>Sapphire Reading Chair <span class="palette"><span class="swatch" style="background:#0f193c"></span><span class="swatch" style="background:#284182"></span><span class="swatch" style="background:#4164af"></span><span class="swatch" style="background:#5a82c8"></span></span></h2>
+    <div class="dims">32x32px -- 2 tiles wide x 2 tiles tall</div>
+    <div class="vibe">"Sink-in luxury. You'll never want to leave."</div>
+    <div class="zoom-row">
+      <div class="zoom-item">
+        <img src="sprites/furniture/ARMCHAIR_READING.png" width="32" height="32" alt="Sapphire Reading Chair 1x">
+        <span class="zoom-label">1x</span>
+      </div>
+      <div class="zoom-item">
+        <img src="sprites/furniture/ARMCHAIR_READING.png" width="128" height="128" alt="Sapphire Reading Chair 4x">
+        <span class="zoom-label">4x</span>
+      </div>
+      <div class="zoom-item">
+        <img src="sprites/furniture/ARMCHAIR_READING.png" width="256" height="256" alt="Sapphire Reading Chair 8x">
+        <span class="zoom-label">8x</span>
+      </div>
+    </div>
+    <div class="context-section">
+      <h3>On Floor (4x zoom)</h3>
+      <div class="floor-preview">
+        <img src="sprites/furniture/ARMCHAIR_READING.png" width="128" height="128" alt="Sapphire Reading Chair on floor">
+      </div>
+    </div>
+  </div>
+
+  <div class="chair-card">
+    <h2>Oxblood Club Chair <span class="palette"><span class="swatch" style="background:#2d0a0f"></span><span class="swatch" style="background:#782328"></span><span class="swatch" style="background:#aa3c37"></span><span class="swatch" style="background:#c35546"></span></span></h2>
+    <div class="dims">32x32px -- 2 tiles wide x 2 tiles tall</div>
+    <div class="vibe">"Old money. Scotch and leather-bound books."</div>
+    <div class="zoom-row">
+      <div class="zoom-item">
+        <img src="sprites/furniture/ARMCHAIR_CLUB.png" width="32" height="32" alt="Oxblood Club Chair 1x">
+        <span class="zoom-label">1x</span>
+      </div>
+      <div class="zoom-item">
+        <img src="sprites/furniture/ARMCHAIR_CLUB.png" width="128" height="128" alt="Oxblood Club Chair 4x">
+        <span class="zoom-label">4x</span>
+      </div>
+      <div class="zoom-item">
+        <img src="sprites/furniture/ARMCHAIR_CLUB.png" width="256" height="256" alt="Oxblood Club Chair 8x">
+        <span class="zoom-label">8x</span>
+      </div>
+    </div>
+    <div class="context-section">
+      <h3>On Floor (4x zoom)</h3>
+      <div class="floor-preview">
+        <img src="sprites/furniture/ARMCHAIR_CLUB.png" width="128" height="128" alt="Oxblood Club Chair on floor">
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="comparison">
+  <h2>Side-by-Side Comparison (4x)</h2>
+  <div class="comparison-row">
+
+    <div class="comparison-item">
+      <img src="sprites/furniture/CHAIR_CUSHIONED_LG_FRONT.png" width="128" height="128" style="object-fit: contain;" alt="Existing Large Cushioned">
+      <div class="comp-label">Existing Large Cushioned</div>
+    </div>
+
+    <div class="comparison-item">
+      <img src="sprites/furniture/CHAIR_CUSHIONED_FRONT.png" width="128" height="128" style="object-fit: contain;" alt="Existing Small Cushioned">
+      <div class="comp-label">Existing Small Cushioned</div>
+    </div>
+
+    <div class="comparison-item">
+      <img src="sprites/furniture/CHAIR_ROTATING_FRONT.png" width="128" height="128" style="object-fit: contain;" alt="Existing Rotating">
+      <div class="comp-label">Existing Rotating</div>
+    </div>
+
+    <div class="comparison-item">
+      <img src="sprites/furniture/ARMCHAIR_WINGBACK.png" width="64" height="128" alt="Emerald Wingback">
+      <div class="comp-label">Emerald Wingback (NEW)</div>
+    </div>
+
+    <div class="comparison-item">
+      <img src="sprites/furniture/ARMCHAIR_MIDCENTURY.png" width="64" height="128" alt="Burnt Orange Mid-Century">
+      <div class="comp-label">Burnt Orange Mid-Century (NEW)</div>
+    </div>
+
+    <div class="comparison-item">
+      <img src="sprites/furniture/ARMCHAIR_READING.png" width="128" height="128" alt="Sapphire Reading Chair">
+      <div class="comp-label">Sapphire Reading Chair (NEW)</div>
+    </div>
+
+    <div class="comparison-item">
+      <img src="sprites/furniture/ARMCHAIR_CLUB.png" width="128" height="128" alt="Oxblood Club Chair">
+      <div class="comp-label">Oxblood Club Chair (NEW)</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="notes">
+  <h2>Designer's Notes -- Isabel</h2>
+  <p><span class="hl">1. Emerald Wingback (16x32):</span> Tall, regal silhouette with flared wings and diamond tufting. The emerald palette brings LIFE to any corner. Those turned wooden legs add warmth. Place next to a bookshelf for an instant reading nook -- magnifique!</p>
+  <p><span class="hl">2. Burnt Orange Mid-Century (16x32):</span> Low-slung, sleek, with those signature splayed tapered legs that angle outward -- pure 1960s. The warm terracotta will POP against the cool wood floors. Pair with a plant for that Palm Springs lounge vibe.</p>
+  <p><span class="hl">3. Sapphire Reading Chair (32x32):</span> Oversized, jewel-toned LUXURY. Gold nailhead trim along the arms, diamond tufting on the tall back, bun feet. This is the throne of someone who takes their reading VERY seriously. The sapphire blue creates stunning contrast with any warm wood.</p>
+  <p><span class="hl">4. Oxblood Club Chair (32x32):</span> Massive rolled arms, brass stud detailing everywhere, that gorgeous stitching line across the back. The worn leather highlights give it CHARACTER -- like it's been in a private club since 1923. Bellissimo!</p>
+  <p style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #0f3460; color: #f0c674; font-style: italic; font-size: 1.1em;">Tell me which ones you ADORE, which need tweaking, and which shall be banished. I will place the chosen ones in our palazzo with the reverence they deserve!</p>
+</div>
+
+</body>
+</html>

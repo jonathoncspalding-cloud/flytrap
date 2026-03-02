@@ -114,8 +114,19 @@ export function getFloorColor(x: number, y: number): FloorColor | null {
   return null;
 }
 
-/** Wall color from layout JSON (default dark blue if not specified) */
-export const WALL_HSB: FloorColor = layout.wallColor ?? { h: 220, s: 25, b: -15, c: 5 };
+/** Wall color — use wallColor from JSON, or derive from first wall tile's tileColor, or default */
+export const WALL_HSB: FloorColor = (() => {
+  if (layout.wallColor) return layout.wallColor;
+  // Derive from tileColors: find first wall tile (type 0) with a color
+  if (layout.tileColors) {
+    for (let i = 0; i < layout.tiles.length; i++) {
+      if (layout.tiles[i] === 0 && layout.tileColors[i]) {
+        return layout.tileColors[i]!;
+      }
+    }
+  }
+  return { h: 220, s: 25, b: -15, c: 5 };
+})();
 
 // ── Desk assignments from JSON ──────────────────────────────────────────────
 
