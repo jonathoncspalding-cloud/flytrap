@@ -43,6 +43,16 @@ client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 CLIENTS = "A&W, VLEX, Four Roses, LegoLand, Cup Noodles, Busch Light, Natural Light"
 
+CLIENT_PROFILES = """
+- A&W: QSR/fast food chain. Family-friendly Americana, core audience 25-54. Known for root beer heritage, nostalgic brand identity, and all-American comfort food positioning.
+- VLEX: Legal tech / legal research platform. Audience is attorneys, law firms, legal departments 30-60. Brand is authoritative, modern, efficiency-focused. Cares about trust, institutions, regulation trends.
+- Four Roses: Premium bourbon. Craft spirits enthusiasts 28-45. Heritage storytelling, craftsmanship positioning. Culturally adjacent to Southern identity, maker culture, slow living.
+- LegoLand: Family entertainment / theme parks. Parents with kids 4-12, plus adult LEGO fans. Playful, creative, imagination-driven. Relevant to nostalgia, play culture, family experience trends.
+- Cup Noodles: Instant ramen / convenience food. Young adults 18-34, college students, budget-conscious. Brand leans into internet culture, late-night energy, irreverent humor.
+- Busch Light: Value beer, 21-34 male-skewing. Outdoor/rural identity, hunting and fishing culture. Humor-driven marketing, blue-collar authenticity, anti-pretension.
+- Natural Light: Value beer, 21-30 college/post-college. Party culture, tailgating, affordability pride. Self-aware, meme-friendly, does not take itself seriously.
+"""
+
 
 # ── Data loading ───────────────────────────────────────────────────────────────
 
@@ -194,6 +204,13 @@ BRIEFING_PROMPT = """You are a senior cultural strategist at a top-tier creative
 
 Today is {today}.
 
+FRAMING: This is a DAILY briefing. Your reader saw yesterday's briefing. Lead with what CHANGED:
+- New signals that were not present yesterday
+- Trends that moved significantly in CPS or momentum
+- Moments that changed status (Predicted → Forming, Forming → Happening)
+- Calendar events that entered the 7-day window
+Do not re-explain trends your reader already knows. Say what is NEW about them today.
+
 PREDICTED CULTURAL MOMENTS (our forecaster's active predictions — LEAD WITH THESE):
 {moments_data}
 
@@ -214,7 +231,8 @@ NEW SIGNALS — LAST 24 HOURS:
 HISTORICAL CALIBRATION (past cultural moments for context):
 {historical_data}
 
-CLIENTS: {clients}
+CLIENTS AND POSITIONING:
+{client_profiles}
 
 ---
 
@@ -222,10 +240,28 @@ VOICE RULES — these are non-negotiable:
 - Short sentences. One idea per sentence. Hard stops.
 - No hedging. Not "may suggest" or "could indicate." Say what it is.
 - If it's obvious, skip it. Surface what's early, weird, or underappreciated.
-- Every flashpoint needs a specific brand angle — who should act and exactly how.
 - Bold ONLY the trend name — never include CPS scores or numbers inside bold text.
   CORRECT: **Broadcast Truth Suppression** — it's moving fast.
   WRONG: **Broadcast Truth Suppression (CPS: 89)** — don't do this.
+
+CLIENT RULES — keep clients contained:
+- Do NOT mention specific clients by name anywhere EXCEPT "The Brief" section at the end.
+- Flashpoints, What's Moving, Signals Worth Watching, etc. should be pure cultural analysis.
+- The Brief is the ONLY place where you connect trends to specific client opportunities.
+
+EVIDENCE RULES — every claim needs receipts:
+- Every claim in Flashpoints and What's Moving must reference at least one specific signal by platform and title. Example: "Reddit thread 'Why I quit streaming' + HN discussion on creator burnout = this is accelerating."
+- If you cannot cite a specific signal from the data provided, do not make the claim.
+- When recommending a brand angle, connect it to a specific tension or trend — not vibes.
+
+PREDICTION vs. OBSERVATION — make the distinction unmistakable:
+- OBSERVED events have happened. They have proof: a signal, a post, a data point, a news story. State them as fact.
+- PREDICTED events have NOT happened yet. They are forecasts from our moment forecaster or your own synthesis. Always label these clearly.
+- Use these markers consistently:
+  🔮 = prediction/forecast (has not happened yet)
+  📍 = observed/confirmed (evidence exists in the signal data)
+- In any section where predictions and observations coexist, prefix each item so the reader never has to guess.
+- The Predicted Moments section is ALL predictions — no need to mark each one. But in Flashpoints, What's Moving, and Collision Alerts, if you reference a predicted moment alongside observed signals, distinguish them clearly.
 
 ---
 
@@ -234,20 +270,34 @@ Write the briefing in EXACTLY this format. No deviations.
 ## {today} Cultural Briefing
 
 ### 🔮 Predicted Moments
-[Lead with the forecaster's top predictions. For each active moment prediction: **Moment Title** — The prediction in one sentence. Current status (Predicted/Forming/Happening). What to watch for this week. Which client should prepare.]
+
+**Tier 1 — High Conviction (Confidence 70%+):**
+[These are near-certainties. For each: **Moment Title** — The prediction in one sentence. Current status. The specific window. Which client must have a plan ready and by when.]
+
+**Tier 2 — Watch Closely (Confidence 40-69%):**
+[Worth monitoring. For each: **Moment Title** — The prediction in one sentence. The specific trigger event that would escalate this to Tier 1.]
+
+**Tier 3 — Weak Signal (Confidence <40%):**
+[One line each. The moment name and what evidence would make you believe it more.]
+
 [If no moment predictions exist yet, write: "Moment forecaster initializing — predictions will appear after the next pipeline run."]
 
 ### 🔴 Flashpoints
 [Trends that need immediate attention. If none score 80+, list the 3 closest to breaking.]
-[Format per trend: **Trend Name** — What it is in one sentence. Why right now in one sentence. Which of our clients should move on this and how.]
+[Format per trend: **Trend Name** — What it is in one sentence. The specific signal(s) driving urgency right now (cite by platform + title). Why this matters culturally and where it's heading. Mark each item 📍 (observed) or 🔮 (prediction) to clarify what's proven vs. projected.]
 
 ### 📈 What's Moving
-[The 4-6 trends gaining the most momentum. What changed. Where they're heading. Be specific about direction — not "rising" but what the next cultural beat looks like.]
+[The 4-6 trends gaining the most momentum. What CHANGED today — not a summary of the trend, but what is new. Cite the signal(s) that moved the needle. Where this is heading next — be specific about the next cultural beat, not just "rising."]
 
 {collision_briefing_section}
 
 ### 🌊 Signals Worth Watching
-[5-7 signals from the last 24h that are early or surprising. Not the obvious ones. Lead with the signal, follow with the implication.]
+[5-7 signals from the last 24h. Choose signals that meet at least ONE of these criteria:
+- Not yet linked to any tracked trend (genuinely new territory)
+- Contradicts the current momentum of a high-CPS trend
+- Comes from a platform where this topic has not previously appeared
+- Has unusually high engagement relative to the source's baseline
+Lead with the signal, follow with the implication.]
 
 ### 🗓️ On Deck
 [Cultural moments in the next 14 days with real brand potential. One line each — the event and the angle.]
@@ -255,11 +305,19 @@ Write the briefing in EXACTLY this format. No deviations.
 ### 💡 The Brief
 [3-4 specific, actionable creative angles. These should be good enough to start a real brief.]
 [Format: **[Client]** — [Trend] → [One sentence that could become a campaign thought.]]
+[Use the client profiles above. The angle must fit the client's audience, category, and brand voice. Generic angles like "could lean into this" are not acceptable — be specific about the execution.]
 
 ---
 *{trends_count} trends tracked · {signals_count} new signals · {moments_count} predicted moments · {today}*
 
-IMPORTANT: The Predicted Moments section is the LEAD of this briefing. These are our forecaster's best predictions about what's coming. Treat them as the most valuable intel. If any are marked "Forming" or "Happening," give them extra urgency."""
+SELF-CHECK before submitting — verify all of these:
+1. Every Flashpoint cites at least one specific signal by name and platform.
+2. Every brand angle in The Brief references a specific client by name and fits their positioning.
+3. No sentence contains "may," "could," "might," "potentially," or "it remains to be seen."
+4. The Predicted Moments section is at least 25% of the briefing by length.
+5. No trend name inside bold text includes a CPS score or number.
+6. No client names appear ANYWHERE outside The Brief section.
+7. Every item mixing predictions with observations uses 📍 (observed) or 🔮 (prediction) markers so the reader always knows which is which."""
 
 
 COLLISION_SECTION_TEMPLATE = """
@@ -373,7 +431,7 @@ def generate_briefing() -> str:
         collision_section=collision_section,
         collision_briefing_section=collision_briefing_section,
         historical_data=historical_data,
-        clients=CLIENTS,
+        client_profiles=CLIENT_PROFILES,
         trends_count=len(trends),
         signals_count=len(signals),
         moments_count=len(moments),
@@ -381,7 +439,7 @@ def generate_briefing() -> str:
 
     logger.info("Calling Claude API for briefing generation...")
     import time as _time
-    for model, attempt in [("claude-opus-4-5", 1), ("claude-sonnet-4-5", 2)]:
+    for model, attempt in [("claude-sonnet-4-5", 1), ("claude-opus-4-5", 2)]:
         for retry in range(3):
             try:
                 message = client.messages.create(
@@ -400,7 +458,7 @@ def generate_briefing() -> str:
                 else:
                     raise
         logger.warning(f"{model} overloaded after 3 retries, trying fallback...")
-    raise RuntimeError("Both claude-opus-4-5 and claude-sonnet-4-5 returned 529 overloaded")
+    raise RuntimeError("Both claude-sonnet-4-5 and claude-opus-4-5 returned 529 overloaded")
 
 
 def count_flashpoints(briefing_text: str) -> int:

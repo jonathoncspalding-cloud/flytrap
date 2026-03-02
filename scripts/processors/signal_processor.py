@@ -153,6 +153,19 @@ SCORING GUIDE:
 - 20-39: Early-stage signals with some cultural relevance
 - 0-19: Noise — mostly informational, low cultural charge
 
+PREDICTION MARKET SIGNALS (Platform: "Prediction Market"):
+These are Polymarket signals — real money bets on outcomes. They carry unique intelligence:
+- PROBABILITIES are money-backed crowd consensus. 73% = strong conviction backed by real stakes.
+- VOLUME ($500k+ = major, $100-500k = notable) reflects how much public attention is building.
+- VOLATILITY (large price moves like "↑12%") signals that something in the narrative just shifted.
+- RESOLUTION DATES are hard deadlines when attention will concentrate — events resolving within 14 days with high volume should be scored as Scheduled Events.
+
+IMPORTANT — how to score prediction market signals:
+- Some markets ARE directly cultural (e.g. "Will an AI film win an Oscar?", "Will a brand pull out of Pride Month?"). Score these on their cultural merits like any other signal — they can be high CPS if they intersect tensions.
+- Some markets are about world events that BECOME cultural catalysts (e.g. Fed decisions that fuel cost-of-living discourse, geopolitical events that trigger protest movements). Score based on the cultural dimension, not the event itself.
+- Some markets have no cultural dimension at all (crypto price bets, sports outcomes, pure financial instruments). Score these LOW (0-20) regardless of volume.
+- CPS should always be grounded in TENSION INTERSECTION — volume and probability are supporting evidence, not substitutes for cultural relevance.
+
 Be selective about recommending new trends — only suggest one when the signal represents a genuinely
 novel cultural phenomenon not already captured by existing trends.
 
@@ -169,13 +182,28 @@ def process_signals_batch(signals: list, tensions: list, trends: list) -> list:
         for t in tensions if t["status"] != "Dormant"
     ])
 
-    trends_list = "\n".join([
+    # Tiered context: full detail for high-CPS trends, names-only for the tail.
+    # Saves ~1,000+ tokens/call without losing trend-linking accuracy.
+    CPS_DETAIL_THRESHOLD = 40
+    sorted_trends = sorted(trends, key=lambda t: -t["cps"])
+    top_trends = [t for t in sorted_trends if t["cps"] >= CPS_DETAIL_THRESHOLD]
+    tail_trends = [t for t in sorted_trends if t["cps"] < CPS_DETAIL_THRESHOLD]
+
+    top_lines = "\n".join([
         f"- {t['name']} [{t['type']}] CPS:{t['cps']} — {t['summary'][:100]}"
-        for t in trends
-    ]) or "(no existing trends yet)"
+        for t in top_trends
+    ])
+    tail_line = ""
+    if tail_trends:
+        tail_names = ", ".join(t["name"] for t in tail_trends)
+        tail_line = (
+            f"\nOTHER TRACKED TRENDS (link signals to these if relevant — "
+            f"do not recommend duplicates):\n{tail_names}"
+        )
+    trends_list = (top_lines + tail_line) or "(no existing trends yet)"
 
     signals_list = "\n".join([
-        f"{i+1}. Title: {s['title']}\n   Platform: {s['platform']}\n   Content: {s['raw'][:300]}"
+        f"{i+1}. Title: {s['title']}\n   Platform: {s['platform']}\n   Content: {s['raw'][:200]}"
         for i, s in enumerate(signals)
     ])
 
@@ -189,7 +217,7 @@ def process_signals_batch(signals: list, tensions: list, trends: list) -> list:
     try:
         message = client.messages.create(
             model="claude-sonnet-4-5",
-            max_tokens=4096,
+            max_tokens=6000,
             messages=[{"role": "user", "content": prompt}],
         )
         raw = message.content[0].text.strip()
