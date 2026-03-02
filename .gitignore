@@ -63,6 +63,9 @@ assets/
 htmlcov/
 .vercel
 
+# Generated (build-time)
+dashboard/lib/isabel-file-context.ts
+
 # Claude
 .claude/*
 !.claude/agents/

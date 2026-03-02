@@ -49,14 +49,21 @@ def collect() -> list:
     """
     Collect Wikipedia trending signals.
     Returns list of signal dicts.
+
+    Wikipedia pageviews API has a ~1-2 day data lag. We try yesterday first,
+    then day-before-yesterday as fallback if yesterday returns empty.
     """
     logger.info("Collecting Wikipedia trending signals...")
     signals = []
 
-    # Wikipedia data is available with ~1-2 day lag
+    # Try yesterday first, fall back to day-before-yesterday (API lag)
     yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y/%m/%d")
+    day_before = (datetime.now(timezone.utc) - timedelta(days=2)).strftime("%Y/%m/%d")
 
     articles = _get_top_articles(yesterday)
+    if not articles:
+        logger.info(f"Wikipedia: no data for {yesterday}, trying {day_before}...")
+        articles = _get_top_articles(day_before)
     for article in articles:
         title = article.get("article", "")
         views = article.get("views", 0)

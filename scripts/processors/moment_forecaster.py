@@ -365,6 +365,12 @@ INSTRUCTIONS:
    - Keep narratives to 2-3 sentences, watch_for to 3-4 items, reasoning to 2 sentences
    - If you can't find strong evidence for a prediction, don't force it
 
+6. TEMPORAL ACCURACY (critical):
+   - When referencing future events, ALWAYS include the specific date or year in the narrative. "YouTube-only Oscars starting in 2029" not "Oscars moving to YouTube."
+   - The prediction window (window_start/window_end) is when the CULTURAL CONVERSATION happens, NOT when the event itself occurs. An event in 2029 can trigger cultural discourse THIS WEEK — but the narrative must make that distinction crystal clear.
+   - Never frame a distant future event as imminent. If the event is years away, the prediction is about the REACTION to the announcement or the DISCOURSE it triggers, and that must be explicit.
+   - A reader should never be confused about whether you're predicting the event itself or the conversation about it.
+
 Respond with a JSON object. No other text. Format:
 {{
   "updates": [
@@ -372,6 +378,7 @@ Respond with a JSON object. No other text. Format:
       "id": "<existing moment Notion ID>",
       "new_status": "Predicted | Forming | Happening | Passed | Missed",
       "new_confidence": <0-100 or null to keep unchanged>,
+      "new_narrative": "<revised narrative if the current one is factually wrong, temporally misleading, or stale — otherwise omit>",
       "reason": "<1 sentence on why you're changing this>"
     }}
   ],
@@ -778,12 +785,17 @@ def apply_updates(updates: list, existing_moments: list):
         if new_conf is not None:
             props["Confidence"] = {"number": max(0, min(100, int(new_conf)))}
 
+        new_narrative = upd.get("new_narrative")
+        if new_narrative:
+            props["Narrative"] = {"rich_text": rich_text(new_narrative[:2000])}
+
         try:
             update_page(moment_id, props)
             logger.info(
                 f"  Updated: '{moment_map[moment_id]['name']}' "
                 f"→ {new_status or 'no status change'} "
                 f"(confidence: {new_conf or 'unchanged'})"
+                f"{' [narrative revised]' if new_narrative else ''}"
             )
         except Exception as e:
             logger.warning(f"  Failed to update moment {moment_id}: {e}")
