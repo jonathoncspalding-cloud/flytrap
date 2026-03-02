@@ -52,6 +52,7 @@ logs/
 
 # Data / runtime state
 data/
+!data/agent_state.json
 
 # Source assets (large videos)
 assets/

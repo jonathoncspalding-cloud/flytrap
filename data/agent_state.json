@@ -1,0 +1,24 @@
+{
+  "last_updated": null,
+  "pipeline": {
+    "last_success": null,
+    "last_failure": null,
+    "signals_24h": 0,
+    "last_duration_sec": null,
+    "streak": 0
+  },
+  "agents": {
+    "sentinel": { "last_run": null, "status": "idle", "findings": [], "next_scheduled": null },
+    "scout": { "last_run": null, "status": "idle", "findings": [], "next_scheduled": null },
+    "oracle": { "last_run": null, "status": "idle", "findings": [], "next_scheduled": null },
+    "architect": { "last_run": null, "status": "idle", "findings": [], "next_scheduled": null },
+    "optimize": { "last_run": null, "status": "idle", "findings": [], "next_scheduled": null },
+    "strategist": { "last_run": null, "status": "idle", "findings": [], "next_scheduled": null },
+    "isabel": { "last_run": null, "status": "idle", "findings": [], "next_scheduled": null }
+  },
+  "digest": {
+    "last_generated": null,
+    "summary": null,
+    "action_items": []
+  }
+}
