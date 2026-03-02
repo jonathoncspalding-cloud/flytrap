@@ -65,7 +65,33 @@ export async function POST(req: Request) {
     buildContext(),
   ]);
 
-  const systemPrompt = agentPrompt + context;
+  let systemPrompt = agentPrompt + context;
+
+  // If Isabel is in design-feedback mode, add structured output instructions
+  if (agent === "isabel" && messages[0]?.content?.includes?.("PROPOSAL_CONTEXT")) {
+    systemPrompt += `\n\nDESIGN FEEDBACK MODE:
+You are reviewing your furniture proposal with the user. When the user gives feedback and you want to show new designs, include a hidden JSON block in your response using this EXACT format:
+
+<!-- ISABEL_DESIGNS
+{
+  "category": "Plants",
+  "footprint": { "w": 16, "h": 32 },
+  "options": [
+    { "label": "Name", "description": "Short desc", "colors": [[r,g,b], [r,g,b], [r,g,b], [r,g,b], [r,g,b]] }
+  ]
+}
+-->
+
+Rules for the design spec:
+- Always include exactly 4 options in "options"
+- Each option MUST have exactly 5 colors as [r,g,b] arrays (values 0-255)
+- Colors meaning by index: [0]=primary, [1]=secondary, [2]=accent, [3]=detail, [4]=base/pot/frame
+- The category and footprint must match the current proposal
+- Write your dramatic Isabel commentary BEFORE the hidden block
+- The user's browser will render these as pixel art previews automatically
+- After showing designs, ask if they want to iterate further or select one`;
+  }
+
   const client = new Anthropic({ apiKey });
   const encoder = new TextEncoder();
 
@@ -74,7 +100,7 @@ export async function POST(req: Request) {
       try {
         const stream = client.messages.stream({
           model: "claude-sonnet-4-5",
-          max_tokens: 1024,
+          max_tokens: agent === "isabel" && messages[0]?.content?.includes?.("PROPOSAL_CONTEXT") ? 2048 : 1024,
           system: systemPrompt,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           messages: messages.map((m: any) => ({
