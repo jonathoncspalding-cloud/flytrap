@@ -91,6 +91,8 @@ jobs:
           NOTION_BRIEFING_DB: ${{ secrets.NOTION_BRIEFING_DB }}
           NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
         run: |
           source venv/bin/activate && cd scripts && python run_pipeline.py ${{ steps.stage.outputs.args }}
 

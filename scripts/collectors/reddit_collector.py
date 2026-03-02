@@ -2,7 +2,11 @@
 reddit_collector.py
 -------------------
 Pulls trending/hot posts from a curated list of culturally-relevant subreddits.
-Uses PRAW if Reddit API credentials are present; falls back to public JSON endpoint.
+
+Three collection modes (in priority order):
+  1. PRAW (authenticated API) — if REDDIT_CLIENT_ID + SECRET are set
+  2. RSS feeds — no auth, works on cloud IPs, no upvote counts
+  3. Public JSON — last resort, blocked on most cloud IPs since 2024
 
 Reddit API credentials (optional — set in .env for higher rate limits):
     REDDIT_CLIENT_ID
@@ -11,105 +15,171 @@ Reddit API credentials (optional — set in .env for higher rate limits):
 """
 
 import os
-import json
 import time
 import logging
 import requests
+import feedparser
 from datetime import datetime, timezone
+from html import unescape
+import re
+
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
 logger = logging.getLogger(__name__)
 
 # Subreddits to monitor for cultural signals
+# Curated for cultural forecasting — signals about how people think, feel,
+# spend, and behave. Not just "what's popular" but "what's shifting."
 SUBREDDITS = [
-    # ── High-volume culture signals ───────────────────────────────────────────
-    "popular",
-    "OutOfTheLoop",
-    "TikTokCringe",
-    "HobbyDrama",
-    "InternetIsBeautiful",
-    # ── Entertainment & celebrity ─────────────────────────────────────────────
-    "entertainment",
-    "popculturechat",
-    "celebrity",
+    # ── Trend surfaces (high-volume, what's breaking now) ─────────────────
+    "OutOfTheLoop",         # "Why is everyone talking about X?" = trend detection gold
+    "TikTokCringe",         # Viral content that crosses platforms
+    "HobbyDrama",           # Deep community conflict = cultural pressure
+    "SubredditDrama",       # Meta-discourse about shifting norms
+    # ── Entertainment & culture ───────────────────────────────────────────
+    "popculturechat",       # Celebrity/entertainment discourse
     "Fauxmoi",              # Blind items + celebrity insider culture
-    "moviescirclejerk",     # Film culture commentary
-    "television",           # TV discourse
+    "television",           # TV discourse (shared cultural experiences)
     "Music",                # Music culture broadly
-    # ── Social/cultural commentary ────────────────────────────────────────────
-    "NoStupidQuestions",
-    "AskReddit",
-    "unpopularopinion",
-    "changemyview",
+    "movies",               # Film discourse + box office culture
+    "gaming",               # Massive cultural surface area, 40M+ members
+    "books",                # BookTok/literary culture crossover
+    # ── Social commentary & shifting norms ────────────────────────────────
+    "NoStupidQuestions",    # Genuine confusion = norm shifts in progress
+    "unpopularopinion",     # Overton window movement detector
+    "changemyview",         # Where people actually engage across divides
     "TrueOffMyChest",       # Real feelings about cultural pressures
-    # ── Work, money & economy ────────────────────────────────────────────────
-    "antiwork",
-    "latestagecapitalism",
-    "PersonalFinance",      # Financial anxiety signals
-    "povertyfinance",       # Lower-income economic realities
-    "WorkReform",
-    # ── Identity, gender & generational ─────────────────────────────────────
-    "GenZ",                 # Gen Z perspectives (self-reported)
-    "Millennials",          # Millennial perspectives
-    "AskWomenOver30",       # Women's life-stage signals
-    "AskMenOver30",         # Men's life-stage signals
+    "AskReddit",            # Mass opinion surface
+    # ── Race, gender & social commentary ──────────────────────────────────
+    "BlackPeopleTwitter",   # Black cultural commentary + viral takes
+    "WhitePeopleTwitter",   # Progressive social commentary
     "TwoXChromosomes",      # Women's issues — cultural pressure points
-    # ── Fashion & aesthetics ──────────────────────────────────────────────────
-    "femalefashionadvice",  # Accessible fashion culture
-    "malefashionadvice",    # Men's fashion culture
-    "streetwear",           # Hype + streetwear culture
-    # ── Tech/future ───────────────────────────────────────────────────────────
-    "technology",
-    "artificial",
-    "ChatGPT",
-    "AIArt",                # AI creative culture
-    # ── Wellness, food & lifestyle ────────────────────────────────────────────
-    "LifeAdvice",
+    "MensLib",              # Men's issues without toxicity — emerging discourse
+    # ── Generational identity ─────────────────────────────────────────────
+    "GenZ",                 # Gen Z self-reported perspectives
+    "Millennials",          # Millennial perspectives + economic anxiety
+    # ── Work, money & economic anxiety ────────────────────────────────────
+    "antiwork",             # Labor movement sentiment
+    "WorkReform",           # Pragmatic work culture change
+    "povertyfinance",       # Lower-income economic realities
+    "PersonalFinance",      # Financial anxiety signals
+    "latestagecapitalism",  # Anti-capitalist framing of events
+    "Overemployed",         # Remote work culture + hustle shifts
+    # ── Consumer culture & spending ───────────────────────────────────────
+    "BuyItForLife",         # Anti-disposable, quality-seeking consumers
+    "Anticonsumption",      # Active pushback against consumerism
+    "mildlyinfuriating",    # Consumer frustration signals (huge sub)
+    "streetwear",           # Hype culture + fashion trends
+    # ── Tech, AI & the future ─────────────────────────────────────────────
+    "technology",           # Tech industry + society intersection
+    "ChatGPT",              # AI adoption in daily life
+    "artificial",           # AI industry discourse
+    "Futurology",           # Where society thinks it's headed
+    # ── Wellness, health & lifestyle ──────────────────────────────────────
     "relationship_advice",  # Interpersonal dynamics = cultural proxy
     "StopDrinking",         # Sober curious movement
-    "CleanEating",
-    # ── Advertising adjacent ─────────────────────────────────────────────────
-    "advertising",
-    "marketing",
-    "mildlyinfuriating",    # Consumer frustration signals
-    "firstworldproblems",   # Privilege/consumer culture signals
+    "collapse",             # Doomer sentiment + systemic anxiety
+    "MadeMeSmile",          # Viral positivity — counterweight signal
+    # ── Advertising & marketing ───────────────────────────────────────────
+    "marketing",            # Industry practitioner perspective
+    "advertising",          # Ad culture + brand discourse
 ]
 
-MIN_UPVOTES = 500  # Minimum upvotes to include a post
+MIN_UPVOTES = 500  # Minimum upvotes to include a post (PRAW/JSON only)
 POSTS_PER_SUB = 10
 
+# ── RSS helpers ──────────────────────────────────────────────────────────────
 
-def _get_posts_public(subreddit: str, limit: int = 10, sort: str = "hot") -> list:
-    """Fetch posts via Reddit's public JSON endpoint (no auth required)."""
-    url = f"https://www.reddit.com/r/{subreddit}/{sort}.json"
-    headers = {"User-Agent": os.getenv("REDDIT_USER_AGENT", "CulturalForecaster/1.0")}
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _strip_html(text: str) -> str:
+    """Strip HTML tags and unescape entities."""
+    return unescape(_TAG_RE.sub("", text)).strip()
+
+
+def _get_posts_rss(subreddit: str, limit: int = 10) -> list:
+    """Fetch hot posts via Reddit RSS feed. No auth, no rate limit issues."""
+    url = f"https://www.reddit.com/r/{subreddit}/hot/.rss"
     try:
-        resp = requests.get(url, headers=headers, params={"limit": limit}, timeout=10)
-        if resp.status_code == 429:
-            logger.warning(f"Reddit rate limit hit for r/{subreddit}, retrying in 5s")
-            time.sleep(5)
-            resp = requests.get(url, headers=headers, params={"limit": limit}, timeout=10)
-            if resp.status_code == 429:
-                logger.warning(f"Reddit rate limit hit again for r/{subreddit}, skipping")
-                return []
-        resp.raise_for_status()
-        data = resp.json()
-        return data["data"]["children"]
+        feed = feedparser.parse(
+            url,
+            request_headers={
+                "User-Agent": os.getenv("REDDIT_USER_AGENT", "CulturalForecaster/1.0")
+            },
+        )
+        if feed.bozo and not feed.entries:
+            logger.warning(f"RSS failed for r/{subreddit}: {feed.bozo_exception}")
+            return []
+
+        posts = []
+        for entry in feed.entries[:limit]:
+            title = entry.get("title", "").strip()
+            if not title:
+                continue
+
+            # Extract text content from the RSS entry
+            content_html = ""
+            if entry.get("content"):
+                content_html = entry.content[0].get("value", "")
+            elif entry.get("summary"):
+                content_html = entry.summary
+            content_text = _strip_html(content_html)[:500]
+
+            link = entry.get("link", "")
+
+            posts.append({
+                "title": title,
+                "link": link,
+                "content": content_text,
+            })
+        return posts
     except Exception as e:
-        logger.warning(f"Failed to fetch r/{subreddit}: {e}")
+        logger.warning(f"RSS failed for r/{subreddit}: {e}")
         return []
+
+
+def _format_post_rss(post: dict, subreddit: str) -> dict:
+    """Convert RSS post to signal dict."""
+    title = post["title"]
+    content = post.get("content", "")
+    link = post.get("link", "")
+
+    return {
+        "title": f"Reddit r/{subreddit}: {title[:80]}",
+        "source_platform": "Reddit",
+        "source_url": link,
+        "raw_content": (
+            f"r/{subreddit} [hot post via RSS] — {title}"
+            + (f" — {content[:300]}" if content else "")
+        ),
+        "summary": f"Hot post in r/{subreddit}: '{title}'",
+    }
+
+
+# ── PRAW (authenticated API) ────────────────────────────────────────────────
+
+_praw_instance = None
+
+
+def _get_praw():
+    """Get or create a reusable PRAW Reddit instance."""
+    global _praw_instance
+    if _praw_instance is None:
+        import praw
+        _praw_instance = praw.Reddit(
+            client_id=os.getenv("REDDIT_CLIENT_ID"),
+            client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
+            user_agent=os.getenv("REDDIT_USER_AGENT", "CulturalForecaster/1.0"),
+        )
+    return _praw_instance
 
 
 def _get_posts_praw(subreddit: str, limit: int = 10) -> list:
     """Fetch posts via PRAW (requires API credentials)."""
     try:
-        import praw
-        reddit = praw.Reddit(
-            client_id=os.getenv("REDDIT_CLIENT_ID"),
-            client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
-            user_agent=os.getenv("REDDIT_USER_AGENT", "CulturalForecaster/1.0"),
-        )
+        reddit = _get_praw()
         posts = []
         for submission in reddit.subreddit(subreddit).hot(limit=limit):
             posts.append({
@@ -122,14 +192,35 @@ def _get_posts_praw(subreddit: str, limit: int = 10) -> list:
             })
         return posts
     except Exception as e:
-        logger.warning(f"PRAW failed: {e}")
+        logger.warning(f"PRAW failed for r/{subreddit}: {e}")
+        return []
+
+
+# ── Public JSON (legacy fallback) ───────────────────────────────────────────
+
+def _get_posts_public(subreddit: str, limit: int = 10, sort: str = "hot") -> list:
+    """Fetch posts via Reddit's public JSON endpoint (no auth required)."""
+    url = f"https://www.reddit.com/r/{subreddit}/{sort}.json"
+    headers = {"User-Agent": os.getenv("REDDIT_USER_AGENT", "CulturalForecaster/1.0")}
+    try:
+        resp = requests.get(url, headers=headers, params={"limit": limit}, timeout=10)
+        if resp.status_code == 429:
+            logger.warning(f"Reddit rate limit hit for r/{subreddit}, retrying in 5s")
+            time.sleep(5)
+            resp = requests.get(url, headers=headers, params={"limit": limit}, timeout=10)
+            if resp.status_code == 429:
+                return []
+        resp.raise_for_status()
+        data = resp.json()
+        return data["data"]["children"]
+    except Exception as e:
+        logger.warning(f"JSON failed for r/{subreddit}: {e}")
         return []
 
 
 def _format_post_public(post_data: dict, subreddit: str) -> dict:
     """Convert Reddit public JSON post to signal dict."""
     d = post_data.get("data", {})
-    created = datetime.fromtimestamp(d.get("created_utc", 0), tz=timezone.utc).isoformat()
     return {
         "title": f"Reddit r/{subreddit}: {d.get('title', '')[:80]}",
         "source_platform": "Reddit",
@@ -147,17 +238,30 @@ def _format_post_public(post_data: dict, subreddit: str) -> dict:
     }
 
 
+# ── Main collector ───────────────────────────────────────────────────────────
+
 def collect() -> list:
     """
     Collect Reddit signals from monitored subreddits.
-    Returns list of signal dicts.
+
+    Priority: PRAW > RSS > public JSON.
+    PRAW gives upvote counts for filtering. RSS works everywhere but has no
+    engagement metrics. Public JSON is blocked on most cloud IPs.
     """
     logger.info("Collecting Reddit signals...")
     use_praw = bool(os.getenv("REDDIT_CLIENT_ID") and os.getenv("REDDIT_CLIENT_SECRET"))
+
+    if use_praw:
+        logger.info("Reddit: using PRAW (authenticated API)")
+    else:
+        logger.info("Reddit: using RSS feeds (no API credentials)")
+
     signals = []
+    rss_failures = 0
 
     for i, subreddit in enumerate(SUBREDDITS):
         if use_praw:
+            # ── PRAW path: full metadata, upvote filtering ──────────────
             posts = _get_posts_praw(subreddit, limit=POSTS_PER_SUB)
             for p in posts:
                 if p.get("score", 0) >= MIN_UPVOTES:
@@ -175,15 +279,20 @@ def collect() -> list:
                         ),
                     })
         else:
-            raw_posts = _get_posts_public(subreddit, limit=POSTS_PER_SUB)
-            for post in raw_posts:
-                formatted = _format_post_public(post, subreddit)
-                if formatted["_score"] >= MIN_UPVOTES:
-                    formatted.pop("_score")
-                    signals.append(formatted)
-            # Rate limiting for public API: ~1 req/s (retry-on-429 handles bursts)
+            # ── RSS path: no upvotes, but works on cloud IPs ────────────
+            posts = _get_posts_rss(subreddit, limit=POSTS_PER_SUB)
+            if posts:
+                for post in posts:
+                    signals.append(_format_post_rss(post, subreddit))
+            else:
+                rss_failures += 1
+
+            # Gentle rate limiting: ~2 req/s for RSS
             if i < len(SUBREDDITS) - 1:
-                time.sleep(1)
+                time.sleep(0.5)
+
+    if rss_failures > 0:
+        logger.warning(f"Reddit RSS: {rss_failures}/{len(SUBREDDITS)} subreddits failed")
 
     logger.info(f"Reddit: collected {len(signals)} signals")
     return signals
@@ -193,6 +302,6 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     results = collect()
     print(f"\nCollected {len(results)} signals")
-    for s in results[:5]:
+    for s in results[:10]:
         print(f"  - {s['title'][:80]}")
         print(f"    {s['summary'][:100]}")
