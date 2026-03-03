@@ -1,5 +1,8 @@
 name: Flytrap Agent Tasks
 
+permissions:
+  contents: write
+
 on:
   schedule:
     # Sentinel: Daily integrity check at 8 AM ET (1 PM UTC)
@@ -49,7 +52,7 @@ jobs:
         run: |
           git config user.name "flytrap-bot"
           git config user.email "flytrap-bot@users.noreply.github.com"
-          git add data/agent_state.json || true
+          git add -f data/agent_state.json || true
           git diff --cached --quiet || git commit -m "chore: update agent state [skip ci]"
           git push origin main || true
 
@@ -114,7 +117,7 @@ jobs:
         run: |
           git config user.name "flytrap-bot"
           git config user.email "flytrap-bot@users.noreply.github.com"
-          git add data/agent_state.json || true
+          git add -f data/agent_state.json || true
           git diff --cached --quiet || git commit -m "chore: update agent state [skip ci]"
           git push origin main || true
 
