@@ -1,0 +1,68 @@
+{
+  "last_updated": "2026-03-03T15:04:36.383262+00:00",
+  "pipeline": {
+    "last_success": null,
+    "last_failure": null,
+    "signals_24h": 0,
+    "last_duration_sec": null,
+    "streak": 0
+  },
+  "agents": {
+    "sentinel": {
+      "last_run": "2026-03-03T15:04:36.003257+00:00",
+      "status": "healthy",
+      "findings": [
+        "No issues found. All databases healthy."
+      ],
+      "next_scheduled": null
+    },
+    "scout": {
+      "last_run": null,
+      "status": "idle",
+      "findings": [],
+      "next_scheduled": null
+    },
+    "oracle": {
+      "last_run": null,
+      "status": "idle",
+      "findings": [],
+      "next_scheduled": null
+    },
+    "architect": {
+      "last_run": null,
+      "status": "idle",
+      "findings": [],
+      "next_scheduled": null
+    },
+    "optimize": {
+      "last_run": null,
+      "status": "idle",
+      "findings": [],
+      "next_scheduled": null
+    },
+    "strategist": {
+      "last_run": null,
+      "status": "idle",
+      "findings": [],
+      "next_scheduled": null
+    },
+    "isabel": {
+      "last_run": null,
+      "status": "idle",
+      "findings": [],
+      "next_scheduled": null
+    }
+  },
+  "digest": {
+    "last_generated": "2026-03-03T15:04:36.383246+00:00",
+    "summary": "Pipeline: UNKNOWN. 6 action items.",
+    "action_items": [
+      "scout has never run \u2014 check workflow",
+      "oracle has never run \u2014 check workflow",
+      "architect has never run \u2014 check workflow",
+      "optimize has never run \u2014 check workflow",
+      "strategist has never run \u2014 check workflow",
+      "isabel has never run \u2014 check workflow"
+    ]
+  }
+}
