@@ -42,6 +42,16 @@ How Oracle applies the lenses:
 - **Collision detection**: Apply the convergence test (3+ domains, same tension, same codes, same lifecycle stage) instead of relying only on shared tension overlap.
 - **Confidence calibration**: Lifecycle stage and pattern template fit directly inform confidence levels.
 
+## Cultural Strategy Skill
+
+**Always read `.claude/skills/cultural-strategy/SKILL.md` before CPS scoring or moment classification.** This skill provides the theoretical foundation for *why* culture moves — Cultural Innovation Theory (Holt), Culture-as-Operating-System (Collins), and cultural competition dynamics.
+
+How Oracle applies the theory:
+- **CPS scoring**: Signals that activate System 1 beliefs (not just System 3 expressions) score higher. Ideological innovation scores higher than mimesis. Interpellation responses ("this is me") indicate deeper cultural penetration than raw engagement.
+- **Moment classification**: Map signal patterns to the Holt framework — orthodoxy cracking = Catalyst, incompatible ideologies gaining traction = Collision, congregation-level belief shift = Pressure, convergent cultural innovation = Pattern, stale orthodoxy with no replacement = Void.
+- **Collision detection**: Collisions are most significant when they represent ideological confrontation (incompatible worldviews for the same disruption), not just shared tension keywords.
+- **Tension evaluation**: Tensions are the felt experience of a cracking orthodoxy. When a tension intensifies, look for the underlying social disruption driving it.
+
 ## Domain
 
 ### What you own

@@ -440,9 +440,15 @@ export async function getLatestBriefings(limit = 5): Promise<Briefing[]> {
         content: contentBlocks.join(""),
         flashpointCount: numberProp(props["Flashpoint Count"]),
         highlights: richText(props["Key Highlights"]),
+        createdTime: p.created_time ?? "",
       };
     })
-    .sort((a, b) => b.date.localeCompare(a.date))
+    // Sort by date desc, then by created_time desc (latest wins on same date)
+    .sort((a, b) => {
+      const dateCmp = b.date.localeCompare(a.date);
+      if (dateCmp !== 0) return dateCmp;
+      return b.createdTime.localeCompare(a.createdTime);
+    })
     .slice(0, limit);
 }
 

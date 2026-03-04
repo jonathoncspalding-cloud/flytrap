@@ -7,7 +7,7 @@ import {
 import DashboardHome from "@/components/DashboardHome";
 import { cpsTextColor, cpsBarColor } from "@/components/CpsBar";
 
-export const revalidate = 300;
+export const revalidate = 0; // always fresh — command center must show current state
 
 /* ── Helpers ───────────────────────────────────────────────────────────── */
 
@@ -38,27 +38,68 @@ function daysLabel(dateStr: string | null): string {
   return `${d}d`;
 }
 
-/** Extract top flashpoints with their first-sentence "why now" from briefing */
-function extractFlashpointPreviews(content: string): { name: string; why: string }[] {
+/** Extract key movements from briefing — works with both v2 (Flashpoints) and v3 (What Moved Overnight) formats. */
+function extractBriefingPreviews(content: string): { name: string; why: string }[] {
   const lines = content.split("\n");
-  let inFlashpoints = false;
+  let inSection = false;
   const results: { name: string; why: string }[] = [];
 
-  for (const line of lines) {
-    if (line.includes("Flashpoints") && line.includes("###")) { inFlashpoints = true; continue; }
-    if (inFlashpoints && line.startsWith("###")) break;
-    if (inFlashpoints && line.trim().startsWith("**")) {
-      const match = line.match(/\*\*([^*]+)\*\*\s*[\u2014—-]\s*(.*)/);
-      if (match) {
-        const name = match[1].replace(/\s*\(CPS:?\s*\d+\)/gi, "").trim();
-        // Take first sentence only
-        const why = match[2].split(/\.\s/)[0].replace(/\*\*/g, "").trim();
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Match v3 "What Moved" or v2 "Flashpoints" section
+    if (line.includes("###") && (line.includes("What Moved") || line.includes("Flashpoint"))) {
+      inSection = true; continue;
+    }
+    if (inSection && line.startsWith("###")) break;
+    if (inSection && line.trim().startsWith("**")) {
+      // Single-line: **Name** — description  or  **Name** (CPS: XX) — description
+      const inlineMatch = line.match(/\*\*([^*]+)\*\*\s*(?:\([^)]*\)\s*)?[\u2014\u2013—-]\s*(.*)/);
+      if (inlineMatch) {
+        const name = inlineMatch[1].replace(/\s*\([^)]*\)/gi, "").replace(/^[📍🔴🔮\s]+/, "").trim();
+        const why = inlineMatch[2].split(/\.\s/)[0].replace(/\*\*/g, "").trim();
         results.push({ name, why: why.length > 120 ? why.slice(0, 117) + "\u2026" : why });
+      } else {
+        // Multi-line: **Name**\ndescription on next line
+        const nameMatch = line.match(/\*\*([^*]+)\*\*/);
+        if (nameMatch) {
+          const name = nameMatch[1].replace(/\s*\([^)]*\)/gi, "").replace(/^[📍🔴🔮\s]+/, "").trim();
+          let why = "";
+          for (let j = i + 1; j < lines.length && j <= i + 3; j++) {
+            const next = lines[j].trim();
+            if (next && !next.startsWith("**") && !next.startsWith("###")) {
+              why = next.split(/\.\s/)[0].replace(/\*\*/g, "").trim();
+              break;
+            }
+          }
+          if (why) {
+            results.push({ name, why: why.length > 120 ? why.slice(0, 117) + "\u2026" : why });
+          }
+        }
       }
     }
-    if (results.length >= 3) break;
+    if (results.length >= 5) break;
   }
   return results;
+}
+
+/** Extract the opening thesis paragraph from a v3 briefing. */
+function extractBriefingThesis(content: string): string {
+  const lines = content.split("\n");
+  let foundHeader = false;
+  const thesis: string[] = [];
+
+  for (const line of lines) {
+    if (line.startsWith("## ") && line.includes("Cultural Landscape")) {
+      foundHeader = true; continue;
+    }
+    if (foundHeader) {
+      if (line.startsWith("###")) break; // hit first section
+      const trimmed = line.trim();
+      if (trimmed) thesis.push(trimmed);
+    }
+  }
+  const full = thesis.join(" ").replace(/\*\*/g, "");
+  return full.length > 300 ? full.slice(0, 297) + "\u2026" : full;
 }
 
 /** Get top movers — trends with biggest CPS sparkline delta */
@@ -189,23 +230,34 @@ function MomentRow({ moment }: { moment: CulturalMoment }) {
   );
 }
 
-function TensionRow({ tension }: { tension: Tension }) {
+function TensionRow({ tension, isActive }: { tension: Tension; isActive?: boolean }) {
   const color = tension.weight >= 9 ? "#E8127A" : tension.weight >= 7 ? "#FF8200" : tension.weight >= 5 ? "rgba(255,130,0,0.6)" : "var(--text-secondary)";
   return (
     <Link href={`/tensions/${tension.id}`} style={{ textDecoration: "none" }}>
       <div className="row-hover" style={{
-        display: "flex", alignItems: "center", gap: 8,
+        display: "flex", alignItems: "flex-start", gap: 8,
         padding: "7px 6px", borderBottom: "1px solid var(--border)", cursor: "pointer",
+        borderLeft: isActive ? `2px solid ${color}` : "2px solid transparent",
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {tension.name}
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {tension.name}
+            </div>
+            {isActive && (
+              <span style={{ fontSize: 8, fontWeight: 700, color, background: `${color}15`, padding: "0px 4px", borderRadius: 3, flexShrink: 0 }}>IN PLAY</span>
+            )}
           </div>
+          {tension.description && (
+            <div style={{
+              fontSize: 10, color: "var(--text-tertiary)", lineHeight: 1.4, marginTop: 2,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {tension.description}
+            </div>
+          )}
         </div>
-        <div style={{ width: 40, height: 3, background: "var(--border-strong)", borderRadius: 2, overflow: "hidden", flexShrink: 0 }}>
-          <div style={{ width: `${tension.weight * 10}%`, height: "100%", background: color, borderRadius: 2 }} />
-        </div>
-        <span style={{ fontSize: 10, fontWeight: 700, color, flexShrink: 0, width: 28, textAlign: "right" }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color, flexShrink: 0, width: 22, textAlign: "right", marginTop: 1 }}>
           {tension.weight}
         </span>
       </div>
@@ -230,8 +282,9 @@ export default async function DashboardPage() {
   const topMovers = getTopMovers(trends);
   const upcomingEvents = events.slice(0, 5);
 
-  // Briefing flashpoint previews
-  const flashpointPreviews = latestBriefing ? extractFlashpointPreviews(latestBriefing.content) : [];
+  // Briefing previews (thesis + key movements)
+  const briefingPreviews = latestBriefing ? extractBriefingPreviews(latestBriefing.content) : [];
+  const briefingThesis = latestBriefing ? extractBriefingThesis(latestBriefing.content) : "";
 
   // Signal pulse data
   const platforms = Object.entries(syncRecap.signalsByPlatform).sort((a, b) => b[1] - a[1]);
@@ -248,6 +301,30 @@ export default async function DashboardPage() {
         return b.confidence - a.confidence;
       });
   }
+
+  // Tensions in Play — filter ambient, prioritize those linked to active trends
+  const AMBIENT_THRESHOLD = 0.5;
+  const activeTensionIds = new Set<string>();
+  // Collect tension IDs linked to flashpoints + top movers (the "in play" signal)
+  for (const t of [...flashpoints, ...topMovers]) {
+    for (const tid of t.linkedTensions) activeTensionIds.add(tid);
+  }
+  const tensionsInPlay = tensions
+    .map((t) => {
+      // Prevalence: what fraction of active trends link to this tension?
+      const linkedCount = trends.filter((tr) => tr.linkedTensions.includes(t.id)).length;
+      const prevalence = trends.length > 0 ? linkedCount / trends.length : 0;
+      const isAmbient = prevalence >= AMBIENT_THRESHOLD;
+      const isActive = activeTensionIds.has(t.id); // linked to a flashpoint or mover
+      return { ...t, prevalence, linkedCount, isAmbient, isActive };
+    })
+    .filter((t) => !t.isAmbient) // drop ambient
+    .sort((a, b) => {
+      // Active tensions first, then by weight
+      if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+      return b.weight - a.weight;
+    })
+    .slice(0, 5);
 
   // Row 2 shifts if flashpoints exist
   const r2 = flashpoints.length > 0 ? "3" : "2";
@@ -278,14 +355,24 @@ export default async function DashboardPage() {
               )}
             </div>
 
-            {/* Flashpoint previews */}
-            {flashpointPreviews.length > 0 && (
+            {/* Briefing thesis */}
+            {briefingThesis && (
+              <p style={{
+                fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55,
+                margin: "0 0 10px", fontStyle: "italic",
+              }}>
+                {briefingThesis}
+              </p>
+            )}
+
+            {/* Key movements */}
+            {briefingPreviews.length > 0 && (
               <div style={{ marginBottom: 10 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: "var(--rose)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
-                  {"\ud83d\udd34"} Flashpoints
+                <div style={{ fontSize: 9, fontWeight: 700, color: "var(--moss-bright)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
+                  What Moved
                 </div>
-                {flashpointPreviews.slice(0, 2).map((fp, i) => (
-                  <div key={i} style={{ marginBottom: 6 }}>
+                {briefingPreviews.slice(0, 3).map((fp, i) => (
+                  <div key={i} style={{ marginBottom: 5 }}>
                     <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{fp.name}</span>
                     <span style={{ fontSize: 11, color: "var(--text-tertiary)", marginLeft: 6 }}>{"\u2014"} {fp.why}</span>
                   </div>
@@ -293,27 +380,27 @@ export default async function DashboardPage() {
               </div>
             )}
 
-            {/* Active tension surfacing */}
-            {tensions.length > 0 && (
+            {/* Top tension in play (non-ambient) */}
+            {tensionsInPlay.length > 0 && (
               <div style={{
                 background: "rgba(255,130,0,0.04)", border: "1px solid rgba(255,130,0,0.12)",
                 borderRadius: 6, padding: "8px 10px", marginBottom: 0,
               }}>
                 <div style={{ fontSize: 9, fontWeight: 700, color: "#FF8200", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
-                  {"\ud83c\udf0a"} Top Tension Surfacing
+                  {"\ud83c\udf0a"} Tension in Play
                 </div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <Link href={`/tensions/${tensions[0].id}`} style={{ textDecoration: "none" }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{tensions[0].name}</span>
+                  <Link href={`/tensions/${tensionsInPlay[0].id}`} style={{ textDecoration: "none" }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{tensionsInPlay[0].name}</span>
                   </Link>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#FF8200" }}>{tensions[0].weight}/10</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#FF8200" }}>{tensionsInPlay[0].weight}/10</span>
                 </div>
-                {tensions[0].description && (
+                {tensionsInPlay[0].description && (
                   <p style={{
                     fontSize: 10, color: "var(--text-tertiary)", margin: "4px 0 0", lineHeight: 1.45,
                     display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden",
                   } as React.CSSProperties}>
-                    {tensions[0].description}
+                    {tensionsInPlay[0].description}
                   </p>
                 )}
               </div>
@@ -457,17 +544,19 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Tensions */}
+        {/* Tensions in Play */}
         <div className="dash-card" style={{ flex: 1, overflow: "hidden" }}>
-          <SectionHeader title="Active Tensions" accent="var(--sunset)" linkHref="/tensions" />
+          <SectionHeader title="Tensions in Play" accent="var(--sunset)" linkHref="/tensions" />
           <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-            {tensions.slice(0, 5).map((t) => (
-              <TensionRow key={t.id} tension={t} />
-            ))}
+            {tensionsInPlay.length > 0 ? tensionsInPlay.map((t) => (
+              <TensionRow key={t.id} tension={t} isActive={t.isActive} />
+            )) : (
+              <p style={{ fontSize: 10, color: "var(--text-tertiary)", margin: 0, padding: "6px 0" }}>No specific tensions active right now.</p>
+            )}
             {tensions.length > 5 && (
               <Link href="/tensions" style={{ textDecoration: "none" }}>
                 <div style={{ fontSize: 9, color: "var(--text-tertiary)", textAlign: "center", padding: "4px 0" }}>
-                  +{tensions.length - 5} more
+                  All {tensions.length} tensions →
                 </div>
               </Link>
             )}

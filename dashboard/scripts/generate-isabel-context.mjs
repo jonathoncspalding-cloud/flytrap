@@ -17,15 +17,30 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const sharp = require("sharp");
 
+import { existsSync } from "fs";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, "../..");
 const DASHBOARD = resolve(__dirname, "..");
+
+// Find repo root by walking up from the script directory until we find .claude/agents/
+function findRepoRoot() {
+  let dir = __dirname;
+  for (let i = 0; i < 5; i++) {
+    dir = resolve(dir, "..");
+    if (existsSync(resolve(dir, ".claude/agents/isabel.md"))) return dir;
+  }
+  return resolve(__dirname, "../.."); // fallback
+}
+const ROOT = findRepoRoot();
 const SPRITES_DIR = resolve(DASHBOARD, "public/sprites/furniture");
 
 const FILES_TO_BUNDLE = [
   {
     label: "AGENT CONFIG (.claude/agents/isabel.md)",
-    path: resolve(ROOT, ".claude/agents/isabel.md"),
+    // Try repo root first, then fall back to a copy in dashboard/
+    path: existsSync(resolve(ROOT, ".claude/agents/isabel.md"))
+      ? resolve(ROOT, ".claude/agents/isabel.md")
+      : resolve(DASHBOARD, "agents/isabel.md"),
   },
   {
     label: "FURNITURE CATALOG (sprites.ts)",

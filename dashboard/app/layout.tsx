@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Rethink_Sans } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import SyncProvider from "@/components/SyncProvider";
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </SplashScreen>
           </SyncProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );

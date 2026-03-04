@@ -341,7 +341,12 @@ function BriefingSection({
   onTrendClick: (t: TrendRef) => void;
 }) {
   // Emoji → section color mapping
-  const sectionColor = heading.includes("🔴") || heading.includes("Flashpoint") ? "#2a8c4a"
+  const sectionColor = heading.includes("What Moved") ? "#2a8c4a"
+    : heading.includes("Ideological Opportunity") ? "#FF8200"
+    : heading.includes("Undercurrent") ? "rgba(232,18,122,0.7)"
+    : heading.includes("Week Ahead") ? "#67e8f9"
+    // v2 compat
+    : heading.includes("🔴") || heading.includes("Flashpoint") ? "#2a8c4a"
     : heading.includes("📈") || heading.includes("Momentum") ? "#3da65a"
     : heading.includes("⚡") || heading.includes("Collision") ? "#FF8200"
     : heading.includes("🌊") || heading.includes("Signal") ? "rgba(232,18,122,0.7)"

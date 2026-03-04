@@ -1,13 +1,12 @@
 """
-briefing_generator.py  (v2)
+briefing_generator.py  (v3)
 ----------------------------
-Generates the daily cultural briefing using the Claude API.
-Reads all data from Notion, synthesizes into the standard briefing format,
-and writes the result back to the Briefing Archive database.
+Generates the daily cultural strategy briefing using the Claude API.
+Reads all data from Notion + local data files, synthesizes into a
+strategic briefing format grounded in Cultural Innovation Theory (Holt)
+and Culture-as-Operating-System (Collins).
 
-v2 additions:
-- Collision alerts: surfaces when multiple high-CPS trends converge on same tensions
-- Historical flashpoints: gives Claude past cultural moments for calibration context
+v3: Complete redesign — strategic briefing format replacing data report.
 """
 
 import os
@@ -41,10 +40,6 @@ DATA_DIR = Path(__file__).parent.parent.parent / "data"
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-# Client profiles removed from daily briefing (2026-03-01).
-# Client-specific angles are now an on-demand chatbot feature,
-# not a daily overhead. See Task 3.3 in pipeline rebuild plan.
-
 
 # ── Data loading ───────────────────────────────────────────────────────────────
 
@@ -65,14 +60,22 @@ def load_trends_for_briefing() -> list:
         summary_rt  = (props.get("Summary") or {}).get("rich_text") or []
         summary     = summary_rt[0]["plain_text"] if summary_rt else ""
         pinned      = (props.get("Pinned") or {}).get("checkbox", False)
-        trends.append({"name": name, "cps": cps, "momentum": momentum, "status": status,
-                        "type": trend_type, "summary": summary, "pinned": pinned})
+        sparkline_rt = (props.get("CPS Sparkline") or {}).get("rich_text") or []
+        sparkline    = sparkline_rt[0]["plain_text"] if sparkline_rt else ""
+        first_detected = ((props.get("First Detected") or {}).get("date") or {}).get("start", "")
+        tensions = [r["id"] for r in ((props.get("Linked Tensions") or {}).get("relation") or [])]
+        trends.append({
+            "name": name, "cps": cps, "momentum": momentum, "status": status,
+            "type": trend_type, "summary": summary, "pinned": pinned,
+            "sparkline": sparkline, "first_detected": first_detected,
+            "tension_ids": tensions,
+        })
 
     return sorted(trends, key=lambda x: x["cps"], reverse=True)
 
 
 def load_tensions_for_briefing() -> list:
-    """Load active tensions with weights."""
+    """Load active tensions with weights and descriptions."""
     pages = query_database(TENSIONS_DB)
     tensions = []
     for p in pages:
@@ -80,12 +83,16 @@ def load_tensions_for_briefing() -> list:
         name        = get_page_title(p)
         weight      = (props.get("Weight") or {}).get("number") or 5
         status      = ((props.get("Status") or {}).get("select") or {}).get("name", "Active")
+        desc_rt     = (props.get("Description") or {}).get("rich_text") or []
+        description = desc_rt[0]["plain_text"] if desc_rt else ""
+        tid         = p["id"]
         if status != "Dormant":
-            tensions.append({"name": name, "weight": weight, "status": status})
+            tensions.append({"id": tid, "name": name, "weight": weight,
+                             "status": status, "description": description})
     return sorted(tensions, key=lambda x: x["weight"], reverse=True)
 
 
-def load_upcoming_calendar(days: int = 30) -> list:
+def load_upcoming_calendar(days: int = 14) -> list:
     """Load calendar events in the next N days."""
     today    = date.today()
     end_date = (today + timedelta(days=days)).isoformat()
@@ -107,12 +114,14 @@ def load_upcoming_calendar(days: int = 30) -> list:
         event_type = ((props.get("Type") or {}).get("select") or {}).get("name", "")
         notes_rt   = (props.get("Notes") or {}).get("rich_text") or []
         notes      = notes_rt[0]["plain_text"] if notes_rt else ""
-        events.append({"name": name, "date": event_date, "cps": cps, "type": event_type, "notes": notes})
+        categories = [o["name"] for o in ((props.get("Category") or {}).get("multi_select") or [])]
+        events.append({"name": name, "date": event_date, "cps": cps,
+                        "type": event_type, "notes": notes, "categories": categories})
     return sorted(events, key=lambda x: (x["date"], -x["cps"]))
 
 
-def load_new_signals(hours: int = 24) -> list:
-    """Load recent signals from Evidence Log."""
+def load_new_signals(hours: int = 48) -> list:
+    """Load recent signals from Evidence Log (48h for richer context)."""
     days        = max(1, hours // 24)
     cutoff_date = (date.today() - timedelta(days=days)).isoformat()
     pages       = query_database(
@@ -126,8 +135,13 @@ def load_new_signals(hours: int = 24) -> list:
         platform = ((props.get("Source Platform") or {}).get("select") or {}).get("name", "")
         sum_rt   = (props.get("Summary") or {}).get("rich_text") or []
         summary  = sum_rt[0]["plain_text"] if sum_rt else ""
-        signals.append({"title": title, "platform": platform, "summary": summary})
-    return signals[:30]
+        sentiment = ((props.get("Sentiment") or {}).get("select") or {}).get("name", "")
+        date_captured = ((props.get("Date Captured") or {}).get("date") or {}).get("start", "")
+        signals.append({"title": title, "platform": platform, "summary": summary,
+                         "sentiment": sentiment, "date": date_captured})
+    # Sort by date desc, take top 40 for richer briefing context
+    signals.sort(key=lambda x: x.get("date", ""), reverse=True)
+    return signals[:40]
 
 
 def load_active_moments() -> list:
@@ -156,15 +170,17 @@ def load_active_moments() -> list:
         magnitude = (props.get("Magnitude") or {}).get("number") or 0
         watch_rt = (props.get("Watch For") or {}).get("rich_text") or []
         watch = watch_rt[0]["plain_text"] if watch_rt else ""
+        reasoning_rt = (props.get("Reasoning") or {}).get("rich_text") or []
+        reasoning = reasoning_rt[0]["plain_text"] if reasoning_rt else ""
         window_start = ((props.get("Predicted Window Start") or {}).get("date") or {}).get("start", "")
         window_end = ((props.get("Predicted Window End") or {}).get("date") or {}).get("start", "")
         moments.append({
             "name": name, "narrative": narrative[:600], "type": mtype,
             "horizon": horizon, "status": status, "confidence": confidence,
             "magnitude": magnitude, "watch_for": watch[:400],
+            "reasoning": reasoning[:400],
             "window_start": window_start, "window_end": window_end,
         })
-    # Sort by confidence desc, then magnitude desc
     return sorted(moments, key=lambda x: (-x["confidence"], -x["magnitude"]))
 
 
@@ -179,36 +195,15 @@ def load_cps_snapshot() -> dict:
         return {}
 
 
-def compute_cps_deltas(current_trends: list, snapshot: dict) -> str:
-    """Compare current trend CPS values against snapshot. Returns formatted delta text.
-    Uses ±15 threshold — tighter deltas are noise at the prompt-based scoring level."""
-    if not snapshot or "trends" not in snapshot:
-        return "(no previous CPS snapshot available — deltas will appear after the next run)"
-
-    old_cps = snapshot["trends"]
-    deltas = []
-    new_trends = []
-
-    for t in current_trends:
-        name = t["name"]
-        current = t["cps"]
-        if name in old_cps:
-            diff = current - old_cps[name]
-            if abs(diff) >= 15:
-                arrow = "⬆️" if diff > 0 else "⬇️"
-                deltas.append(f"- \"{name}\" CPS: {old_cps[name]} → {current} ({'+' if diff > 0 else ''}{diff}) {arrow}")
-        else:
-            new_trends.append(f"- (new) \"{name}\" — first detected, CPS: {current}")
-
-    if not deltas and not new_trends:
-        return "(no significant CPS changes since last snapshot)"
-
-    parts = []
-    if deltas:
-        parts.extend(deltas[:10])  # Cap at 10 to keep prompt manageable
-    if new_trends:
-        parts.extend(new_trends[:5])  # Cap new trends shown
-    return "\n".join(parts)
+def load_signal_velocity() -> dict:
+    """Load signal velocity data for acceleration context."""
+    path = DATA_DIR / "signal_velocity.json"
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text())
+    except Exception:
+        return {}
 
 
 def load_collisions() -> list:
@@ -223,7 +218,7 @@ def load_collisions() -> list:
 
 
 def load_historical_flashpoints() -> list:
-    """Load historical flashpoint data for calibration context."""
+    """Load historical flashpoint data for pattern matching."""
     path = DATA_DIR / "historical_flashpoints.json"
     if not path.exists():
         return []
@@ -233,236 +228,363 @@ def load_historical_flashpoints() -> list:
         return []
 
 
-# ── Briefing generation ────────────────────────────────────────────────────────
+# ── Data formatting ───────────────────────────────────────────────────────────
 
-BRIEFING_PROMPT = """You are a senior cultural strategist at a top-tier creative agency. You've been doing this for 15 years. You see things before they're obvious and you say them plainly. You write like you're briefing the smartest person in the room — no hedging, no over-explaining, no throat-clearing.
+def _potency_band(cps: int) -> str:
+    """Translate CPS into qualitative potency language."""
+    if cps >= 90: return "very high"
+    if cps >= 75: return "high"
+    if cps >= 55: return "moderate"
+    if cps >= 35: return "emerging"
+    return "low"
+
+
+def _direction_from_sparkline(sparkline: str) -> str:
+    """Determine trend direction from sparkline data."""
+    if not sparkline:
+        return "unknown"
+    values = [int(v.strip()) for v in sparkline.split(",") if v.strip().isdigit()]
+    if len(values) < 2:
+        return "new"
+    recent = values[-3:] if len(values) >= 3 else values
+    diff = recent[-1] - recent[0]
+    if diff > 10: return "accelerating"
+    if diff > 3: return "rising"
+    if diff < -10: return "declining"
+    if diff < -3: return "cooling"
+    return "steady"
+
+
+def _lifecycle_stage(cps: int, direction: str, first_detected: str) -> str:
+    """Estimate lifecycle stage from available data."""
+    if not first_detected:
+        return "unknown"
+    try:
+        detected = date.fromisoformat(first_detected)
+        age_days = (date.today() - detected).days
+    except (ValueError, TypeError):
+        age_days = 0
+
+    if age_days < 7 and cps < 60:
+        return "Undercurrent"
+    if age_days < 14 and direction in ("accelerating", "rising"):
+        return "Emergence"
+    if direction == "accelerating" and cps >= 75:
+        return "Acceleration"
+    if direction in ("steady", "cooling") and cps >= 85:
+        return "Peak"
+    if direction in ("declining", "cooling") and cps >= 60:
+        return "Saturation"
+    if direction == "declining" and cps < 60:
+        return "Backlash"
+    if direction in ("accelerating", "rising"):
+        return "Acceleration"
+    return "Active"
+
+
+def _conviction_label(confidence: int) -> str:
+    """Translate confidence percentage to conviction language."""
+    if confidence >= 85: return "high conviction"
+    if confidence >= 65: return "confident"
+    if confidence >= 45: return "watching closely"
+    return "early signal"
+
+
+def compute_cps_deltas(current_trends: list, snapshot: dict) -> list:
+    """Compare current trend CPS values against snapshot. Returns list of movement dicts."""
+    if not snapshot or "trends" not in snapshot:
+        return []
+
+    old_cps = snapshot["trends"]
+    movements = []
+
+    for t in current_trends:
+        name = t["name"]
+        current = t["cps"]
+        if name in old_cps:
+            diff = current - old_cps[name]
+            if abs(diff) >= 10:
+                movements.append({"name": name, "old": old_cps[name], "new": current, "diff": diff})
+        else:
+            movements.append({"name": name, "old": 0, "new": current, "diff": current, "is_new": True})
+
+    movements.sort(key=lambda x: abs(x["diff"]), reverse=True)
+    return movements[:12]
+
+
+def format_trends_strategic(trends: list) -> str:
+    """Format trends with qualitative indicators instead of raw scores."""
+    lines = []
+    for t in trends[:20]:
+        direction = _direction_from_sparkline(t.get("sparkline", ""))
+        lifecycle = _lifecycle_stage(t["cps"], direction, t.get("first_detected", ""))
+        potency = _potency_band(t["cps"])
+        line = (
+            f"- {t['name']} | {t['type']} | Potency: {potency} | "
+            f"Direction: {direction} | Stage: {lifecycle}"
+            f"{' | 📌 PINNED' if t.get('pinned') else ''}"
+            f"\n  {t['summary'][:250]}"
+        )
+        lines.append(line)
+    return "\n".join(lines) if lines else "(no trends tracked yet)"
+
+
+def format_tensions_strategic(tensions: list) -> str:
+    """Format tensions with descriptions for dialectical analysis."""
+    lines = []
+    for t in tensions[:12]:
+        intensity = "critical" if t["weight"] >= 9 else "high" if t["weight"] >= 7 else "active" if t["weight"] >= 5 else "background"
+        line = f"- {t['name']} (intensity: {intensity})"
+        if t.get("description"):
+            line += f"\n  {t['description'][:200]}"
+        lines.append(line)
+    return "\n".join(lines) if lines else "(no tensions tracked)"
+
+
+def format_movements(deltas: list) -> str:
+    """Format CPS movements as qualitative direction changes."""
+    if not deltas:
+        return "(no significant movements since last briefing)"
+    lines = []
+    for m in deltas:
+        if m.get("is_new"):
+            lines.append(f"- NEW: \"{m['name']}\" — just detected, potency: {_potency_band(m['new'])}")
+        else:
+            direction = "surging" if m["diff"] > 20 else "rising" if m["diff"] > 0 else "dropping" if m["diff"] < -20 else "cooling"
+            lines.append(f"- \"{m['name']}\" — {direction} (moved significantly since last briefing)")
+    return "\n".join(lines)
+
+
+def format_moments_strategic(moments: list) -> str:
+    """Format moments with conviction language instead of confidence scores."""
+    if not moments:
+        return "(no active predictions)"
+    lines = []
+    for m in moments[:10]:
+        conviction = _conviction_label(m["confidence"])
+        status_note = f"Status: {m['status']}" + (f" (window: {m['window_start']} → {m['window_end']})" if m["window_start"] else "")
+        line = (
+            f"- \"{m['name']}\" [{m['type']}/{m['horizon']}] — {conviction}"
+            f"\n  {status_note}"
+            f"\n  {m['narrative']}"
+        )
+        if m.get("watch_for"):
+            line += f"\n  Watch for: {m['watch_for']}"
+        if m.get("reasoning"):
+            line += f"\n  Reasoning: {m['reasoning'][:200]}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def format_calendar_strategic(calendar: list) -> str:
+    """Format calendar with cultural context."""
+    if not calendar:
+        return "(no events in the next 7 days)"
+    lines = []
+    for e in calendar[:8]:
+        cats = f" [{', '.join(e['categories'])}]" if e.get("categories") else ""
+        line = f"- {e['date']}: {e['name']}{cats}"
+        if e.get("notes"):
+            line += f"\n  {e['notes'][:200]}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def format_signals_strategic(signals: list) -> str:
+    """Format signals as evidence with platform attribution."""
+    if not signals:
+        return "(no new signals in last 48 hours)"
+    lines = []
+    for s in signals[:30]:
+        line = f"- [{s['platform']}] {s['title'][:120]}"
+        if s.get("summary"):
+            line += f"\n  {s['summary'][:180]}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def format_collisions_strategic(collisions: list) -> str:
+    """Format only high-specificity collisions as ideological confrontations."""
+    if not collisions:
+        return ""
+    # Filter to collisions with <= 5 shared tensions (more specific = more interesting)
+    specific = [c for c in collisions if len(c.get("shared_tensions", [])) <= 5]
+    if not specific:
+        specific = collisions[:3]
+    lines = []
+    for c in specific[:4]:
+        line = (
+            f"- \"{c['trend_a']}\" + \"{c['trend_b']}\" — "
+            f"converging on: {', '.join(c['shared_tensions'][:4])}"
+        )
+        lines.append(line)
+    return "NOTABLE COLLISIONS (trends converging on shared tensions):\n" + "\n".join(lines) if lines else ""
+
+
+# ── Briefing prompt ───────────────────────────────────────────────────────────
+
+BRIEFING_PROMPT = """You are a senior cultural strategist trained in Douglas Holt's Cultural Innovation Theory and Marcus Collins' Culture-as-Operating-System framework. You've spent 15 years reading culture for the world's most ambitious creative minds. You don't track trends — you read the ideological landscape and identify where the cracks are forming.
+
+YOUR ANALYTICAL SEQUENCE (apply to every section):
+1. Identify the cultural orthodoxy — the dominant ideology everyone is mimicking
+2. Name the social disruption cracking it — the specific historical force (economic, technological, demographic, political) that makes the orthodoxy feel hollow
+3. Articulate the ideological opportunity — the gap between what people are experiencing and what the culture is offering them
+4. Point to source material — subcultures, media myths, or cultural heritage generating raw material for innovation
+5. Describe the emerging innovation if visible — its ideology, its myth, its codes
+
+YOUR ANALYTICAL LENSES:
+- System 1 (shared beliefs) vs System 3 (cultural expressions). When beliefs shift, culture shifts. When only expressions change, it's fashion. Always name which system is moving.
+- Congregations, not demographics. Cultural movements spread through groups bound by shared beliefs, not age/gender/income segments.
+- Cultural lifecycle: Undercurrent → Emergence → Acceleration → Peak → Saturation → Backlash → Residue. Name the stage. It determines timing.
+- Historical pattern matching: Moral Panic, Nostalgia Wave, Vibe Shift, Backlash Spiral, Institutional Crisis, Aesthetic Bifurcation, Platform Migration, Reclamation. When a current pattern matches, name it and say what comes next.
+- Interpellation: When people say "this is literally me" about a signal, it's activating System 1 beliefs. That's deeper than engagement metrics.
+- Mimesis detection: Most cultural production copies what's working. Call it out. Aesthetic borrowing without ideology. Orthodoxy reinforcement disguised as innovation.
 
 Today is {today}.
 
-FRAMING: This is a DAILY briefing. Your reader saw yesterday's briefing. Lead with what CHANGED:
-- New signals that were not present yesterday
-- Trends that moved significantly in CPS or momentum
-- Moments that changed status (Predicted → Forming, Forming → Happening)
-- Calendar events that entered the 7-day window
-Do not re-explain trends your reader already knows. Say what is NEW about them today.
+---
 
-CPS CHANGES SINCE LAST BRIEFING:
-{cps_deltas}
-
-PREDICTED CULTURAL MOMENTS (our forecaster's active predictions — LEAD WITH THESE):
-{moments_data}
-
-TRACKED TRENDS (by Cultural Potency Score — higher = more culturally urgent):
+CULTURAL MOVEMENTS (use for analysis — never expose potency scores in the briefing):
 {trends_data}
 
-ACTIVE CULTURAL TENSIONS (the underlying forces driving consumer behavior):
+MOVEMENTS SINCE LAST BRIEFING:
+{movements_data}
+
+ACTIVE TENSIONS (the dialectical forces driving cultural behavior):
 {tensions_data}
 
-UPCOMING CALENDAR:
+PREDICTED CULTURAL MOMENTS (weave into narrative — never show as a confidence-scored list):
+{moments_data}
+
+UPCOMING CALENDAR (next 7 days — only include events that intersect with active tensions):
 {calendar_data}
 
-NEW SIGNALS — LAST 24 HOURS:
+RECENT SIGNALS — LAST 48 HOURS (your evidence receipts — cite by platform + title):
 {signals_data}
 
-{collision_section}
+{collisions_data}
 
-HISTORICAL CALIBRATION (past cultural moments for context):
+HISTORICAL PATTERNS (reference when a current pattern matches):
 {historical_data}
 
 ---
 
-VOICE RULES — these are non-negotiable:
-- Short sentences. One idea per sentence. Hard stops.
-- No hedging. Not "may suggest" or "could indicate." Say what it is.
-- If it's obvious, skip it. Surface what's early, weird, or underappreciated.
-- Bold ONLY the trend name — never include CPS scores or numbers inside bold text.
-  CORRECT: **Broadcast Truth Suppression** — it's moving fast.
-  WRONG: **Broadcast Truth Suppression (CPS: 89)** — don't do this.
-
-EVIDENCE RULES — every claim needs receipts:
-- Every claim in Flashpoints and What's Moving must reference at least one specific signal by platform and title. Example: "Reddit thread 'Why I quit streaming' + HN discussion on creator burnout = this is accelerating."
-- If you cannot cite a specific signal from the data provided, do not make the claim.
-- When recommending a brand angle, connect it to a specific tension or trend — not vibes.
-
-PREDICTION vs. OBSERVATION — make the distinction unmistakable:
-- OBSERVED events have happened. They have proof: a signal, a post, a data point, a news story. State them as fact.
-- PREDICTED events have NOT happened yet. They are forecasts from our moment forecaster or your own synthesis. Always label these clearly.
-- Use these markers consistently:
-  🔮 = prediction/forecast (has not happened yet)
-  📍 = observed/confirmed (evidence exists in the signal data)
-- In any section where predictions and observations coexist, prefix each item so the reader never has to guess.
-- The Predicted Moments section is ALL predictions — no need to mark each one. But in Flashpoints, What's Moving, and Collision Alerts, if you reference a predicted moment alongside observed signals, distinguish them clearly.
+VOICE — non-negotiable:
+- Write for a creative strategist reading this over coffee. Not a data analyst. Not a C-suite exec.
+- Short declarative sentences when making a claim. Longer, textured sentences when building an argument.
+- No hedging. Not "may suggest" — say what it is. If uncertain, name the uncertainty precisely.
+- Never list scores, percentages, or system metrics. Translate ALL quantitative data into strategic language.
+- Every claim cites at least one specific signal by platform and title.
+- Distinguish observed from projected using prose: "We've seen [X]. If the pattern holds, [Y] follows."
+- When naming an ideological opportunity, make it specific enough that a creative team could brief from it.
+- Call out mimesis. If brands or creators are reproducing the orthodoxy with fresh paint, say so.
+- Bold trend names when referencing them: **Trend Name**
 
 ---
 
-Write the briefing in EXACTLY this format. No deviations.
+Write the briefing in this structure:
 
-## {today} Cultural Briefing
+## The Cultural Landscape — {today}
 
-### 🔮 Predicted Moments
+[Open with 3-4 sentences. No header for this paragraph. This is the single most important cultural observation today — the connective thread across the most interesting data. Name the orthodoxy under pressure and the disruption cracking it. This paragraph should make the reader smarter about what's happening in culture RIGHT NOW even if they read nothing else. Be opinionated. Take a position.]
 
-**Tier 1 — High Conviction (Confidence 70%+):**
-[Present each prediction AS WRITTEN by the forecaster. Add only:
-- Whether confidence moved up/down since last briefing (use CPS delta data)
-- Whether any watch-for indicators have been observed in today's signals
-Do NOT rewrite the prediction narratives — they are already written.]
+### What Moved Overnight
 
-**Tier 2 — Watch Closely (Confidence 40-69%):**
-[Same format. Present forecaster's prediction verbatim. Add only delta commentary and watch-for indicator status.]
+[3-5 movements. Not trend summaries — CHANGES since yesterday. Each one names:
+- The specific signal(s) that drove the movement (platform + title)
+- Whether this is a System 1 belief shift or System 3 aesthetic change
+- The lifecycle stage, stated naturally ("this just crossed from niche forums to mainstream press" not "Emergence → Acceleration")
+- The tension dialectic it activates and which pole it's favoring
+Keep each movement to 2-3 sentences. Lead with what changed, not what the trend is.]
 
-**Tier 3 — Weak Signal (Confidence <40%):**
-[One line each. The moment name and what evidence from today's signals would make you believe it more.]
+### The Ideological Opportunity
 
-[If no moment predictions exist yet, write: "Moment forecaster initializing — predictions will appear after the next pipeline run."]
+[The heart of the briefing. 2-3 paragraphs deploying the full "So What?" Framework:
+1. Name the gap — what people are experiencing vs. what culture is offering them
+2. Point to source material — which subcultures, media myths, or heritage contain the raw material for innovation
+3. Describe the emerging innovation if visible — its ideology, its myth, its codes. If not yet visible, describe what it would need to look like.
+4. Name the congregation(s) most likely to adopt first and how contagion would spread
+5. End with a specific, actionable angle: "A [category] that positions as [specific ideology] using [specific codes] from [source material] has a first-mover window of approximately [timeframe]."
 
-### 🔴 Flashpoints
-[Trends that need immediate attention. If none score 80+, list the 3 closest to breaking.]
-[Format per trend: **Trend Name** — What it is in one sentence. The specific signal(s) driving urgency right now (cite by platform + title). Why this matters culturally and where it's heading. Mark each item 📍 (observed) or 🔮 (prediction) to clarify what's proven vs. projected.]
+Weave predicted moments into this section as evidence for where the opportunity is heading. Not as a list — as narrative texture. "Our forecaster sees [moment] forming within [window] — and the source material is already visible in [congregation/platform]."]
 
-### 📈 What's Moving
-[The 4-6 trends gaining the most momentum. What CHANGED today — not a summary of the trend, but what is new. Cite the signal(s) that moved the needle. Where this is heading next — be specific about the next cultural beat, not just "rising."]
+### Undercurrents
 
-{collision_briefing_section}
+[2-3 signals that don't fit the main narrative but are semiotically rich. Early Emergence or Undercurrent stage. Each gets 1-2 sentences: the signal (cite platform + title), what it signifies beneath the surface (semiotic reading), and the tension it might activate if it grows. These are seeds. Most won't become trends. That's the point.]
 
-### 🌊 Signals Worth Watching
-[5-7 signals from the last 24h. Choose signals that meet at least ONE of these criteria:
-- Not yet linked to any tracked trend (genuinely new territory)
-- Contradicts the current momentum of a high-CPS trend
-- Comes from a platform where this topic has not previously appeared
-- Has unusually high engagement relative to the source's baseline
-Lead with the signal, follow with the implication.]
+### The Week Ahead
 
-### 🗓️ On Deck
-[Cultural moments in the next 14 days with real brand potential. One line each — the event and the angle.]
+[Calendar events in the next 7 days that intersect with the active tension landscape. Not a calendar dump — only events that could accelerate, catalyze, or resolve a current tension. Each gets one line: the event, the tension it touches, what to watch for. If a predicted moment has a window opening this week, include it here framed as: "Watch for [specific observable] around [date]."]
+
+*One more thing: [A single closing sentence. A provocation, juxtaposition, or observation too good not to mention. The thing you'd bring up over coffee.]*
 
 ---
-*{trends_count} trends tracked · {signals_count} new signals · {moments_count} predicted moments · {today}*
+*{trends_count} cultural movements tracked across {signals_count} signals. {today}.*
 
-SELF-CHECK before submitting — verify all of these:
-1. Every Flashpoint cites at least one specific signal by name and platform.
-2. No sentence contains "may," "could," "might," "potentially," or "it remains to be seen."
-3. The Predicted Moments section is at least 25% of the briefing by length.
-4. No trend name inside bold text includes a CPS score or number.
-5. Every item mixing predictions with observations uses 📍 (observed) or 🔮 (prediction) markers so the reader always knows which is which."""
-
-
-COLLISION_SECTION_TEMPLATE = """
-ACTIVE TREND COLLISIONS (multiple high-CPS trends converging on the same tensions — highest risk of cultural explosion):
-{collision_list}
-"""
-
-COLLISION_BRIEFING_SECTION = """### ⚡ Collision Alerts
-[For each collision: name both trends, the shared tensions driving convergence, and ONE bold prediction about what happens when they fully collide — give this a specific date window]
-[If no collisions, omit this section entirely]
-"""
+SELF-CHECK before submitting:
+1. The opening paragraph takes a position — it names an orthodoxy and a disruption. Not a summary of data.
+2. "What Moved Overnight" contains ONLY things that changed — no re-explaining known trends.
+3. "The Ideological Opportunity" names specific source material and a specific first-mover angle.
+4. No CPS scores, confidence percentages, or system metrics appear anywhere in the output.
+5. Every claim cites at least one signal by platform and title.
+6. At least one section distinguishes a System 1 belief shift from a System 3 aesthetic change.
+7. "Undercurrents" contains signals NOT covered in other sections."""
 
 
-def _format_collision_section(collisions: list) -> tuple[str, str]:
-    """Returns (prompt_context_str, briefing_section_template_str)."""
-    if not collisions:
-        return "", ""
-
-    collision_list = "\n".join([
-        f"- '{c['trend_a']}' (CPS {c['cps_a']}) + '{c['trend_b']}' (CPS {c['cps_b']}) "
-        f"→ shared tensions: {', '.join(c['shared_tensions'])} "
-        f"[combined: {c['combined_cps']}]"
-        for c in collisions[:5]
-    ])
-    context  = COLLISION_SECTION_TEMPLATE.format(collision_list=collision_list)
-    briefing = COLLISION_BRIEFING_SECTION
-    return context, briefing
-
+# ── Briefing generation ────────────────────────────────────────────────────────
 
 def generate_briefing() -> str:
     """Generate the daily briefing text using Claude."""
     logger.info("Loading data for briefing...")
 
-    trends     = load_trends_for_briefing()
-    tensions   = load_tensions_for_briefing()
-    calendar   = load_upcoming_calendar(days=30)
-    signals    = load_new_signals(hours=24)
-    collisions = load_collisions()
-    historical = load_historical_flashpoints()
-    moments    = load_active_moments()
-    snapshot   = load_cps_snapshot()
-    cps_deltas = compute_cps_deltas(trends, snapshot)
+    trends      = load_trends_for_briefing()
+    tensions    = load_tensions_for_briefing()
+    calendar    = load_upcoming_calendar(days=7)
+    signals     = load_new_signals(hours=48)
+    collisions  = load_collisions()
+    historical  = load_historical_flashpoints()
+    moments     = load_active_moments()
+    snapshot    = load_cps_snapshot()
+    velocity    = load_signal_velocity()
+    deltas      = compute_cps_deltas(trends, snapshot)
 
     logger.info(
         f"Data: {len(trends)} trends, {len(tensions)} tensions, "
         f"{len(calendar)} events, {len(signals)} signals, "
-        f"{len(collisions)} collisions, {len(historical)} historical flashpoints, "
-        f"{len(moments)} active moments"
+        f"{len(collisions)} collisions, {len(historical)} historical, "
+        f"{len(moments)} active moments, {len(deltas)} CPS movements"
     )
 
-    # Format data sections
-    if trends:
-        trends_data = "\n".join([
-            f"- {t['name']} [{t['type']}] CPS:{t['cps']} Status:{t['status']}"
-            f" {'📌 PINNED' if t['pinned'] else ''}"
-            f"\n  {t['summary'][:200]}"
-            for t in trends[:25]
-        ])
-    else:
-        trends_data = "(no trends tracked yet — system just launched)"
+    # Format all data sections strategically
+    trends_data     = format_trends_strategic(trends)
+    movements_data  = format_movements(deltas)
+    tensions_data   = format_tensions_strategic(tensions)
+    moments_data    = format_moments_strategic(moments)
+    calendar_data   = format_calendar_strategic(calendar)
+    signals_data    = format_signals_strategic(signals)
+    collisions_data = format_collisions_strategic(collisions)
 
-    tensions_data = "\n".join([
-        f"- {t['name']} (weight: {t['weight']}/10)"
-        for t in tensions[:14]
-    ])
-
-    if calendar:
-        cal_14 = [e for e in calendar if e["date"] <= (date.today() + timedelta(days=14)).isoformat()]
-        calendar_data = "\n".join([
-            f"- {e['date']}: {e['name']} [CPS:{e['cps']}] — {e['notes'][:150]}"
-            for e in cal_14[:10]
-        ]) or "(no events in next 14 days)"
-    else:
-        calendar_data = "(calendar not yet loaded)"
-
-    signals_data = "\n".join([
-        f"- [{s['platform']}] {s['title'][:100]}\n  {s['summary'][:150]}"
-        for s in signals[:20]
-    ]) or "(no new signals in last 24 hours)"
-
-    # Historical flashpoints
+    # Historical patterns
     if historical:
         historical_data = "\n".join([
-            f"- {h['name']} ({h['year']}, CPS:{h['peak_cps']}): {h['summary']}"
-            for h in historical[:12]
+            f"- {h['name']} ({h['year']}): {h['summary']}"
+            for h in historical[:10]
         ])
     else:
-        historical_data = "(no historical data loaded)"
-
-    # Moments data
-    if moments:
-        moments_data = "\n".join([
-            f"- \"{m['name']}\" [{m['type']}/{m['horizon']}] Status:{m['status']} "
-            f"Confidence:{m['confidence']} Magnitude:{m['magnitude']}"
-            f"\n  {m['narrative']}"
-            f"\n  Watch for: {m['watch_for']}"
-            f"\n  Window: {m['window_start']} → {m['window_end']}"
-            for m in moments[:10]
-        ])
-    else:
-        moments_data = "(moment forecaster has not run yet — no predictions available)"
-
-    # Collision sections
-    collision_section, collision_briefing_section = _format_collision_section(collisions)
+        historical_data = "(no historical patterns loaded)"
 
     prompt = BRIEFING_PROMPT.format(
         today=TODAY,
-        cps_deltas=cps_deltas,
-        moments_data=moments_data,
         trends_data=trends_data,
+        movements_data=movements_data,
         tensions_data=tensions_data,
+        moments_data=moments_data,
         calendar_data=calendar_data,
         signals_data=signals_data,
-        collision_section=collision_section,
-        collision_briefing_section=collision_briefing_section,
+        collisions_data=collisions_data,
         historical_data=historical_data,
         trends_count=len(trends),
         signals_count=len(signals),
-        moments_count=len(moments),
     )
 
     logger.info("Calling Claude API for briefing generation...")
@@ -472,12 +594,11 @@ def generate_briefing() -> str:
             try:
                 message = client.messages.create(
                     model=model,
-                    max_tokens=3000,
+                    max_tokens=4000,
                     messages=[{"role": "user", "content": prompt}],
                 )
-                # Token usage logging — price depends on model
                 usage = message.usage
-                input_rate = 15 if "opus" in model else 3  # $/MTok
+                input_rate = 15 if "opus" in model else 3
                 output_rate = 75 if "opus" in model else 15
                 cost = usage.input_tokens * input_rate / 1_000_000 + usage.output_tokens * output_rate / 1_000_000
                 logger.info(
@@ -501,11 +622,11 @@ def generate_briefing() -> str:
 
 
 def count_flashpoints(briefing_text: str) -> int:
-    """Count bold trend names in the Flashpoints section."""
+    """Count bold items in the 'What Moved Overnight' section (replaces flashpoint count)."""
     in_section = False
     count = 0
     for line in briefing_text.split("\n"):
-        if "Flashpoints" in line and "###" in line:
+        if "What Moved" in line and "###" in line:
             in_section = True
             continue
         if in_section and "###" in line:
@@ -516,28 +637,24 @@ def count_flashpoints(briefing_text: str) -> int:
 
 
 def extract_highlights(briefing_text: str) -> str:
-    """Extract top 3 flashpoint trend names for the Key Highlights field."""
+    """Extract key trend names from 'What Moved Overnight' for the Key Highlights field."""
     import re
     highlights = []
-    in_flashpoints = False
+    in_section = False
     for line in briefing_text.split("\n"):
         stripped = line.strip()
-        # Enter flashpoints section
-        if "Flashpoints" in stripped and "###" in stripped:
-            in_flashpoints = True
+        if "What Moved" in stripped and "###" in stripped:
+            in_section = True
             continue
-        # Exit on next section
-        if in_flashpoints and stripped.startswith("###"):
+        if in_section and stripped.startswith("###"):
             break
-        if in_flashpoints:
-            # Extract bold trend names: **Trend Name**
+        if in_section:
             matches = re.findall(r"\*\*([^*]+)\*\*", stripped)
             for m in matches:
-                # Strip any lingering CPS annotations
-                clean = re.sub(r"\s*\(CPS:?\s*\d+\)\s*$", "", m).strip()
+                clean = re.sub(r"\s*\(.*?\)\s*$", "", m).strip()
                 if clean and clean not in highlights:
                     highlights.append(clean)
-            if len(highlights) >= 4:
+            if len(highlights) >= 5:
                 break
     return " · ".join(highlights) if highlights else ""
 
@@ -573,7 +690,7 @@ def save_briefing(briefing_text: str) -> str:
 
 def run() -> dict:
     """Main briefing job. Generates and saves today's briefing."""
-    logger.info("=== Daily Cultural Briefing Generation ===")
+    logger.info("=== Daily Cultural Strategy Briefing ===")
     try:
         briefing_text = generate_briefing()
         page_id       = save_briefing(briefing_text)
