@@ -856,6 +856,41 @@ export async function getUserFeedback(includeResolved = false): Promise<UserFeed
     .sort((a, b) => (b.submitted ?? "").localeCompare(a.submitted ?? ""));
 }
 
+/**
+ * Latest social signals — trending topics, viral moments, fast-moving conversations.
+ * Filters to social platforms (Social, TikTok, Reddit, Bluesky).
+ * 48-hour window, 5-minute cache for freshness.
+ */
+export async function getLatestSocialSignals(limit = 15): Promise<Evidence[]> {
+  const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
+
+  const pages = await queryAll(
+    EVIDENCE_DB,
+    {
+      and: [
+        { property: "Date Captured", date: { on_or_after: cutoff } },
+        {
+          or: [
+            { property: "Source Platform", select: { equals: "Social" } },
+            { property: "Source Platform", select: { equals: "TikTok" } },
+            { property: "Source Platform", select: { equals: "Reddit" } },
+            { property: "Source Platform", select: { equals: "Bluesky" } },
+          ],
+        },
+      ],
+    },
+    { revalidate: 300 } // 5-min cache — social signals need freshness
+  );
+
+  return pages
+    .map(parseEvidencePage)
+    .filter((e) => e.title && e.title.length > 3)
+    .sort((a, b) => (b.dateCaptured ?? "").localeCompare(a.dateCaptured ?? ""))
+    .slice(0, limit);
+}
+
 export async function getResearchInsights(limit = 6): Promise<Evidence[]> {
   const cutoff = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000)
     .toISOString()

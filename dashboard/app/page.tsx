@@ -2,7 +2,8 @@ import Link from "next/link";
 import {
   getTrends, getTensions, getUpcomingEvents,
   getLatestBriefings, getActiveMoments, getSyncRecap,
-  Trend, CulturalMoment, Tension,
+  getLatestSocialSignals,
+  Trend, CulturalMoment, Tension, Evidence,
 } from "@/lib/notion";
 import DashboardHome from "@/components/DashboardHome";
 import { cpsTextColor, cpsBarColor } from "@/components/CpsBar";
@@ -265,16 +266,195 @@ function TensionRow({ tension, isActive }: { tension: Tension; isActive?: boolea
   );
 }
 
+/* ── Social Radar ─────────────────────────────────────────────────────── */
+
+const SOCIAL_PLATFORM_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+  TikTok:  { label: "TikTok",    color: "#ff0050", icon: "\ud83d\udcf1" },
+  Social:  { label: "X / Twitter", color: "rgba(242,239,237,0.7)", icon: "\ud83d\udc26" },
+  Reddit:  { label: "Reddit",    color: "#ff4500", icon: "\ud83d\udcac" },
+  Bluesky: { label: "Bluesky",   color: "#0085ff", icon: "\ud83e\udd8b" },
+};
+
+const SOCIAL_PLATFORM_ORDER = ["TikTok", "Social", "Reddit", "Bluesky"];
+
+/** Strip platform prefix from signal titles (e.g. "TikTok Trending: #iftar" -> "#iftar") */
+function stripPlatformPrefix(title: string): string {
+  // Common patterns: "TikTok Trending: ...", "X Trending (US): ...", "Reddit r/sub: ...", "Bluesky Trending: ..."
+  const patterns = [
+    /^TikTok\s+Trending:\s*/i,
+    /^X\s+Trending\s*\([^)]*\):\s*/i,
+    /^X\s+Trending:\s*/i,
+    /^Reddit\s+r\/\S+:\s*/i,
+    /^Reddit\s+/i,
+    /^Bluesky\s+Trending:\s*/i,
+    /^Bluesky\s+/i,
+    /^Social:\s*/i,
+  ];
+  for (const p of patterns) {
+    if (p.test(title)) return title.replace(p, "");
+  }
+  // Generic fallback: strip "Platform: " prefix
+  const colonIdx = title.indexOf(": ");
+  if (colonIdx > 0 && colonIdx < 30) {
+    const prefix = title.slice(0, colonIdx);
+    if (Object.keys(SOCIAL_PLATFORM_CONFIG).some((k) => prefix.toLowerCase().includes(k.toLowerCase()))) {
+      return title.slice(colonIdx + 2);
+    }
+  }
+  return title;
+}
+
+function SocialRadarWidget({
+  signals,
+  signalsByPlatform,
+  totalSignals,
+  syncTimestamp,
+}: {
+  signals: Evidence[];
+  signalsByPlatform: Record<string, number>;
+  totalSignals: number;
+  syncTimestamp: string;
+}) {
+  // Group signals by platform, respecting order and max 3 per platform
+  const grouped: Record<string, Evidence[]> = {};
+  for (const platform of SOCIAL_PLATFORM_ORDER) {
+    grouped[platform] = [];
+  }
+  for (const s of signals) {
+    const platform = s.platform;
+    if (grouped[platform] && grouped[platform].length < 3) {
+      grouped[platform].push(s);
+    }
+  }
+
+  const hasSignals = signals.length > 0;
+  const platforms = Object.entries(signalsByPlatform).sort((a, b) => b[1] - a[1]);
+  const maxSignals = platforms.length > 0 ? platforms[0][1] : 0;
+
+  return (
+    <>
+      <SectionHeader title="Social Radar" accent="#ff0050" />
+
+      {hasSignals ? (
+        <div style={{ marginBottom: 8 }}>
+          {SOCIAL_PLATFORM_ORDER.map((platform) => {
+            const items = grouped[platform];
+            if (!items || items.length === 0) return null;
+            const conf = SOCIAL_PLATFORM_CONFIG[platform];
+            return (
+              <div key={platform} style={{ marginBottom: 10 }}>
+                {/* Platform header */}
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 5, marginBottom: 4,
+                }}>
+                  <span style={{ fontSize: 10 }}>{conf.icon}</span>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, color: conf.color,
+                    letterSpacing: "0.06em", textTransform: "uppercase",
+                  }}>
+                    {conf.label}
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                </div>
+
+                {/* Signal rows */}
+                {items.map((s) => {
+                  const cleanTitle = stripPlatformPrefix(s.title);
+                  const truncSummary = s.summary && s.summary.length > 80
+                    ? s.summary.slice(0, 77) + "\u2026"
+                    : s.summary;
+
+                  const row = (
+                    <div className="row-hover" style={{
+                      padding: "4px 6px", borderBottom: "1px solid var(--border)",
+                      cursor: s.url ? "pointer" : "default",
+                    }}>
+                      <div style={{
+                        fontSize: 11, fontWeight: 500, color: "var(--text-primary)",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        lineHeight: 1.4,
+                      }}>
+                        {cleanTitle}
+                      </div>
+                      {truncSummary && (
+                        <div style={{
+                          fontSize: 10, color: "var(--text-tertiary)", lineHeight: 1.35,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          marginTop: 1,
+                        }}>
+                          {truncSummary}
+                        </div>
+                      )}
+                    </div>
+                  );
+
+                  if (s.url) {
+                    return (
+                      <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "block" }}>
+                        {row}
+                      </a>
+                    );
+                  }
+                  return <div key={s.id}>{row}</div>;
+                })}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ textAlign: "center", padding: "16px 0" }}>
+          <div style={{ fontSize: 16, marginBottom: 4, opacity: 0.5 }}>{"\ud83d\udce1"}</div>
+          <p style={{ fontSize: 10, color: "var(--text-tertiary)", margin: 0, lineHeight: 1.5 }}>
+            No social signals collected yet.
+          </p>
+        </div>
+      )}
+
+      {/* Compact Signal Pulse footer */}
+      <div style={{
+        borderTop: "1px solid var(--border)", paddingTop: 8, marginTop: 2,
+      }}>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          marginBottom: 6,
+        }}>
+          <span style={{ fontSize: 9, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            All Sources
+          </span>
+          <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-secondary)" }}>
+            {totalSignals} <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>today</span>
+          </span>
+        </div>
+        {platforms.slice(0, 7).map(([platform, count]) => (
+          <PlatformBar key={platform} platform={platform} count={count} maxCount={maxSignals} />
+        ))}
+        {platforms.length === 0 && (
+          <p style={{ fontSize: 9, color: "var(--text-tertiary)", margin: 0 }}>No signals collected yet today.</p>
+        )}
+
+        {/* Last sync indicator */}
+        <div style={{ display: "flex", alignItems: "center", gap: 5, opacity: 0.7, marginTop: 4 }}>
+          <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--moss-bright)", display: "inline-block" }} />
+          <span style={{ fontSize: 8, color: "var(--text-tertiary)" }}>
+            Last sync: {new Date(syncTimestamp).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+          </span>
+        </div>
+      </div>
+    </>
+  );
+}
+
 /* ── Page ──────────────────────────────────────────────────────────────── */
 
 export default async function DashboardPage() {
-  const [trends, tensions, events, briefings, moments, syncRecap] = await Promise.all([
+  const [trends, tensions, events, briefings, moments, syncRecap, socialSignals] = await Promise.all([
     getTrends(),
     getTensions(),
     getUpcomingEvents(30),
     getLatestBriefings(1),
     getActiveMoments(),
     getSyncRecap(),
+    getLatestSocialSignals(15),
   ]);
 
   const flashpoints = trends.filter((t) => t.cps >= 80);
@@ -334,7 +514,7 @@ export default async function DashboardPage() {
     <DashboardHome hasTrends={trends.length > 0}>
     <div className="dashboard-grid">
 
-      {/* ════ ROW 1 ════ Briefing Command Panel | Signal Pulse ════════════ */}
+      {/* ════ ROW 1 ════ Briefing Command Panel | Social Radar ════════════ */}
 
       {/* Briefing Command Panel — 3 columns */}
       <div className="dash-card dash-card-briefing" style={{ gridColumn: "1 / 4", gridRow: "1" }}>
@@ -411,38 +591,14 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* Signal Pulse — 2 columns */}
+      {/* Social Radar — 2 columns (replaces Signal Pulse) */}
       <div className="dash-card" style={{ gridColumn: "4 / 6", gridRow: "1" }}>
-        <SectionHeader title="Signal Pulse" accent="var(--moss-bright)" />
-
-        {/* Total count */}
-        <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 10 }}>
-          <span style={{ fontFamily: "var(--font-fraunces, 'Fraunces', serif)", fontSize: 24, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1 }}>
-            {syncRecap.totalSignals}
-          </span>
-          <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>signals today</span>
-          <span style={{ fontSize: 9, color: "var(--text-tertiary)", marginLeft: "auto" }}>
-            {platforms.length} source{platforms.length !== 1 ? "s" : ""}
-          </span>
-        </div>
-
-        {/* Platform bars */}
-        <div style={{ marginBottom: 10 }}>
-          {platforms.slice(0, 7).map(([platform, count]) => (
-            <PlatformBar key={platform} platform={platform} count={count} maxCount={maxSignals} />
-          ))}
-          {platforms.length === 0 && (
-            <p style={{ fontSize: 10, color: "var(--text-tertiary)", margin: 0 }}>No signals collected yet today.</p>
-          )}
-        </div>
-
-        {/* Last sync */}
-        <div style={{ display: "flex", alignItems: "center", gap: 5, opacity: 0.7 }}>
-          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--moss-bright)", display: "inline-block" }} />
-          <span style={{ fontSize: 9, color: "var(--text-tertiary)" }}>
-            Last sync: {new Date(syncRecap.timestamp).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
-          </span>
-        </div>
+        <SocialRadarWidget
+          signals={socialSignals}
+          signalsByPlatform={syncRecap.signalsByPlatform}
+          totalSignals={syncRecap.totalSignals}
+          syncTimestamp={syncRecap.timestamp}
+        />
       </div>
 
       {/* ════ ROW 2 ════ Flashpoints bar ═════════════════════════════════ */}
