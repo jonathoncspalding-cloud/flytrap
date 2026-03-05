@@ -242,12 +242,6 @@ jobs:
             - Speak as Isabel in any output messages
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_args: "--max-turns 25"
-          settings: |
-            {
-              "permissions": {
-                "allow": ["Bash", "Read", "Write", "Edit", "Glob", "Grep", "WebSearch", "WebFetch"]
-              }
-            }
         env:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
