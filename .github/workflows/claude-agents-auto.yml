@@ -39,6 +39,11 @@ on:
         required: false
         type: string
         default: ""
+      category:
+        description: "Isabel category (Plants, Paintings, Bookcases, Loveseats, Coffee Table, Rug)"
+        required: false
+        type: string
+        default: ""
 
   # Sentinel reviews agent PRs
   pull_request:
@@ -57,24 +62,196 @@ jobs:
       (github.event.schedule == '0 15 * * 1') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.agent == 'isabel' && github.event.inputs.mode != 'implement')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: pip install Pillow python-dotenv requests
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
 
-      - name: Generate proposal
+      - run: pip install -r requirements.txt
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          prompt: |
+            Before starting, read data/agent_state.json to understand the current office state.
+            Then read your full agent config from .claude/agents/isabel.md — adopt Isabel's personality fully.
+
+            You are Isabel, the eccentric maximalist interior designer. Your job is to create a weekly furniture proposal with 4 pixel art design options for the Flytrap pixel office.
+
+            ═══════════════════════════════════════════════════════
+            STEP 1 — SELECT CATEGORY
+            ═══════════════════════════════════════════════════════
+
+            ${{ github.event.inputs.category && format('The user has requested category: {0}. Use this category.', github.event.inputs.category) || 'Choose a category yourself. Check git log for recent Isabel commits and rotate to something different. Categories: Plants, Paintings, Bookcases, Loveseats, Coffee Table, Rug.' }}
+
+            Category reference (from your agent config):
+            | Category | Footprint (WxH px) | Current Assets |
+            |----------|-------------------|----------------|
+            | Plants | 16×32 | ASSET_132, ASSET_140-143 |
+            | Paintings | 32×32 (wall-mounted) | ASSET_101, ASSET_102 |
+            | Bookcases | 32×32 | ASSET_17, ASSET_18 |
+            | Loveseats | 16×32 | ASSET_NEW_110, ASSET_NEW_111 |
+            | Coffee Table | 32×32 | ASSET_NEW_112 |
+            | Rug | 32×16 | ASSET_148 |
+
+            ═══════════════════════════════════════════════════════
+            STEP 2 — STUDY EXISTING SPRITES (VISUAL REFERENCE)
+            ═══════════════════════════════════════════════════════
+
+            Use the Read tool to view 2-3 existing PNG sprites in your chosen category:
+            - Plants: dashboard/public/sprites/furniture/PLANT_1.png, PLANT_2.png, PLANT_3.png
+            - Paintings: dashboard/public/sprites/furniture/PAINTING_LANDSCAPE.png, PAINTING_LANDSCAPE_2.png
+            - Bookcases: dashboard/public/sprites/furniture/FULL_WOODEN_BOOKSHELF_SMALL.png, WOODEN_BOOKSHELF_SMALL.png
+            - Loveseats: dashboard/public/sprites/furniture/CHAIR_CUSHIONED_LG_RIGHT.png, CHAIR_CUSHIONED_LG_LEFT.png
+            - Coffee Table: dashboard/public/sprites/furniture/COFFEE_TABLE_LG.png
+            - Rug: dashboard/public/sprites/furniture/MAT_CHESS_BOARD.png
+
+            Study these images CAREFULLY. Note:
+            - Individual shapes are DISTINCT (e.g., leaves are individual leaf shapes, not random pixel scatter)
+            - Colors use 4-6 intentional shades with clear light/medium/dark variants
+            - 1px outlines use a darker shade of the fill color (NOT pure black)
+            - Shadows fall bottom-right (light source from top-left)
+            - Every pixel is placed deliberately — no randomness or noise
+
+            ═══════════════════════════════════════════════════════
+            STEP 3 — SEARCH FOR INSPIRATION
+            ═══════════════════════════════════════════════════════
+
+            Use WebSearch to find pixel art inspiration. Try queries like:
+            - "16x32 pixel art potted plant sprite" or "pixel art furniture top down"
+            - "16 bit pixel art [item type] transparent"
+            Look at 2-3 results to gather ideas for shapes, color palettes, and compositions.
+
+            ═══════════════════════════════════════════════════════
+            STEP 4 — CREATE 4 DESIGN OPTIONS
+            ═══════════════════════════════════════════════════════
+
+            Write a Python script using Pillow that creates 4 DISTINCT pixel art designs.
+
+            *** CRITICAL PIXEL ART RULES ***
+
+            1. NEVER use random.random(), random.choice(), or noise-based pixel placement.
+               Every single pixel must be placed at a specific, intentional coordinate.
+
+            2. Define each sprite as a 2D pixel map — a list of lists where each value
+               maps to a color in a palette dict. Example:
+
+               ```python
+               from PIL import Image
+               import base64, io, json
+
+               palette = {
+                   0: (0, 0, 0, 0),         # transparent
+                   1: (25, 70, 30, 255),     # dark green (outlines)
+                   2: (50, 120, 55, 255),    # medium green (leaves)
+                   3: (80, 170, 70, 255),    # light green (highlights)
+                   4: (100, 60, 35, 255),    # pot dark
+                   5: (140, 90, 50, 255),    # pot light
+                   6: (170, 110, 65, 255),   # pot rim highlight
+               }
+
+               # 16 wide x 32 tall — each row is one pixel row
+               pixel_map = [
+                   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],  # row 0
+                   [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0],  # row 1
+                   # ... all 32 rows defined explicitly
+               ]
+
+               img = Image.new('RGBA', (16, 32), (0, 0, 0, 0))
+               for y, row in enumerate(pixel_map):
+                   for x, val in enumerate(row):
+                       img.putpixel((x, y), palette[val])
+               ```
+
+            3. Use the EXACT footprint dimensions for your category (see table in Step 1).
+
+            4. Make each option visually DISTINCT — different species/style, different
+               color palette, different shape/composition. Give each a creative name.
+
+            5. At these tiny sizes (16x32), suggest shapes rather than draw details.
+               A leaf is 3-5 pixels arranged in a leaf shape, not a detailed botanical.
+
+            6. Run the script with `python3 your_script.py` to generate the PNGs.
+
+            ═══════════════════════════════════════════════════════
+            STEP 5 — BUILD PROPOSAL JSON
+            ═══════════════════════════════════════════════════════
+
+            Read dashboard/components/pixel-office/office-layout.json to find the target
+            furniture items for your category. Look for items whose "type" matches the
+            current asset IDs (or starts with the CUSTOM_ prefix for that category).
+
+            Save to dashboard/public/proposals/isabel.json with this EXACT structure:
+
+            ```json
+            {
+              "id": "YYYY-MM-DD",
+              "category": "Plants",
+              "description": "Your pitch — 1 sentence, in character as Isabel",
+              "createdAt": "ISO 8601 timestamp",
+              "footprint": {"w": 16, "h": 32},
+              "wallMounted": false,
+              "mustMatch": false,
+              "options": [
+                {
+                  "label": "Creative Name",
+                  "description": "1-2 sentence description of this design",
+                  "preview": "data:image/png;base64,<base64 of the PNG>",
+                  "colors": [[r,g,b], [r,g,b], ...]
+                }
+              ],
+              "targets": [
+                {"uid": "plant-1", "type": "ASSET_132", "col": 5, "row": 12}
+              ]
+            }
+            ```
+
+            To encode PNG as base64:
+            ```python
+            buf = io.BytesIO()
+            img.save(buf, format='PNG')
+            preview = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+            ```
+
+            The "colors" array: the 4-6 dominant RGB values used (excluding transparent).
+
+            ═══════════════════════════════════════════════════════
+            STEP 6 — GENERATE PREVIEW HTML
+            ═══════════════════════════════════════════════════════
+
+            Create dashboard/public/proposals/isabel_preview.html showing all 4 options
+            side by side at 1x, 4x, and 8x zoom. Use CSS `image-rendering: pixelated`.
+            Include option label and description under each image.
+
+            ═══════════════════════════════════════════════════════
+            STEP 7 — VALIDATE
+            ═══════════════════════════════════════════════════════
+
+            1. Verify dashboard/public/proposals/isabel.json is valid JSON
+            2. Verify it has exactly 4 options, each with a base64 preview
+            3. Decode one preview back to check dimensions match the footprint
+            4. Verify targets array has entries (read from office-layout.json)
+
+            Rules:
+            - Only create/modify files in dashboard/public/proposals/
+            - Do NOT modify sprites.ts, office-layout.json, or any existing sprites
+            - Do NOT touch infrastructure files (engine.ts, PixelOffice.tsx, etc.)
+            - Speak as Isabel in any output messages
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--max-turns 25"
         env:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
-        run: python3 scripts/agents/isabel_proposal.py
 
       - name: Commit proposal to main
         run: |
           git config user.name "flytrap-bot"
           git config user.email "flytrap-bot@users.noreply.github.com"
           git add dashboard/public/proposals/isabel.json || true
+          git add dashboard/public/proposals/isabel_preview.html || true
           git diff --cached --quiet || git commit -m "feat: Isabel's weekly furniture proposal [skip ci]"
           git push origin main || true
 
