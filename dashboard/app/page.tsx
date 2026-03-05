@@ -270,16 +270,13 @@ function TensionRow({ tension, isActive }: { tension: Tension; isActive?: boolea
 
 const SOCIAL_PLATFORM_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   TikTok:  { label: "TikTok",    color: "#ff0050", icon: "\ud83d\udcf1" },
-  Social:  { label: "X / Twitter", color: "rgba(242,239,237,0.7)", icon: "\ud83d\udc26" },
+  Social:  { label: "X",         color: "rgba(242,239,237,0.7)", icon: "\ud83d\udc26" },
   Reddit:  { label: "Reddit",    color: "#ff4500", icon: "\ud83d\udcac" },
   Bluesky: { label: "Bluesky",   color: "#0085ff", icon: "\ud83e\udd8b" },
 };
 
-const SOCIAL_PLATFORM_ORDER = ["TikTok", "Social", "Reddit", "Bluesky"];
-
 /** Strip platform prefix from signal titles (e.g. "TikTok Trending: #iftar" -> "#iftar") */
 function stripPlatformPrefix(title: string): string {
-  // Common patterns: "TikTok Trending: ...", "X Trending (US): ...", "Reddit r/sub: ...", "Bluesky Trending: ..."
   const patterns = [
     /^TikTok\s+Trending:\s*/i,
     /^X\s+Trending\s*\([^)]*\):\s*/i,
@@ -293,7 +290,6 @@ function stripPlatformPrefix(title: string): string {
   for (const p of patterns) {
     if (p.test(title)) return title.replace(p, "");
   }
-  // Generic fallback: strip "Platform: " prefix
   const colonIdx = title.indexOf(": ");
   if (colonIdx > 0 && colonIdx < 30) {
     const prefix = title.slice(0, colonIdx);
@@ -302,6 +298,15 @@ function stripPlatformPrefix(title: string): string {
     }
   }
   return title;
+}
+
+/** Extract a Context snippet from rawContent for enriched X/Trends24 signals. */
+function extractContext(rawContent: string | undefined): string | null {
+  if (!rawContent) return null;
+  const match = rawContent.match(/Context:\s*(.+?)(?:\n|$)/i);
+  if (!match) return null;
+  const ctx = match[1].trim();
+  return ctx.length > 90 ? ctx.slice(0, 87) + "\u2026" : ctx;
 }
 
 function SocialRadarWidget({
@@ -315,19 +320,10 @@ function SocialRadarWidget({
   totalSignals: number;
   syncTimestamp: string;
 }) {
-  // Group signals by platform, respecting order and max 3 per platform
-  const grouped: Record<string, Evidence[]> = {};
-  for (const platform of SOCIAL_PLATFORM_ORDER) {
-    grouped[platform] = [];
-  }
-  for (const s of signals) {
-    const platform = s.platform;
-    if (grouped[platform] && grouped[platform].length < 3) {
-      grouped[platform].push(s);
-    }
-  }
-
-  const hasSignals = signals.length > 0;
+  // Show top 8 ranked signals (already sorted by score from getLatestSocialSignals)
+  const rankedSignals = signals.slice(0, 8);
+  const hasSignals = rankedSignals.length > 0;
+  const topScore = rankedSignals[0]?._score ?? 0;
   const platforms = Object.entries(signalsByPlatform).sort((a, b) => b[1] - a[1]);
   const maxSignals = platforms.length > 0 ? platforms[0][1] : 0;
 
@@ -337,68 +333,93 @@ function SocialRadarWidget({
 
       {hasSignals ? (
         <div style={{ marginBottom: 8 }}>
-          {SOCIAL_PLATFORM_ORDER.map((platform) => {
-            const items = grouped[platform];
-            if (!items || items.length === 0) return null;
-            const conf = SOCIAL_PLATFORM_CONFIG[platform];
-            return (
-              <div key={platform} style={{ marginBottom: 10 }}>
-                {/* Platform header */}
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 5, marginBottom: 4,
+          {rankedSignals.map((s, idx) => {
+            const cleanTitle = stripPlatformPrefix(s.title);
+            const conf = SOCIAL_PLATFORM_CONFIG[s.platform];
+            const isTop = idx === 0 && topScore > 30;
+
+            // For display text: prefer summary if it exists, else try context from rawContent
+            const contextSnippet = extractContext(s.rawContent);
+            const displaySub = s.summary && s.summary.length > 10
+              ? (s.summary.length > 90 ? s.summary.slice(0, 87) + "\u2026" : s.summary)
+              : contextSnippet;
+
+            const row = (
+              <div className="row-hover" style={{
+                display: "flex", alignItems: "flex-start", gap: 6,
+                padding: isTop ? "6px 6px 6px 4px" : "4px 6px",
+                borderBottom: "1px solid var(--border)",
+                borderLeft: isTop ? "2px solid #ff0050" : "2px solid transparent",
+                cursor: s.url ? "pointer" : "default",
+              }}>
+                {/* Platform badge */}
+                <span style={{
+                  fontSize: 8, fontWeight: 700,
+                  color: conf?.color ?? "var(--text-tertiary)",
+                  background: `${conf?.color ?? "var(--text-tertiary)"}15`,
+                  padding: "1px 4px", borderRadius: 3,
+                  flexShrink: 0, marginTop: 2,
+                  letterSpacing: "0.03em",
                 }}>
-                  <span style={{ fontSize: 10 }}>{conf.icon}</span>
-                  <span style={{
-                    fontSize: 9, fontWeight: 700, color: conf.color,
-                    letterSpacing: "0.06em", textTransform: "uppercase",
+                  {conf?.label ?? s.platform}
+                </span>
+
+                {/* Title + subtitle */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: isTop ? 600 : 500,
+                    color: "var(--text-primary)",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    lineHeight: 1.4,
                   }}>
-                    {conf.label}
-                  </span>
-                  <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                    {cleanTitle}
+                  </div>
+                  {displaySub && (
+                    <div style={{
+                      fontSize: 10, color: "var(--text-tertiary)", lineHeight: 1.35,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      marginTop: 1,
+                    }}>
+                      {displaySub}
+                    </div>
+                  )}
                 </div>
 
-                {/* Signal rows */}
-                {items.map((s) => {
-                  const cleanTitle = stripPlatformPrefix(s.title);
-                  const truncSummary = s.summary && s.summary.length > 80
-                    ? s.summary.slice(0, 77) + "\u2026"
-                    : s.summary;
+                {/* Engagement badge */}
+                {s._engagementLabel && (
+                  <span style={{
+                    fontSize: 8, fontWeight: 700,
+                    color: "#ff0050", background: "rgba(255,0,80,0.08)",
+                    padding: "1px 5px", borderRadius: 3,
+                    flexShrink: 0, marginTop: 2,
+                    whiteSpace: "nowrap",
+                  }}>
+                    {s._engagementLabel}
+                  </span>
+                )}
 
-                  const row = (
-                    <div className="row-hover" style={{
-                      padding: "4px 6px", borderBottom: "1px solid var(--border)",
-                      cursor: s.url ? "pointer" : "default",
-                    }}>
-                      <div style={{
-                        fontSize: 11, fontWeight: 500, color: "var(--text-primary)",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        lineHeight: 1.4,
-                      }}>
-                        {cleanTitle}
-                      </div>
-                      {truncSummary && (
-                        <div style={{
-                          fontSize: 10, color: "var(--text-tertiary)", lineHeight: 1.35,
-                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                          marginTop: 1,
-                        }}>
-                          {truncSummary}
-                        </div>
-                      )}
-                    </div>
-                  );
-
-                  if (s.url) {
-                    return (
-                      <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "block" }}>
-                        {row}
-                      </a>
-                    );
-                  }
-                  return <div key={s.id}>{row}</div>;
-                })}
+                {/* Linked indicator */}
+                {s.linkedTrendIds && s.linkedTrendIds.length > 0 && !s._engagementLabel && (
+                  <span style={{
+                    fontSize: 8, fontWeight: 600,
+                    color: "var(--moss-bright)", background: "rgba(42,140,74,0.08)",
+                    padding: "1px 4px", borderRadius: 3,
+                    flexShrink: 0, marginTop: 2,
+                  }}>
+                    linked
+                  </span>
+                )}
               </div>
             );
+
+            if (s.url) {
+              return (
+                <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "block" }}>
+                  {row}
+                </a>
+              );
+            }
+            return <div key={s.id}>{row}</div>;
           })}
         </div>
       ) : (

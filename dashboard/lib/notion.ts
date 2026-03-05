@@ -90,6 +90,12 @@ export interface Evidence {
   summary: string;
   sentiment: string;
   source?: string; // e.g. "NYT Arts", "Variety" — populated for news ticker items
+  linkedTrendIds?: string[];  // from Linked Trends relation
+  rawContent?: string;        // Raw Content rich_text field
+  /** Relevance score computed by Social Radar ranking. Not stored in Notion. */
+  _score?: number;
+  /** Parsed engagement label for display (e.g. "1.3B views"). Not stored in Notion. */
+  _engagementLabel?: string;
 }
 
 export interface Briefing {
@@ -129,6 +135,13 @@ export interface CulturalMoment {
 
 function richText(prop: any): string {
   return prop?.rich_text?.[0]?.plain_text ?? "";
+}
+
+/** Concatenate ALL rich_text blocks (for long fields like Raw Content). */
+function richTextFull(prop: any): string {
+  return (
+    prop?.rich_text?.map((rt: any) => rt.plain_text).join("") ?? ""
+  );
 }
 
 function selectName(prop: any): string {
@@ -398,6 +411,9 @@ function parseEvidencePage(p: any): Evidence {
     dateCaptured: dateStart(props["Date Captured"]),
     summary: richText(props.Summary),
     sentiment: selectName(props.Sentiment),
+    linkedTrendIds:
+      props["Linked Trends"]?.relation?.map((r: any) => r.id) ?? [],
+    rawContent: richTextFull(props["Raw Content"]),
   };
 }
 
@@ -857,9 +873,102 @@ export async function getUserFeedback(includeResolved = false): Promise<UserFeed
 }
 
 /**
+ * Parse a human-readable number like "1.3B", "450M", "12K", "1,234" → raw number.
+ */
+function parseHumanNumber(s: string): number {
+  const cleaned = s.replace(/,/g, "").trim();
+  const m = cleaned.match(/^([\d.]+)\s*([BMK])?$/i);
+  if (!m) return 0;
+  const base = parseFloat(m[1]);
+  const suffix = (m[2] ?? "").toUpperCase();
+  if (suffix === "B") return base * 1_000_000_000;
+  if (suffix === "M") return base * 1_000_000;
+  if (suffix === "K") return base * 1_000;
+  return base;
+}
+
+/**
+ * Format a large number as a compact label (e.g. 1300000000 → "1.3B").
+ */
+function formatCompactNumber(n: number): string {
+  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1).replace(/\.0$/, "") + "B";
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
+  return String(Math.round(n));
+}
+
+/** Brand/category keywords that boost relevance for QSR/brand monitoring. */
+const BRAND_KEYWORDS = /\b(mcdonald|burger|restaurant|fast food|qsr|brand|ceo|chipotle|starbucks|wendy|taco bell|chick-fil-a|subway|pizza hut|domino|kfc|popeyes)\b/i;
+
+/**
+ * Compute a relevance score for a social signal.
+ * Higher = more important. Used to rank Social Radar signals.
+ */
+function scoreSocialSignal(e: Evidence): { score: number; engagementLabel: string } {
+  let score = 0;
+  let engagementLabel = "";
+  const raw = e.rawContent ?? "";
+  const platform = e.platform;
+
+  // ── A. Engagement metrics (parsed from rawContent) ──
+
+  if (platform === "TikTok") {
+    // Views: "1.3B views", "450M views", etc.
+    const viewsMatch = raw.match(/([\d,.]+[BMK]?)\s*views/i);
+    if (viewsMatch) {
+      const views = parseHumanNumber(viewsMatch[1]);
+      if (views >= 1_000_000_000) { score += 40; engagementLabel = formatCompactNumber(views) + " views"; }
+      else if (views >= 100_000_000) { score += 30; engagementLabel = formatCompactNumber(views) + " views"; }
+      else if (views >= 10_000_000) { score += 20; engagementLabel = formatCompactNumber(views) + " views"; }
+      else if (views >= 1_000_000) { score += 10; engagementLabel = formatCompactNumber(views) + " views"; }
+    }
+    // Rank: "rank #3", "#1", "Rank: 1"
+    const rankMatch = raw.match(/rank\s*#?(\d+)|#(\d+)/i);
+    if (rankMatch) {
+      const rank = parseInt(rankMatch[1] ?? rankMatch[2], 10);
+      if (rank <= 3) score += 15;
+      else if (rank <= 10) score += 10;
+      else if (rank <= 20) score += 5;
+    }
+    // NEW indicator
+    if (/\(NEW\)/i.test(raw)) score += 10;
+    // Category: Food & Beverage
+    if (/food\s*&?\s*beverage/i.test(raw)) score += 20;
+  }
+
+  // ── B. Enrichment quality ──
+
+  // Has "Context:" (enriched Trends24 / X signal)
+  if (/Context:/i.test(raw)) score += 15;
+  // Non-empty summary (Claude has processed it)
+  if (e.summary && e.summary.length > 10) score += 20;
+
+  // ── C. Linked to trends ──
+
+  if (e.linkedTrendIds && e.linkedTrendIds.length > 0) score += 15;
+
+  // ── D. Brand/category relevance ──
+
+  const searchText = (e.title + " " + raw).toLowerCase();
+  if (BRAND_KEYWORDS.test(searchText)) score += 10;
+
+  // ── E. Recency ──
+
+  if (e.dateCaptured) {
+    const today = new Date().toISOString().split("T")[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+    if (e.dateCaptured === today) score += 10;
+    else if (e.dateCaptured === yesterday) score += 5;
+  }
+
+  return { score, engagementLabel };
+}
+
+/**
  * Latest social signals — trending topics, viral moments, fast-moving conversations.
  * Filters to social platforms (Social, TikTok, Reddit, Bluesky).
  * 48-hour window, 5-minute cache for freshness.
+ * Ranked by relevance score, not chronological order.
  */
 export async function getLatestSocialSignals(limit = 15): Promise<Evidence[]> {
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000)
@@ -887,7 +996,11 @@ export async function getLatestSocialSignals(limit = 15): Promise<Evidence[]> {
   return pages
     .map(parseEvidencePage)
     .filter((e) => e.title && e.title.length > 3)
-    .sort((a, b) => (b.dateCaptured ?? "").localeCompare(a.dateCaptured ?? ""))
+    .map((e) => {
+      const { score, engagementLabel } = scoreSocialSignal(e);
+      return { ...e, _score: score, _engagementLabel: engagementLabel || undefined };
+    })
+    .sort((a, b) => (b._score ?? 0) - (a._score ?? 0))
     .slice(0, limit);
 }
 
