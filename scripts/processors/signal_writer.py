@@ -131,6 +131,7 @@ def run_all_collectors() -> dict:
         youtube_collector,
         polymarket_collector,
         trends24_collector,
+        tiktok_collector,
     )
 
     collectors = [
@@ -143,6 +144,7 @@ def run_all_collectors() -> dict:
         ("youtube",       youtube_collector.collect),
         ("polymarket",    polymarket_collector.collect),
         ("x_twitter",     trends24_collector.collect),
+        ("tiktok",        tiktok_collector.collect),
     ]
 
     # Label mapping for write_signals log output
@@ -151,6 +153,7 @@ def run_all_collectors() -> dict:
         "google_trends": "Google Trends", "hacker_news": "HN",
         "bluesky": "Bluesky", "youtube": "YouTube",
         "polymarket": "Polymarket", "x_twitter": "Trends24",
+        "tiktok": "TikTok",
     }
 
     summary = {}

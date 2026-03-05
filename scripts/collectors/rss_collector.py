@@ -55,6 +55,10 @@ RSS_FEEDS = [
     # ── Food & drink ─────────────────────────────────────────────────────────
     {"url": "https://www.eater.com/rss/index.xml", "label": "Eater", "category": "Food"},
     {"url": "https://www.bonappetit.com/feed/rss", "label": "Bon Appétit", "category": "Food"},
+    # ── QSR & restaurant industry (added 2026-03-05, post-mortem) ──────────
+    {"url": "https://www.qsrmagazine.com/rss.xml", "label": "QSR Magazine", "category": "Food"},
+    {"url": "https://www.nrn.com/rss.xml", "label": "Nation's Restaurant News", "category": "Food"},
+    {"url": "https://www.restaurantbusinessonline.com/rss.xml", "label": "Restaurant Business", "category": "Food"},
     # ── Tech ─────────────────────────────────────────────────────────────────
     {"url": "https://www.theverge.com/rss/index.xml", "label": "The Verge", "category": "Tech"},
     {"url": "https://feeds.wired.com/wired/index", "label": "Wired", "category": "Tech"},
