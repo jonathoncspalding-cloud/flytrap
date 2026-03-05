@@ -1,9 +1,9 @@
 name: Flytrap Pipeline
 
 on:
-  # Full pipeline with briefing — daily at noon UTC
+  # Full pipeline with briefing — daily at 11 UTC (6 AM ET), ready by 7 AM ET
   schedule:
-    - cron: "0 12 * * *"
+    - cron: "0 11 * * *"
   # Intraday collection-only runs (no Claude API calls)
     - cron: "0 6,18,0 * * *"
   # Weekly maintenance: novelty scan + prediction review (Sundays 3 PM UTC)
@@ -94,8 +94,8 @@ jobs:
             # Sunday 3 PM: weekly novelty scan + prediction review
             echo "args=--novelty" >> $GITHUB_OUTPUT
             echo "weekly_review=true" >> $GITHUB_OUTPUT
-          elif [ "$HOUR" = "12" ]; then
-            # Noon: full pipeline with briefing (daily)
+          elif [ "$HOUR" = "11" ]; then
+            # 11 UTC (6 AM ET): full pipeline with briefing (daily)
             echo "args=" >> $GITHUB_OUTPUT
           else
             # Intraday: collection only — no Claude API calls
