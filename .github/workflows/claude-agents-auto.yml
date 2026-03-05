@@ -247,13 +247,21 @@ jobs:
           NOTION_AGENT_ACTIVITY_DB: ${{ secrets.NOTION_AGENT_ACTIVITY_DB }}
 
       - name: Commit proposal to main
+        if: always()
         run: |
           git config user.name "flytrap-bot"
           git config user.email "flytrap-bot@users.noreply.github.com"
+          # claude-code-action may leave us on a branch — switch back to main
+          git checkout main 2>/dev/null || true
           git add dashboard/public/proposals/isabel.json || true
           git add dashboard/public/proposals/isabel_preview.html || true
-          git diff --cached --quiet || git commit -m "feat: Isabel's weekly furniture proposal [skip ci]"
-          git push origin main || true
+          if git diff --cached --quiet; then
+            echo "No proposal files found — Claude may not have created them"
+            ls -la dashboard/public/proposals/ 2>/dev/null || echo "proposals dir does not exist"
+          else
+            git commit -m "feat: Isabel's weekly furniture proposal [skip ci]"
+            git push origin main || true
+          fi
 
       - name: Update agent state
         if: always()
