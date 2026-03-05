@@ -47,7 +47,8 @@ CATEGORIES = {
 }
 
 # Minimum view count to qualify as a signal
-MIN_VIEWS = 500_000
+# Lowered from 500K to catch early-stage viral content (reaction videos, commentary)
+MIN_VIEWS = 100_000
 
 # Only capture videos published within the last N days
 MAX_AGE_DAYS = 3

@@ -68,6 +68,10 @@ SUBREDDITS = [
     "MadeMeSmile",          # Viral positivity — counterweight signal
     # ── Advertising & marketing ───────────────────────────────────────────
     "advertising",          # Ad culture + brand discourse
+    # ── Food, brands & consumer culture ──────────────────────────────────
+    "FellowKids",           # Cringy corporate content — viral brand fails/wins
+    "fastfood",             # QSR news, viral fast-food moments
+    "HailCorporate",        # Brands going viral, intentional or not
 ]
 
 MIN_UPVOTES = 500       # Minimum upvotes to include a post (PRAW/JSON only)

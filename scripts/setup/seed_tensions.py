@@ -157,6 +157,32 @@ STARTER_TENSIONS = [
             "geographic/economic ripple effects in cities and suburbs."
         ),
     },
+    # ── Brand & consumer culture (added 2026-03-05, post-mortem on missed
+    #    McDonald's Arch Burger viral moment) ─────────────────────────────
+    {
+        "name": "Corporate cultural performance vs. consumer cynicism",
+        "weight": 7,
+        "status": "Active",
+        "description": (
+            "Brands and executives increasingly attempt to perform relatability, "
+            "cultural fluency, or authenticity — and consumers increasingly punish "
+            "the performance when it rings hollow. Fuels CEO cringefails going viral, "
+            "corporate meme failures, competitor pile-on dynamics, and 'silence is a "
+            "brand strategy' discourse."
+        ),
+    },
+    {
+        "name": "Brand participation in culture vs. cultural appropriation backlash",
+        "weight": 6,
+        "status": "Active",
+        "description": (
+            "Brands face a double bind: stay silent and risk irrelevance, or participate "
+            "in cultural moments and risk co-opting or trivializing the culture. Activates "
+            "when brands jump on trends too late, misread tone, borrow subcultural codes "
+            "without understanding, or when consumers debate whether brand involvement "
+            "legitimizes or cheapens a movement."
+        ),
+    },
 ]
 
 
