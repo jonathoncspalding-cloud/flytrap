@@ -244,10 +244,11 @@ def collect() -> list:
     if use_praw:
         logger.info("Reddit: using PRAW (authenticated API)")
     else:
-        logger.info("Reddit: using RSS feeds (no API credentials)")
+        logger.info("Reddit: using RSS feeds (JSON fallback if RSS blocked)")
 
     signals = []
     rss_failures = 0
+    json_fallbacks = 0
 
     for i, subreddit in enumerate(SUBREDDITS):
         if use_praw:
@@ -269,7 +270,7 @@ def collect() -> list:
                         ),
                     })
         else:
-            # ── RSS path: no upvotes, but works on cloud IPs ────────────
+            # ── RSS path: try RSS first, fall back to JSON if blocked ───
             posts = _get_posts_rss(subreddit, limit=POSTS_PER_SUB_RSS)
             if posts:
                 for post in posts:
@@ -278,14 +279,27 @@ def collect() -> list:
                         continue
                     signals.append(_format_post_rss(post, subreddit))
             else:
-                rss_failures += 1
+                # RSS failed (cloud IP block, XML parse error, etc.)
+                # Fall back to public JSON endpoint
+                json_posts = _get_posts_public(subreddit, limit=POSTS_PER_SUB, sort="hot")
+                if json_posts:
+                    json_fallbacks += 1
+                    for post_data in json_posts:
+                        formatted = _format_post_public(post_data, subreddit)
+                        if formatted.get("_score", 0) >= MIN_UPVOTES:
+                            formatted.pop("_score", None)
+                            signals.append(formatted)
+                else:
+                    rss_failures += 1
 
-            # Gentle rate limiting: ~2 req/s for RSS
+            # Gentle rate limiting: ~2 req/s
             if i < len(SUBREDDITS) - 1:
                 time.sleep(0.5)
 
+    if json_fallbacks > 0:
+        logger.info(f"Reddit: {json_fallbacks} subreddits used JSON fallback")
     if rss_failures > 0:
-        logger.warning(f"Reddit RSS: {rss_failures}/{len(SUBREDDITS)} subreddits failed")
+        logger.warning(f"Reddit: {rss_failures}/{len(SUBREDDITS)} subreddits failed (both RSS and JSON)")
 
     logger.info(f"Reddit: collected {len(signals)} signals")
     return signals

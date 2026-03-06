@@ -278,7 +278,7 @@ const SOCIAL_PLATFORM_CONFIG: Record<string, { label: string; color: string; ico
 /** Strip platform prefix from signal titles (e.g. "TikTok Trending: #iftar" -> "#iftar") */
 function stripPlatformPrefix(title: string): string {
   const patterns = [
-    /^TikTok\s+Trending:\s*/i,
+    /^TikTok\s+Trending\s*(?:\([^)]*\))?:\s*/i,
     /^X\s+Trending\s*\([^)]*\):\s*/i,
     /^X\s+Trending:\s*/i,
     /^Reddit\s+r\/\S+:\s*/i,
@@ -320,8 +320,8 @@ function SocialRadarWidget({
   totalSignals: number;
   syncTimestamp: string;
 }) {
-  // Show top 8 ranked signals (already sorted by score from getLatestSocialSignals)
-  const rankedSignals = signals.slice(0, 8);
+  // Show top 12 ranked signals (already sorted by score from getLatestSocialSignals)
+  const rankedSignals = signals.slice(0, 12);
   const hasSignals = rankedSignals.length > 0;
   const topScore = rankedSignals[0]?._score ?? 0;
   const platforms = Object.entries(signalsByPlatform).sort((a, b) => b[1] - a[1]);
@@ -475,7 +475,7 @@ export default async function DashboardPage() {
     getLatestBriefings(1),
     getActiveMoments(),
     getSyncRecap(),
-    getLatestSocialSignals(15),
+    getLatestSocialSignals(20),
   ]);
 
   const flashpoints = trends.filter((t) => t.cps >= 80);
@@ -527,18 +527,24 @@ export default async function DashboardPage() {
     })
     .slice(0, 5);
 
-  // Row 2 shifts if flashpoints exist
-  const r2 = flashpoints.length > 0 ? "3" : "2";
-  const r3 = flashpoints.length > 0 ? "4" : "3";
-
   return (
     <DashboardHome hasTrends={trends.length > 0}>
     <div className="dashboard-grid">
 
-      {/* ════ ROW 1 ════ Briefing Command Panel | Social Radar ════════════ */}
+      {/* ════ ROW 1 ════ Social Radar (primary) | Briefing (compact) ══════ */}
 
-      {/* Briefing Command Panel — 3 columns */}
-      <div className="dash-card dash-card-briefing" style={{ gridColumn: "1 / 4", gridRow: "1" }}>
+      {/* Social Radar — 3 columns (primary widget) */}
+      <div className="dash-card" style={{ gridColumn: "1 / 4", gridRow: "1" }}>
+        <SocialRadarWidget
+          signals={socialSignals}
+          signalsByPlatform={syncRecap.signalsByPlatform}
+          totalSignals={syncRecap.totalSignals}
+          syncTimestamp={syncRecap.timestamp}
+        />
+      </div>
+
+      {/* Briefing Command Panel — 2 columns (compact) */}
+      <div className="dash-card dash-card-briefing" style={{ gridColumn: "4 / 6", gridRow: "1" }}>
         <SectionHeader title="Today's Briefing" accent="var(--moss-bright)" linkHref="/briefings" linkLabel="Full briefing \u2192" />
 
         {latestBriefing ? (
@@ -572,7 +578,7 @@ export default async function DashboardPage() {
                 <div style={{ fontSize: 9, fontWeight: 700, color: "var(--moss-bright)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>
                   What Moved
                 </div>
-                {briefingPreviews.slice(0, 3).map((fp, i) => (
+                {briefingPreviews.slice(0, 2).map((fp, i) => (
                   <div key={i} style={{ marginBottom: 5 }}>
                     <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{fp.name}</span>
                     <span style={{ fontSize: 11, color: "var(--text-tertiary)", marginLeft: 6 }}>{"\u2014"} {fp.why}</span>
@@ -612,51 +618,10 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* Social Radar — 2 columns (replaces Signal Pulse) */}
-      <div className="dash-card" style={{ gridColumn: "4 / 6", gridRow: "1" }}>
-        <SocialRadarWidget
-          signals={socialSignals}
-          signalsByPlatform={syncRecap.signalsByPlatform}
-          totalSignals={syncRecap.totalSignals}
-          syncTimestamp={syncRecap.timestamp}
-        />
-      </div>
+      {/* ════ ROW 2 ════ Moments (compact) | Calendar + Tensions ═════════ */}
 
-      {/* ════ ROW 2 ════ Flashpoints bar ═════════════════════════════════ */}
-      {flashpoints.length > 0 && (
-        <div style={{
-          gridColumn: "1 / -1", gridRow: "2",
-          background: "linear-gradient(90deg, rgba(232,18,122,0.06), rgba(0,79,34,0.04))",
-          border: "1px solid rgba(232,18,122,0.15)",
-          borderRadius: 8, padding: "5px 10px",
-          display: "flex", alignItems: "center", gap: 8, overflow: "hidden",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-            <span className="pulse-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--rose)", display: "inline-block" }} />
-            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--rose)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Flashpoints</span>
-            <span style={{ background: "var(--rose)", color: "#fff", fontSize: 9, fontWeight: 800, padding: "0px 5px", borderRadius: 99 }}>{flashpoints.length}</span>
-          </div>
-          <div style={{ display: "flex", gap: 4, overflow: "auto", flexShrink: 1, scrollbarWidth: "none" }} className="hide-scrollbar">
-            {flashpoints.slice(0, 12).map((t) => (
-              <Link key={t.id} href={`/trends/${t.id}`} style={{ textDecoration: "none", flexShrink: 0 }}>
-                <span className="tension-hover-red" style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  background: "rgba(232,18,122,0.07)", border: "1px solid rgba(232,18,122,0.18)",
-                  borderRadius: 99, padding: "2px 8px 2px 6px", fontSize: 10, fontWeight: 600, color: "rgba(242,239,237,0.82)", whiteSpace: "nowrap",
-                }}>
-                  {t.name}
-                  <span style={{ fontSize: 9, fontWeight: 800, color: "var(--rose)", background: "rgba(232,18,122,0.12)", padding: "0px 3px", borderRadius: 3 }}>{t.cps}</span>
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ════ ROW 3 ════ Moments (horizon-stacked) | Calendar + Tensions ═ */}
-
-      {/* Predicted Moments — 3 columns, horizon-stacked */}
-      <div className="dash-card" style={{ gridColumn: "1 / 4", gridRow: r2 }}>
+      {/* Predicted Moments — 3 columns, compact */}
+      <div className="dash-card" style={{ gridColumn: "1 / 4", gridRow: "2" }}>
         <SectionHeader title="Predicted Moments" accent="var(--sunset)" linkHref="/forecast" linkLabel="All predictions \u2192" />
 
         {moments.length > 0 ? (
@@ -675,12 +640,12 @@ export default async function DashboardPage() {
                     <span style={{ fontSize: 9, color: "var(--text-tertiary)" }}>{items.length}</span>
                     <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
                   </div>
-                  {items.slice(0, 3).map((m) => (
+                  {items.slice(0, 2).map((m) => (
                     <MomentRow key={m.id} moment={m} />
                   ))}
-                  {items.length > 3 && (
+                  {items.length > 2 && (
                     <div style={{ fontSize: 9, color: "var(--text-tertiary)", textAlign: "center", padding: "3px 0" }}>
-                      +{items.length - 3} more
+                      +{items.length - 2} more
                     </div>
                   )}
                 </div>
@@ -696,7 +661,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Right column: Calendar + Tensions stacked */}
-      <div style={{ gridColumn: "4 / 6", gridRow: r2, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ gridColumn: "4 / 6", gridRow: "2", display: "flex", flexDirection: "column", gap: 10 }}>
 
         {/* Calendar */}
         <div className="dash-card" style={{ flex: "0 0 auto" }}>
@@ -743,7 +708,7 @@ export default async function DashboardPage() {
 
       {/* ════ ROW 4 ════ What's Moving (full width) ══════════════════════ */}
       {topMovers.length > 0 && (
-        <div className="dash-card" style={{ gridColumn: "1 / -1", gridRow: r3 }}>
+        <div className="dash-card" style={{ gridColumn: "1 / -1", gridRow: "3" }}>
           <SectionHeader title="What's Moving" accent="var(--moss-bright)" linkHref="/trends" linkLabel="All trends \u2192" />
           <div style={{
             display: "flex", gap: 8, overflow: "auto", scrollbarWidth: "none",

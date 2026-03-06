@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 BSKY_API = "https://public.api.bsky.app/xrpc"
 
 MAX_AGE_HOURS    = 48
-MAX_TRENDING_TOPICS = 30  # Raised from 25 to compensate for removal of keyword search
+MAX_TRENDING_TOPICS = 25  # Bluesky API max limit is 25 (400 error if higher)
 
 
 def _get_trending_topics() -> list:
@@ -67,7 +67,14 @@ def collect() -> list:
             topic_link = f"https://bsky.app/search?q={requests.utils.quote(topic)}"
         elif isinstance(topic, dict):
             topic_name = topic.get("topic") or topic.get("name") or str(topic)
-            topic_link = topic.get("link", f"https://bsky.app/search?q={requests.utils.quote(topic_name)}")
+            raw_link = topic.get("link", "")
+            # API returns relative links like /profile/..., prepend base URL
+            if raw_link.startswith("/"):
+                topic_link = f"https://bsky.app{raw_link}"
+            elif raw_link:
+                topic_link = raw_link
+            else:
+                topic_link = f"https://bsky.app/search?q={requests.utils.quote(topic_name)}"
         else:
             continue
 

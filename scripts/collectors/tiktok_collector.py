@@ -32,7 +32,9 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 import requests
+from html import unescape
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,15 @@ REQUEST_TIMEOUT = 20
 
 # How many hashtags to return as signals
 MAX_HASHTAGS = 20
+
+# How many hashtags to enrich with Google News context (top N by rank)
+ENRICH_TOP_N = 15
+
+# Max Google News results to include per hashtag
+ENRICH_MAX_RESULTS = 3
+
+# Delay between enrichment requests (seconds) — be respectful
+ENRICH_DELAY = 1.0
 
 # User agent — standard browser UA
 USER_AGENT = (
@@ -163,6 +174,58 @@ def _trend_direction(rank_diff_type: int, rank_diff: int) -> str:
     return "steady"
 
 
+def _enrich_hashtag(hashtag_name: str) -> str:
+    """
+    Enrich a trending TikTok hashtag with context from Google News RSS.
+
+    Searches Google News for "<hashtag> tiktok trending" to find articles
+    explaining WHY the hashtag is trending. Returns a context string like:
+        "'Poppy Playtime Chapter 5 release date announced' (GamingTrend); ..."
+    or empty string if enrichment fails.
+    """
+    query = requests.utils.quote(f"{hashtag_name} tiktok trending")
+    url = (
+        f"https://news.google.com/rss/search"
+        f"?q={query}&hl=en-US&gl=US&ceid=US:en"
+    )
+
+    try:
+        resp = requests.get(
+            url,
+            timeout=10,
+            headers={"User-Agent": USER_AGENT},
+        )
+        if resp.status_code != 200:
+            return ""
+
+        xml = resp.text
+        items = re.findall(r'<item>(.*?)</item>', xml, re.DOTALL)
+        if not items:
+            return ""
+
+        context_parts = []
+        for item_xml in items[:ENRICH_MAX_RESULTS]:
+            title_m = re.search(r'<title>(.*?)</title>', item_xml)
+            source_m = re.search(r'<source[^>]*>(.*?)</source>', item_xml)
+
+            if not title_m:
+                continue
+
+            title = unescape(title_m.group(1)).strip()
+            source = unescape(source_m.group(1)).strip() if source_m else ""
+
+            if source:
+                context_parts.append(f"'{title}' ({source})")
+            else:
+                context_parts.append(f"'{title}'")
+
+        return "; ".join(context_parts)
+
+    except Exception as e:
+        logger.debug("Enrichment failed for '#%s': %s", hashtag_name, e)
+        return ""
+
+
 def collect() -> list:
     """
     Collect TikTok trending hashtag signals from Creative Center.
@@ -181,6 +244,26 @@ def collect() -> list:
     if not hashtags:
         logger.warning("TikTok CC: no hashtags extracted from page")
         return []
+
+    # Enrich top N hashtags with Google News context
+    enrichment_cache = {}
+    enriched_count = 0
+    for item in hashtags[:ENRICH_TOP_N]:
+        name = item.get("hashtagName", "")
+        if not name:
+            continue
+        context = _enrich_hashtag(name)
+        if context:
+            enrichment_cache[name] = context
+            enriched_count += 1
+        time.sleep(ENRICH_DELAY)
+
+    if enriched_count > 0:
+        logger.info(
+            "TikTok: enriched %d/%d hashtags with news context",
+            enriched_count,
+            min(ENRICH_TOP_N, len(hashtags)),
+        )
 
     signals = []
     for item in hashtags[:MAX_HASHTAGS]:
@@ -205,12 +288,18 @@ def collect() -> list:
         views_str = _format_views(views)
         hashtag_url = f"https://www.tiktok.com/tag/{name}"
 
-        raw_content = (
-            f"[TikTok Trending Hashtag] #{name} — "
+        base_content = (
+            f"[TikTok Trending Hashtag — Global] #{name} — "
             f"rank #{rank} ({direction}), "
             f"{posts:,} posts, {views_str} views. "
             f"Category: {industry_name}."
         )
+
+        context = enrichment_cache.get(name, "")
+        if context:
+            raw_content = f"{base_content} Context: {context}"
+        else:
+            raw_content = base_content
 
         summary = (
             f"#{name} trending on TikTok (#{rank}, {views_str} views, "
@@ -218,7 +307,7 @@ def collect() -> list:
         )
 
         signals.append({
-            "title": f"TikTok Trending: #{name}",
+            "title": f"TikTok Trending (Global): #{name}",
             "source_platform": "TikTok",
             "source_url": hashtag_url,
             "raw_content": raw_content,
@@ -239,6 +328,11 @@ if __name__ == "__main__":
     results = collect()
     print(f"\nCollected {len(results)} TikTok signals")
     for s in results:
-        print(f"  {s['title']}")
+        print(f"\n  {s['title']}")
         print(f"    {s['summary']}")
-        print()
+        raw = s.get("raw_content", "")
+        if "Context:" in raw:
+            context_part = raw.split("Context:", 1)[1].strip()
+            print(f"    Context: {context_part[:200]}")
+        else:
+            print("    (no enrichment)")
