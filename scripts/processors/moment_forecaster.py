@@ -56,7 +56,7 @@ EVIDENCE_DB = os.getenv("NOTION_EVIDENCE_DB")
 MOMENTS_DB  = os.getenv("NOTION_MOMENTS_DB")
 TODAY       = date.today().isoformat()
 
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
 # Max active predictions at any time
 MAX_ACTIVE_MOMENTS = 12
@@ -165,6 +165,55 @@ def load_velocity() -> dict:
         return json.loads(path.read_text())
     except Exception:
         return {}
+
+
+def load_social_pulse(days: int = 2, limit: int = 10) -> list:
+    """
+    Load recent high-engagement social signals (TikTok, X/Twitter, Reddit, Bluesky)
+    from the Evidence DB. These are fast-moving signals that may not yet be linked
+    to trends but carry early-warning intelligence for moment prediction.
+
+    Prioritizes signals with enrichment context (Google News) and high engagement.
+    """
+    if not EVIDENCE_DB:
+        return []
+    cutoff = (date.today() - timedelta(days=days)).isoformat()
+    social_platforms = ["TikTok", "Social", "Reddit", "Bluesky"]
+    signals = []
+
+    for platform in social_platforms:
+        try:
+            pages = query_database(
+                EVIDENCE_DB,
+                filter_obj={
+                    "and": [
+                        {"property": "Source Platform", "select": {"equals": platform}},
+                        {"property": "Date Captured", "date": {"on_or_after": cutoff}},
+                    ]
+                },
+            )
+            for p in pages:
+                props = p["properties"]
+                title = get_page_title(p)
+                raw_rt = (props.get("Raw Content") or {}).get("rich_text") or []
+                raw = raw_rt[0]["plain_text"] if raw_rt else ""
+                summary_rt = (props.get("Summary") or {}).get("rich_text") or []
+                summary = summary_rt[0]["plain_text"] if summary_rt else ""
+                # Prioritize enriched signals (those with Context:)
+                has_context = "Context:" in raw
+                signals.append({
+                    "title": title,
+                    "platform": platform,
+                    "raw": raw[:400],
+                    "summary": summary[:200],
+                    "has_context": has_context,
+                })
+        except Exception as e:
+            logger.warning(f"Failed to load social pulse for {platform}: {e}")
+
+    # Sort: enriched first, then by title (proxy for recency/rank)
+    signals.sort(key=lambda s: (not s["has_context"], s["title"]))
+    return signals[:limit]
 
 
 def load_prediction_market_signals(days: int = 7) -> list:
@@ -299,6 +348,15 @@ Today: {today}
 ═══ ACTIVE COLLISIONS (converging trends — explosion points) ═══
 {collision_data}
 
+═══ SOCIAL PULSE (fast-moving signals, last 48h) ═══
+{social_pulse_data}
+
+These are raw social signals from TikTok, X/Twitter, Reddit, and Bluesky — the fastest-moving layer of the cultural landscape. Many haven't coalesced into formal trends yet. Use them to:
+- Spot moments FORMING on social before they show up in trend data
+- Identify narrative velocity that isn't captured by 7-day trend windows
+- Cross-reference with tensions and trends to predict what social chatter becomes a cultural moment
+Signals marked with [ENRICHED] have news context explaining WHY they're trending.
+
 ═══ PREDICTION MARKET INTELLIGENCE (money-backed probabilities) ═══
 {prediction_market_data}
 
@@ -402,10 +460,12 @@ Respond with a JSON object. No other text. Format:
 }}"""
 
 
-def generate_moments(tensions, trends, velocity_summaries, events, collisions, existing_moments, prediction_market_signals=None):
+def generate_moments(tensions, trends, velocity_summaries, events, collisions, existing_moments, prediction_market_signals=None, social_pulse=None):
     """Call Claude to generate/update moment predictions."""
     if prediction_market_signals is None:
         prediction_market_signals = []
+    if social_pulse is None:
+        social_pulse = []
 
     tensions_data = "\n".join([
         f"- {t['name']} (weight: {t['weight']}/10): {t['description']}"
@@ -436,6 +496,12 @@ def generate_moments(tensions, trends, velocity_summaries, events, collisions, e
         for c in collisions[:8]
     ]) or "(no active collisions)"
 
+    social_pulse_data = "\n".join([
+        f"- {'[ENRICHED] ' if s.get('has_context') else ''}[{s['platform']}] {s['title']}"
+        f"\n  {s['raw'][:300]}"
+        for s in social_pulse
+    ]) or "(no recent social signals)"
+
     prediction_market_data = "\n".join([
         f"- {s['title']}\n  {s['raw']}"
         for s in prediction_market_signals
@@ -460,6 +526,7 @@ def generate_moments(tensions, trends, velocity_summaries, events, collisions, e
         velocity_data=velocity_data,
         calendar_data=calendar_data,
         collision_data=collision_data,
+        social_pulse_data=social_pulse_data,
         prediction_market_data=prediction_market_data,
         existing_moments=existing_str,
         max_moments=MAX_ACTIVE_MOMENTS,
@@ -948,13 +1015,15 @@ def run() -> dict:
     existing_moments = load_existing_moments()
 
     prediction_market_signals = load_prediction_market_signals(days=7)
+    social_pulse = load_social_pulse(days=2, limit=10)
 
     logger.info(
         f"Context: {len(tensions)} tensions, {len(trends)} trends, "
         f"{len(events)} events, {len(collisions)} collisions, "
         f"{len(velocity_summaries)} velocity entries, "
         f"{len(existing_moments)} existing moments, "
-        f"{len(prediction_market_signals)} prediction market signals"
+        f"{len(prediction_market_signals)} prediction market signals, "
+        f"{len(social_pulse)} social pulse signals"
     )
 
     # Auto-retire expired predictions
@@ -968,6 +1037,7 @@ def run() -> dict:
     result = generate_moments(
         tensions, trends, velocity_summaries, events, collisions, existing_moments,
         prediction_market_signals=prediction_market_signals,
+        social_pulse=social_pulse,
     )
 
     updates = result.get("updates", [])

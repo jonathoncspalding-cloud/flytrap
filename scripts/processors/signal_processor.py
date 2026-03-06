@@ -41,7 +41,7 @@ TODAY       = date.today().isoformat()
 # Prevents single-signal noise trends from polluting the Trends DB.
 MIN_EVIDENCE_THRESHOLD = 2
 
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 DATA_DIR.mkdir(exist_ok=True)
 
 # Signal velocity: tracks per-trend signal counts over time for acceleration detection
@@ -592,11 +592,17 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
     # ══════════════════════════════════════════════════════════════════════════
     ambiguous = classified["ambiguous"]
 
-    # Separate low-context signals (Trends24/X Trending) — these get Haiku triage
-    # as their FINAL stop. They're bare topic names with no content for Sonnet to
-    # analyze. Haiku decides if they match a trend; if not, they're triaged out.
-    haiku_only = [s for s in ambiguous if s.get("title", "").startswith("X Trending")]
-    full_pipeline = [s for s in ambiguous if not s.get("title", "").startswith("X Trending")]
+    # Separate low-context signals (Trends24/X Trending without enrichment).
+    # Bare topic names with no content stay Haiku-only. But enriched signals
+    # (those with "Context:" in raw content from Google News) have enough
+    # substance for Sonnet to score CPS and intersect tensions — let them through.
+    def _is_bare_x_trending(s: dict) -> bool:
+        if not s.get("title", "").startswith("X Trending"):
+            return False
+        return "Context:" not in s.get("raw", "")
+
+    haiku_only = [s for s in ambiguous if _is_bare_x_trending(s)]
+    full_pipeline = [s for s in ambiguous if not _is_bare_x_trending(s)]
 
     if haiku_only:
         logger.info(f"  {len(haiku_only)} low-context signals (Trends24) → Haiku-only triage")
@@ -610,13 +616,14 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
             from signal_triage import triage_signals
             promoted_all, triaged = triage_signals(all_ambiguous, trends)
 
-            # Filter: only non-Trends24 signals can be promoted to Sonnet
+            # Filter: bare (unenriched) X Trending signals stay Haiku-only.
+            # Enriched X Trending signals (with Context:) go to Sonnet.
             promoted_signals = [s for s in promoted_all
-                                if not s.get("title", "").startswith("X Trending")]
+                                if not _is_bare_x_trending(s)]
 
-            # Trends24 signals that Haiku scored high get auto-linked metadata
+            # Bare Trends24 signals that Haiku scored high get auto-linked metadata
             trends24_promoted = [s for s in promoted_all
-                                 if s.get("title", "").startswith("X Trending")]
+                                 if _is_bare_x_trending(s)]
             for signal in trends24_promoted:
                 try:
                     if not dry_run:
@@ -641,7 +648,7 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
 
         except ImportError:
             logger.warning("signal_triage.py not available — all ambiguous signals → Sonnet")
-            promoted_signals = full_pipeline  # Still exclude Trends24 from Sonnet fallback
+            promoted_signals = full_pipeline  # Still exclude bare Trends24 from Sonnet fallback
         except Exception as e:
             logger.warning(f"Tier 1 failed: {e} — all ambiguous signals → Sonnet")
             promoted_signals = full_pipeline
