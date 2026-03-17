@@ -22,7 +22,7 @@ load_dotenv(override=True)
 
 from notion_helper import query_database
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 PIPELINE_LOG = PROJECT_ROOT / "pipeline.log"
 
 EVIDENCE_DB = os.getenv("NOTION_EVIDENCE_DB")

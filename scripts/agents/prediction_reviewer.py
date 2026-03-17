@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 MOMENTS_DB  = os.getenv("NOTION_MOMENTS_DB")
 EVIDENCE_DB = os.getenv("NOTION_EVIDENCE_DB")
 
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 DATA_DIR.mkdir(exist_ok=True)
 PREDICTION_LOG_PATH = DATA_DIR / "prediction_log.json"
 

@@ -36,7 +36,7 @@ BRIEFING_DB  = os.getenv("NOTION_BRIEFING_DB")
 MOMENTS_DB   = os.getenv("NOTION_MOMENTS_DB")
 TODAY        = date.today().isoformat()
 
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 

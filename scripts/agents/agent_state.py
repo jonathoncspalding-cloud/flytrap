@@ -10,7 +10,7 @@ import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-STATE_PATH = Path(__file__).parent.parent.parent / "data" / "agent_state.json"
+STATE_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "agent_state.json"
 
 EMPTY_STATE = {
     "last_updated": None,

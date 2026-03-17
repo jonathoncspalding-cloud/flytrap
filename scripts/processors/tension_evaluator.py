@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 tension_evaluator.py
 --------------------
@@ -34,7 +36,7 @@ TRENDS_DB   = os.getenv("NOTION_TRENDS_DB")
 EVIDENCE_DB = os.getenv("NOTION_EVIDENCE_DB")
 TODAY        = date.today().isoformat()
 
-DATA_DIR      = Path(__file__).parent.parent.parent / "data"
+DATA_DIR      = Path(__file__).resolve().parent.parent.parent / "data"
 STATE_FILE    = DATA_DIR / "tension_eval_state.json"
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
