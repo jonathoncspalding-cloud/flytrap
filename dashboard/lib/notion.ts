@@ -985,7 +985,6 @@ export async function getLatestSocialSignals(limit = 15): Promise<Evidence[]> {
             { property: "Source Platform", select: { equals: "Social" } },
             { property: "Source Platform", select: { equals: "TikTok" } },
             { property: "Source Platform", select: { equals: "Reddit" } },
-            { property: "Source Platform", select: { equals: "Bluesky" } },
           ],
         },
       ],
