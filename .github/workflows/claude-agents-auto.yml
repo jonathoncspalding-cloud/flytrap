@@ -55,6 +55,9 @@ permissions:
   issues: write
   id-token: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # ── Isabel: Weekly Proposal Generation ───────────────────────────────────
   isabel-weekly-proposal:

@@ -7,10 +7,15 @@ to a new 'data_sources' abstraction that differs from the classic v2 API.
 All calls go through the stable REST API (2022-06-28 version).
 """
 
+from __future__ import annotations
+
+import logging
 import os
 import time
 import requests
 from dotenv import load_dotenv
+
+log = logging.getLogger(__name__)
 
 load_dotenv(override=True)
 
@@ -25,21 +30,42 @@ _HEADERS = {
 }
 
 
+_RETRYABLE_STATUS = {502, 503, 504, 429}
+_MAX_RETRIES = 3
+_BACKOFF_BASE = 2  # seconds — doubles each retry: 2, 4, 8
+
+
+def _request_with_retry(method: str, path: str, **kwargs) -> requests.Response:
+    """Execute an HTTP request with exponential backoff on 5xx / 429 errors."""
+    url = f"{_BASE}/{path}"
+    for attempt in range(_MAX_RETRIES + 1):
+        resp = requests.request(method, url, headers=_HEADERS, **kwargs)
+        if resp.ok or resp.status_code not in _RETRYABLE_STATUS:
+            return resp
+        wait = _BACKOFF_BASE * (2 ** attempt)
+        log.warning(
+            "Notion %s /%s returned %d — retry %d/%d in %ds",
+            method.upper(), path, resp.status_code, attempt + 1, _MAX_RETRIES, wait,
+        )
+        time.sleep(wait)
+    return resp  # return last response so caller can raise with details
+
+
 def _get(path: str) -> dict:
-    resp = requests.get(f"{_BASE}/{path}", headers=_HEADERS)
+    resp = _request_with_retry("GET", path)
     resp.raise_for_status()
     return resp.json()
 
 
 def _post(path: str, body: dict) -> dict:
-    resp = requests.post(f"{_BASE}/{path}", headers=_HEADERS, json=body)
+    resp = _request_with_retry("POST", path, json=body)
     if not resp.ok:
         raise RuntimeError(f"POST /{path} failed {resp.status_code}: {resp.text[:400]}")
     return resp.json()
 
 
 def _patch(path: str, body: dict) -> dict:
-    resp = requests.patch(f"{_BASE}/{path}", headers=_HEADERS, json=body)
+    resp = _request_with_retry("PATCH", path, json=body)
     if not resp.ok:
         raise RuntimeError(f"PATCH /{path} failed {resp.status_code}: {resp.text[:400]}")
     return resp.json()

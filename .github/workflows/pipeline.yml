@@ -28,6 +28,9 @@ on:
   repository_dispatch:
     types: [run-pipeline]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   pipeline:
     runs-on: ubuntu-latest
