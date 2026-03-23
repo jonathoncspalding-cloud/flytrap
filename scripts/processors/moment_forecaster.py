@@ -58,8 +58,8 @@ TODAY       = date.today().isoformat()
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
-# Max active predictions at any time
-MAX_ACTIVE_MOMENTS = 12
+# Max active predictions at any time (raised from 12 — slot ceiling was strangling new predictions)
+MAX_ACTIVE_MOMENTS = 25
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -275,14 +275,55 @@ def load_existing_moments() -> list:
         reasoning = reasoning_rt[0]["plain_text"] if reasoning_rt else ""
         window_start = ((props.get("Predicted Window Start") or {}).get("date") or {}).get("start", "")
         window_end = ((props.get("Predicted Window End") or {}).get("date") or {}).get("start", "")
+        last_updated = ((props.get("Last Updated") or {}).get("date") or {}).get("start", "")
         moments.append({
             "id": p["id"], "name": name, "narrative": narrative[:300],
             "type": mtype, "horizon": horizon, "status": status,
             "confidence": confidence, "magnitude": magnitude,
             "watch_for": watch[:200], "reasoning": reasoning[:200],
             "window_start": window_start, "window_end": window_end,
+            "last_updated": last_updated,
         })
     return moments
+
+
+def load_prediction_track_record() -> str:
+    """
+    Load prediction accuracy data from prediction_log.json (written by prediction_reviewer).
+    Returns a formatted string for inclusion in the forecaster prompt.
+    """
+    path = DATA_DIR / "prediction_log.json"
+    if not path.exists():
+        return "(No track record yet — first prediction cycle.)"
+    try:
+        log = json.loads(path.read_text())
+        total = log.get("predictions_total", 0)
+        confirmed = log.get("confirmed", 0)
+        missed = log.get("missed", 0)
+        fading = log.get("fading", 0)
+        hit_rate = log.get("hit_rate", 0.0)
+        last_reviewed = log.get("last_reviewed", "never")
+
+        lines = [
+            f"Total predictions tracked: {total}",
+            f"Confirmed (Happening): {confirmed}",
+            f"Missed: {missed}",
+            f"Fading: {fading}",
+            f"Hit rate: {hit_rate:.1%}" if total > 0 else "Hit rate: N/A",
+            f"Last reviewed: {last_reviewed}",
+        ]
+
+        # Include recent review details if available
+        reviews = log.get("reviews", [])
+        if reviews:
+            recent = reviews[-3:]  # Last 3 reviews
+            lines.append("Recent reviews:")
+            for r in recent:
+                lines.append(f"  - {r.get('date', '?')}: reviewed {r.get('reviewed', 0)}, {r.get('status_changes', 0)} status changes")
+
+        return "\n".join(lines)
+    except Exception:
+        return "(Track record file exists but could not be parsed.)"
 
 
 def compute_velocity_summary(velocity: dict) -> list:
@@ -387,6 +428,13 @@ GUARD AGAINST:
 ═══ EXISTING PREDICTIONS (update or retire these) ═══
 {existing_moments}
 
+═══ PREDICTION TRACK RECORD (learn from this) ═══
+{prediction_track_record}
+
+Use this track record to calibrate. If hit rate is low, be more conservative with confidence scores.
+If certain prediction types (e.g., Void, Pattern) consistently miss, either avoid them or apply a confidence penalty.
+If predictions are too vague to ever be confirmed or denied, make them more specific and falsifiable.
+
 ═══════════════════════════════════════════════════
 
 INSTRUCTIONS:
@@ -460,12 +508,14 @@ Respond with a JSON object. No other text. Format:
 }}"""
 
 
-def generate_moments(tensions, trends, velocity_summaries, events, collisions, existing_moments, prediction_market_signals=None, social_pulse=None):
+def generate_moments(tensions, trends, velocity_summaries, events, collisions, existing_moments, prediction_market_signals=None, social_pulse=None, prediction_track_record=None):
     """Call Claude to generate/update moment predictions."""
     if prediction_market_signals is None:
         prediction_market_signals = []
     if social_pulse is None:
         social_pulse = []
+    if prediction_track_record is None:
+        prediction_track_record = "(No track record available.)"
 
     tensions_data = "\n".join([
         f"- {t['name']} (weight: {t['weight']}/10): {t['description']}"
@@ -529,6 +579,7 @@ def generate_moments(tensions, trends, velocity_summaries, events, collisions, e
         social_pulse_data=social_pulse_data,
         prediction_market_data=prediction_market_data,
         existing_moments=existing_str,
+        prediction_track_record=prediction_track_record,
         max_moments=MAX_ACTIVE_MOMENTS,
     )
 
@@ -988,13 +1039,86 @@ def retire_expired_moments(existing_moments: list) -> int:
     return retired
 
 
+# ── Confidence decay for stale predictions ───────────────────────────────────
+
+# Predictions that haven't been updated in DECAY_AFTER_DAYS lose DECAY_POINTS
+# per cycle. Once they drop below DECAY_RETIRE_THRESHOLD, they're auto-retired.
+DECAY_AFTER_DAYS = 14
+DECAY_POINTS = 10
+DECAY_RETIRE_THRESHOLD = 25
+
+
+def decay_stale_predictions(existing_moments: list) -> tuple[int, int]:
+    """
+    Decay confidence on predictions that haven't gained evidence recently.
+    Returns (decayed_count, retired_count).
+    """
+    today_d = date.today()
+    decayed = 0
+    retired = 0
+
+    for m in existing_moments:
+        if m["status"] not in ("Predicted", "Forming"):
+            continue
+
+        # Use Last Updated or window_start as the staleness anchor
+        last_updated = m.get("last_updated") or m.get("window_start")
+        if not last_updated:
+            continue
+
+        try:
+            last_d = date.fromisoformat(last_updated[:10])
+        except (ValueError, TypeError):
+            continue
+
+        days_stale = (today_d - last_d).days
+        if days_stale < DECAY_AFTER_DAYS:
+            continue
+
+        # Calculate decay: 10 points per DECAY_AFTER_DAYS period
+        decay_periods = days_stale // DECAY_AFTER_DAYS
+        new_confidence = max(0, m["confidence"] - (DECAY_POINTS * decay_periods))
+
+        if new_confidence <= DECAY_RETIRE_THRESHOLD:
+            # Auto-retire
+            update_page(m["id"], {
+                "Status": {"select": {"name": "Missed"}},
+                "Confidence": {"number": new_confidence},
+                "Last Updated": {"date": {"start": TODAY}},
+                "Outcome Notes": {"rich_text": rich_text(
+                    f"Auto-retired: confidence decayed to {new_confidence}% after "
+                    f"{days_stale} days without corroborating evidence."
+                )},
+            })
+            logger.info(
+                f"  Retired (decay): '{m['name']}' "
+                f"confidence {m['confidence']} → {new_confidence} after {days_stale}d stale"
+            )
+            retired += 1
+        elif new_confidence < m["confidence"]:
+            # Decay but keep active
+            update_page(m["id"], {
+                "Confidence": {"number": new_confidence},
+                "Last Updated": {"date": {"start": TODAY}},
+            })
+            logger.info(
+                f"  Decayed: '{m['name']}' "
+                f"confidence {m['confidence']} → {new_confidence} ({days_stale}d stale)"
+            )
+            decayed += 1
+
+        time.sleep(0.35)
+
+    return decayed, retired
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def run() -> dict:
     """
     Full moment forecasting job:
     1. Load all context data
-    2. Auto-retire expired predictions
+    2. Auto-retire expired predictions + decay stale confidence
     3. Call Claude to generate/update moments
     4. Apply updates and create new moments
     """
@@ -1016,6 +1140,7 @@ def run() -> dict:
 
     prediction_market_signals = load_prediction_market_signals(days=7)
     social_pulse = load_social_pulse(days=2, limit=10)
+    track_record = load_prediction_track_record()
 
     logger.info(
         f"Context: {len(tensions)} tensions, {len(trends)} trends, "
@@ -1030,7 +1155,15 @@ def run() -> dict:
     retired = retire_expired_moments(existing_moments)
     if retired:
         logger.info(f"Auto-retired {retired} expired prediction(s)")
-        # Reload after retirement
+
+    # Confidence decay for stale predictions (no new evidence in 14+ days)
+    decayed, decay_retired = decay_stale_predictions(existing_moments)
+    retired += decay_retired
+    if decayed or decay_retired:
+        logger.info(f"Confidence decay: {decayed} decayed, {decay_retired} retired")
+
+    # Filter out retired moments before proceeding
+    if retired:
         existing_moments = [m for m in existing_moments if m["status"] in ("Predicted", "Forming", "Happening")]
 
     # Generate / update via Claude
@@ -1038,6 +1171,7 @@ def run() -> dict:
         tensions, trends, velocity_summaries, events, collisions, existing_moments,
         prediction_market_signals=prediction_market_signals,
         social_pulse=social_pulse,
+        prediction_track_record=track_record,
     )
 
     updates = result.get("updates", [])
@@ -1061,6 +1195,7 @@ def run() -> dict:
     summary = {
         "existing_moments": len(existing_moments),
         "retired": retired,
+        "decayed": decayed,
         "updates_applied": len(updates),
         "new_created": created,
         "total_active": active_count + created,

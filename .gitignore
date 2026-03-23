@@ -53,6 +53,9 @@ logs/
 # Data / runtime state
 data/
 !data/agent_state.json
+!data/signal_velocity.json
+!data/collisions.json
+!data/prediction_log.json
 
 # Source assets (large videos)
 assets/

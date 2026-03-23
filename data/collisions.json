@@ -1,0 +1,380 @@
+[
+  {
+    "trend_a": "Institutional Trust Collapse",
+    "cps_a": 99,
+    "trend_b": "Assassination Governance",
+    "cps_b": 99,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Infrastructural decay vs. technological acceleration",
+      "Institutional authority vs. direct action effectiveness",
+      "Loneliness epidemic vs. hyper-connectivity",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 198,
+    "collision_score": 134.3,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Institutional Hollowing",
+    "cps_a": 97,
+    "trend_b": "Assassination Governance",
+    "cps_b": 99,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Infrastructure competency vs. techno-optimist acceleration",
+      "Institutional authority vs. direct action effectiveness",
+      "Loneliness epidemic vs. hyper-connectivity",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 196,
+    "collision_score": 132.8,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Institutional Hollowing",
+    "cps_a": 97,
+    "trend_b": "Institutional Trust Collapse",
+    "cps_b": 99,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Health/wellness industrial complex vs. anti-wellness backlash",
+      "Institutional authority vs. direct action effectiveness",
+      "Loneliness epidemic vs. hyper-connectivity",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 196,
+    "collision_score": 128.6,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "AI Infrastructure Externalities",
+    "cps_a": 94,
+    "trend_b": "Assassination Governance",
+    "cps_b": 99,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Infrastructural decay vs. technological acceleration",
+      "Infrastructure competency vs. techno-optimist acceleration",
+      "Institutional authority vs. direct action effectiveness",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 193,
+    "collision_score": 125.1,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "AI Infrastructure Externalities",
+    "cps_a": 94,
+    "trend_b": "Institutional Trust Collapse",
+    "cps_b": 99,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Health/wellness industrial complex vs. anti-wellness backlash",
+      "Infrastructural decay vs. technological acceleration",
+      "Institutional authority vs. direct action effectiveness",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 193,
+    "collision_score": 121.0,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Institutional Hollowing",
+    "cps_a": 97,
+    "trend_b": "AI Infrastructure Externalities",
+    "cps_b": 94,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Health/wellness industrial complex vs. anti-wellness backlash",
+      "Infrastructure competency vs. techno-optimist acceleration",
+      "Institutional authority vs. direct action effectiveness",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 191,
+    "collision_score": 119.5,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Institutional Hollowing",
+    "cps_a": 97,
+    "trend_b": "Algorithm-Mediated Reality",
+    "cps_b": 94,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Creator economy promise vs. creator burnout reality",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Health/wellness industrial complex vs. anti-wellness backlash",
+      "Loneliness epidemic vs. hyper-connectivity",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 191,
+    "collision_score": 118.3,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Institutional Trust Collapse",
+    "cps_a": 99,
+    "trend_b": "AI Anxiety Normalization",
+    "cps_b": 96,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Loneliness epidemic vs. hyper-connectivity",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience",
+      "Trust in institutions declining (weight: 10/10)"
+    ],
+    "combined_cps": 195,
+    "collision_score": 114.5,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Algorithm-Mediated Reality",
+    "cps_a": 94,
+    "trend_b": "Assassination Governance",
+    "cps_b": 99,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithm-Mediated Reality",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Loneliness epidemic vs. hyper-connectivity",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 193,
+    "collision_score": 113.3,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Institutional Hollowing",
+    "cps_a": 97,
+    "trend_b": "Prediction Market Governance",
+    "cps_b": 98,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Creator economy promise vs. creator burnout reality",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Infrastructure competency vs. techno-optimist acceleration",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 195,
+    "collision_score": 112.6,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Institutional Trust Collapse",
+    "cps_a": 99,
+    "trend_b": "Algorithm-Mediated Reality",
+    "cps_b": 94,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Health/wellness industrial complex vs. anti-wellness backlash",
+      "Loneliness epidemic vs. hyper-connectivity",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 193,
+    "collision_score": 108.7,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Nostalgia as Emotional Infrastructure",
+    "cps_a": 94,
+    "trend_b": "Algorithm-Mediated Reality",
+    "cps_b": 94,
+    "shared_tensions": [
+      "Algorithm-Mediated Reality",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Creator economy promise vs. creator burnout reality",
+      "Health/wellness industrial complex vs. anti-wellness backlash",
+      "Loneliness epidemic vs. hyper-connectivity",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 188,
+    "collision_score": 106.1,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Institutional Hollowing",
+    "cps_a": 97,
+    "trend_b": "AI Anxiety Normalization",
+    "cps_b": 96,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Creator economy promise vs. creator burnout reality",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Loneliness epidemic vs. hyper-connectivity",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 193,
+    "collision_score": 105.6,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "AI Anxiety Normalization",
+    "cps_a": 96,
+    "trend_b": "Algorithm-Mediated Reality",
+    "cps_b": 94,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Creator economy promise vs. creator burnout reality",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Loneliness epidemic vs. hyper-connectivity",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 190,
+    "collision_score": 104.0,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Prediction Market Governance",
+    "cps_a": 98,
+    "trend_b": "Assassination Governance",
+    "cps_b": 99,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Infrastructure competency vs. techno-optimist acceleration",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 197,
+    "collision_score": 102.7,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Crowdsourced Reality Testing",
+    "cps_a": 91,
+    "trend_b": "Institutional Trust Collapse",
+    "cps_b": 99,
+    "shared_tensions": [
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Health/wellness industrial complex vs. anti-wellness backlash",
+      "Infrastructural decay vs. technological acceleration",
+      "Loneliness epidemic vs. hyper-connectivity",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 190,
+    "collision_score": 100.3,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "AI Anxiety Normalization",
+    "cps_a": 96,
+    "trend_b": "Assassination Governance",
+    "cps_b": 99,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Loneliness epidemic vs. hyper-connectivity",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 195,
+    "collision_score": 95.8,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Prediction Market Governance",
+    "cps_a": 98,
+    "trend_b": "AI Anxiety Normalization",
+    "cps_b": 96,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Creator economy promise vs. creator burnout reality",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 194,
+    "collision_score": 93.9,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Prediction Market Governance",
+    "cps_a": 98,
+    "trend_b": "Algorithm-Mediated Reality",
+    "cps_b": 94,
+    "shared_tensions": [
+      "AI replacing jobs vs. AI as creative empowerment",
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Creator economy promise vs. creator burnout reality",
+      "Epistemic infrastructure collapse vs. systems literacy awakening",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 192,
+    "collision_score": 92.9,
+    "detected_date": "2026-03-06"
+  },
+  {
+    "trend_a": "Institutional Hollowing",
+    "cps_a": 97,
+    "trend_b": "Nostalgia as Emotional Infrastructure",
+    "cps_b": 94,
+    "shared_tensions": [
+      "Algorithmic opacity vs. systems literacy awakening",
+      "Climate anxiety vs. consumption culture",
+      "Creator economy promise vs. creator burnout reality",
+      "Health/wellness industrial complex vs. anti-wellness backlash",
+      "Loneliness epidemic vs. hyper-connectivity",
+      "Nostalgia as comfort vs. nostalgia as avoidance",
+      "Privacy erosion vs. convenience"
+    ],
+    "combined_cps": 191,
+    "collision_score": 89.5,
+    "detected_date": "2026-03-06"
+  }
+]
