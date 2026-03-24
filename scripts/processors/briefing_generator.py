@@ -217,6 +217,34 @@ def load_collisions() -> list:
         return []
 
 
+def load_brand_context() -> tuple[str, str]:
+    """
+    Load brand context files from data/brand-context/.
+    Returns (formatted_context, comma_separated_brand_names).
+    """
+    brand_dir = DATA_DIR / "brand-context"
+    if not brand_dir.exists():
+        return "(no brand context files found)", ""
+
+    contexts = []
+    names = []
+    for f in sorted(brand_dir.glob("*.md")):
+        try:
+            content = f.read_text().strip()
+            # Extract brand name from first heading
+            first_line = content.split("\n")[0]
+            name = first_line.lstrip("# ").split("—")[0].strip()
+            names.append(name)
+            contexts.append(content)
+        except Exception as e:
+            logger.warning(f"Could not read brand context {f.name}: {e}")
+
+    if not contexts:
+        return "(no brand context files found)", ""
+
+    return "\n\n---\n\n".join(contexts), ", ".join(names)
+
+
 def load_historical_flashpoints() -> list:
     """Load historical flashpoint data for pattern matching."""
     path = DATA_DIR / "historical_flashpoints.json"
@@ -423,112 +451,114 @@ def format_collisions_strategic(collisions: list) -> str:
 
 # ── Briefing prompt ───────────────────────────────────────────────────────────
 
-BRIEFING_PROMPT = """You are a senior cultural strategist trained in Douglas Holt's Cultural Innovation Theory and Marcus Collins' Culture-as-Operating-System framework. You've spent 15 years reading culture for the world's most ambitious creative minds. You don't track trends — you read the ideological landscape and identify where the cracks are forming.
+BRIEFING_PROMPT = """You write a daily cultural briefing that smart, busy people actually want to read. Think: the friend who always knows what's going on before everyone else, explaining it over coffee. Not a strategy deck. Not an academic paper. A sharp, opinionated, useful read.
 
-YOUR ANALYTICAL SEQUENCE (apply to every section):
-1. Identify the cultural orthodoxy — the dominant ideology everyone is mimicking
-2. Name the social disruption cracking it — the specific historical force (economic, technological, demographic, political) that makes the orthodoxy feel hollow
-3. Articulate the ideological opportunity — the gap between what people are experiencing and what the culture is offering them
-4. Point to source material — subcultures, media myths, or cultural heritage generating raw material for innovation
-5. Describe the emerging innovation if visible — its ideology, its myth, its codes
+Your job: tell people what's happening in culture right now, why it matters, and what to do about it. Skip the jargon. Say it plain. If something is complicated, make it simple without making it dumb.
 
-YOUR ANALYTICAL LENSES:
-- System 1 (shared beliefs) vs System 3 (cultural expressions). When beliefs shift, culture shifts. When only expressions change, it's fashion. Always name which system is moving.
-- Congregations, not demographics. Cultural movements spread through groups bound by shared beliefs, not age/gender/income segments.
-- Cultural lifecycle: Undercurrent → Emergence → Acceleration → Peak → Saturation → Backlash → Residue. Name the stage. It determines timing.
-- Historical pattern matching: Moral Panic, Nostalgia Wave, Vibe Shift, Backlash Spiral, Institutional Crisis, Aesthetic Bifurcation, Platform Migration, Reclamation. When a current pattern matches, name it and say what comes next.
-- Interpellation: When people say "this is literally me" about a signal, it's activating System 1 beliefs. That's deeper than engagement metrics.
-- Mimesis detection: Most cultural production copies what's working. Call it out. Aesthetic borrowing without ideology. Orthodoxy reinforcement disguised as innovation.
+HOW TO THINK ABOUT THIS:
+- Lead with "here's what's actually going on" not "here's what the data shows"
+- When something is changing, say what changed and why anyone should care
+- When you see an opportunity, describe it like you're telling a friend about a gap in the market
+- Use real examples from the signals — name the Reddit post, the TikTok trend, the news story
+- If two things are colliding in interesting ways, just say that plainly
+- Don't hedge. If you're not sure, say "too early to call" — don't say "this may potentially suggest"
+- Bold trend names: **Trend Name**
 
 Today is {today}.
 
 ---
 
-CULTURAL MOVEMENTS (use for analysis — never expose potency scores in the briefing):
+CULTURAL MOVEMENTS (reference data — never show scores in the briefing):
 {trends_data}
 
-MOVEMENTS SINCE LAST BRIEFING:
+WHAT MOVED SINCE YESTERDAY:
 {movements_data}
 
-ACTIVE TENSIONS (the dialectical forces driving cultural behavior):
+ACTIVE TENSIONS (the push-pull forces underneath everything):
 {tensions_data}
 
-PREDICTED CULTURAL MOMENTS (weave into narrative — never show as a confidence-scored list):
+PREDICTIONS WE'RE TRACKING (weave in naturally — don't list with scores):
 {moments_data}
 
-UPCOMING CALENDAR (next 7 days — only include events that intersect with active tensions):
+UPCOMING EVENTS (next 7 days):
 {calendar_data}
 
-RECENT SIGNALS — LAST 48 HOURS (your evidence receipts — cite by platform + title):
+RECENT SIGNALS — LAST 48 HOURS (your evidence — cite by platform + title):
 {signals_data}
 
 {collisions_data}
 
-HISTORICAL PATTERNS (reference when a current pattern matches):
+HISTORICAL PATTERNS:
 {historical_data}
 
----
-
-VOICE — non-negotiable:
-- Write for a creative strategist reading this over coffee. Not a data analyst. Not a C-suite exec.
-- Short declarative sentences when making a claim. Longer, textured sentences when building an argument.
-- No hedging. Not "may suggest" — say what it is. If uncertain, name the uncertainty precisely.
-- Never list scores, percentages, or system metrics. Translate ALL quantitative data into strategic language.
-- Every claim cites at least one specific signal by platform and title.
-- Distinguish observed from projected using prose: "We've seen [X]. If the pattern holds, [Y] follows."
-- When naming an ideological opportunity, make it specific enough that a creative team could brief from it.
-- Call out mimesis. If brands or creators are reproducing the orthodoxy with fresh paint, say so.
-- Bold trend names when referencing them: **Trend Name**
+CLIENT BRAND CONTEXT (for the opportunities section):
+{brand_context}
 
 ---
 
-Write the briefing in this structure:
+Write the briefing in this structure. Keep the whole thing scannable — someone should get value from skimming the bold text alone.
 
-## The Cultural Landscape — {today}
+## What's Going On — {today}
 
-[Open with 3-4 sentences. No header for this paragraph. This is the single most important cultural observation today — the connective thread across the most interesting data. Name the orthodoxy under pressure and the disruption cracking it. This paragraph should make the reader smarter about what's happening in culture RIGHT NOW even if they read nothing else. Be opinionated. Take a position.]
+[3-4 sentences max. The one thing happening in culture right now that matters most. Not a summary of everything — pick the thread that connects the most interesting signals and pull it. Be opinionated. Take a side. This paragraph should make someone smarter about the world even if they read nothing else.]
 
-### What Moved Overnight
+### What Changed
 
-[3-5 movements. Not trend summaries — CHANGES since yesterday. Each one names:
-- The specific signal(s) that drove the movement (platform + title)
-- Whether this is a System 1 belief shift or System 3 aesthetic change
-- The lifecycle stage, stated naturally ("this just crossed from niche forums to mainstream press" not "Emergence → Acceleration")
-- The tension dialectic it activates and which pole it's favoring
-Keep each movement to 2-3 sentences. Lead with what changed, not what the trend is.]
+[3-5 things that actually moved since yesterday. Not trend explainers — movements. Each one is 2-3 sentences max:
+- What specifically happened (cite the signal — platform + title)
+- Why it matters / what it tells us
+- Whether it's early, peaking, or dying
+Lead with the change, not the background.]
 
-### The Ideological Opportunity
+### The Big Opportunity
 
-[The heart of the briefing. 2-3 paragraphs deploying the full "So What?" Framework:
-1. Name the gap — what people are experiencing vs. what culture is offering them
-2. Point to source material — which subcultures, media myths, or heritage contain the raw material for innovation
-3. Describe the emerging innovation if visible — its ideology, its myth, its codes. If not yet visible, describe what it would need to look like.
-4. Name the congregation(s) most likely to adopt first and how contagion would spread
-5. End with a specific, actionable angle: "A [category] that positions as [specific ideology] using [specific codes] from [source material] has a first-mover window of approximately [timeframe]."
+[2-3 short paragraphs. The most interesting gap between what people want and what they're being offered right now:
+- What's the gap?
+- Who's already doing something interesting in this space? (creators, communities, subcultures)
+- What would it look like to get this right?
+- Is the window opening, wide open, or closing?
 
-Weave predicted moments into this section as evidence for where the opportunity is heading. Not as a list — as narrative texture. "Our forecaster sees [moment] forming within [window] — and the source material is already visible in [congregation/platform]."]
+If we have predictions forming around this, mention them naturally: "We're watching for [thing] in the next [timeframe] — early signs are already showing up on [platform]."]
 
-### Undercurrents
+### On Our Radar
 
-[2-3 signals that don't fit the main narrative but are semiotically rich. Early Emergence or Undercurrent stage. Each gets 1-2 sentences: the signal (cite platform + title), what it signifies beneath the surface (semiotic reading), and the tension it might activate if it grows. These are seeds. Most won't become trends. That's the point.]
+[2-3 small signals worth watching. Early, unformed, might be nothing. Each gets 1-2 sentences: what we saw, what it might mean. These are seeds, not trends.]
 
 ### The Week Ahead
 
-[Calendar events in the next 7 days that intersect with the active tension landscape. Not a calendar dump — only events that could accelerate, catalyze, or resolve a current tension. Each gets one line: the event, the tension it touches, what to watch for. If a predicted moment has a window opening this week, include it here framed as: "Watch for [specific observable] around [date]."]
+[Only calendar events that intersect with something culturally interesting right now. Each gets one line: what's happening, why it matters for the current landscape, what to watch for. Skip anything that's just a date on a calendar with no cultural charge.]
 
-*One more thing: [A single closing sentence. A provocation, juxtaposition, or observation too good not to mention. The thing you'd bring up over coffee.]*
+### Client Opportunities
+
+[For each client below, 1-2 concrete thought starters connecting today's cultural landscape to their brand. These aren't campaigns — they're "have you thought about this?" prompts. Be specific enough that someone could walk into a meeting and start a conversation.
+
+Each entry should:
+- Name the cultural movement or tension it connects to
+- Explain the connection in plain language (why this matters for THIS brand specifically)
+- Suggest a direction, not a tactic (what territory to explore, not what ad to make)
+
+Format as:
+
+**Brand Name**
+Thought starter text here. Reference the specific trend or signal that sparked it.
+
+Include entries for: {brand_names}
+
+If nothing from today's signals connects meaningfully to a brand, say so — "Nothing jumping out today" is better than forcing it.]
+
+*One more thing: [A single closing thought. The thing that didn't fit anywhere else but is too interesting not to mention.]*
 
 ---
-*{trends_count} cultural movements tracked across {signals_count} signals. {today}.*
+*Tracking {trends_count} cultural movements across {signals_count} signals. {today}.*
 
-SELF-CHECK before submitting:
-1. The opening paragraph takes a position — it names an orthodoxy and a disruption. Not a summary of data.
-2. "What Moved Overnight" contains ONLY things that changed — no re-explaining known trends.
-3. "The Ideological Opportunity" names specific source material and a specific first-mover angle.
-4. No CPS scores, confidence percentages, or system metrics appear anywhere in the output.
-5. Every claim cites at least one signal by platform and title.
-6. At least one section distinguishes a System 1 belief shift from a System 3 aesthetic change.
-7. "Undercurrents" contains signals NOT covered in other sections."""
+SELF-CHECK:
+1. Could a smart 25-year-old read this without a strategy glossary? If not, simplify.
+2. "What Changed" has ONLY things that changed — not trend explainers.
+3. "The Big Opportunity" is specific enough to pitch, not just "there's a space here."
+4. No scores, percentages, or system jargon anywhere in the output.
+5. Every claim references at least one specific signal.
+6. Client opportunities are grounded in today's data, not generic brand advice.
+7. The whole briefing could be read in under 5 minutes."""
 
 
 # ── Briefing generation ────────────────────────────────────────────────────────
@@ -547,6 +577,7 @@ def generate_briefing() -> str:
     snapshot    = load_cps_snapshot()
     velocity    = load_signal_velocity()
     deltas      = compute_cps_deltas(trends, snapshot)
+    brand_context, brand_names = load_brand_context()
 
     logger.info(
         f"Data: {len(trends)} trends, {len(tensions)} tensions, "
@@ -583,6 +614,8 @@ def generate_briefing() -> str:
         signals_data=signals_data,
         collisions_data=collisions_data,
         historical_data=historical_data,
+        brand_context=brand_context,
+        brand_names=brand_names,
         trends_count=len(trends),
         signals_count=len(signals),
     )
@@ -594,7 +627,7 @@ def generate_briefing() -> str:
             try:
                 message = client.messages.create(
                     model=model,
-                    max_tokens=4000,
+                    max_tokens=5000,
                     messages=[{"role": "user", "content": prompt}],
                 )
                 usage = message.usage
@@ -622,11 +655,11 @@ def generate_briefing() -> str:
 
 
 def count_flashpoints(briefing_text: str) -> int:
-    """Count bold items in the 'What Moved Overnight' section (replaces flashpoint count)."""
+    """Count bold items in the 'What Changed' section (replaces flashpoint count)."""
     in_section = False
     count = 0
     for line in briefing_text.split("\n"):
-        if "What Moved" in line and "###" in line:
+        if ("What Changed" in line or "What Moved" in line) and "###" in line:
             in_section = True
             continue
         if in_section and "###" in line:
@@ -637,13 +670,13 @@ def count_flashpoints(briefing_text: str) -> int:
 
 
 def extract_highlights(briefing_text: str) -> str:
-    """Extract key trend names from 'What Moved Overnight' for the Key Highlights field."""
+    """Extract key trend names from 'What Changed' for the Key Highlights field."""
     import re
     highlights = []
     in_section = False
     for line in briefing_text.split("\n"):
         stripped = line.strip()
-        if "What Moved" in stripped and "###" in stripped:
+        if ("What Changed" in stripped or "What Moved" in stripped) and "###" in stripped:
             in_section = True
             continue
         if in_section and stripped.startswith("###"):

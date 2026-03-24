@@ -56,6 +56,7 @@ data/
 !data/signal_velocity.json
 !data/collisions.json
 !data/prediction_log.json
+!data/brand-context/
 
 # Source assets (large videos)
 assets/
