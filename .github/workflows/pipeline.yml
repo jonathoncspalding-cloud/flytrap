@@ -1,14 +1,13 @@
 name: Flytrap Pipeline
 
 on:
-  # Full pipeline with briefing — daily at 11 UTC (6 AM ET), ready by 7 AM ET
   schedule:
+    # Full pipeline with briefing — daily at 11 UTC (6 AM ET)
     - cron: "0 11 * * *"
-  # Intraday sync runs: collect + process + moments (no tensions/briefing)
+    # Intraday sync runs: collect + process + moments (no tensions/briefing)
     - cron: "0 6,18,0 * * *"
-  # Weekly maintenance: novelty scan + prediction review (Sundays 3 PM UTC)
+    # Weekly maintenance: novelty scan + prediction review (Sundays 3 PM UTC)
     - cron: "0 15 * * 0"
-  # Manual trigger
   workflow_dispatch:
     inputs:
       stage:
@@ -24,21 +23,90 @@ on:
           - sync
           - novelty
           - review
-  # Dashboard trigger via API
   repository_dispatch:
     types: [run-pipeline]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# ──────────────────────────────────────────────────────────────
+# Architecture: 3 jobs instead of 1
+#
+#   sync (50m)  →  briefing (15m)  — daily at 11 UTC only
+#   sync (50m)                      — intraday at 00/06/18 UTC
+#   weekly (20m)                    — Sundays 15 UTC
+#
+# This prevents the briefing job from being killed when signal
+# processing runs long. Each job gets its own timeout budget.
+# ──────────────────────────────────────────────────────────────
+
 jobs:
-  pipeline:
+  # ── Determine what to run ────────────────────────────────────
+  plan:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 1
+    outputs:
+      run_sync: ${{ steps.decide.outputs.run_sync }}
+      run_briefing: ${{ steps.decide.outputs.run_briefing }}
+      run_weekly: ${{ steps.decide.outputs.run_weekly }}
+      standalone_args: ${{ steps.decide.outputs.standalone_args }}
+    steps:
+      - name: Decide pipeline stages
+        id: decide
+        run: |
+          HOUR=$(date -u +%H)
+          DOW=$(date -u +%u)
+          INPUT="${{ github.event.inputs.stage }}"
+          DISPATCH_MODE="${{ github.event.client_payload.mode }}"
+
+          # Defaults
+          echo "run_sync=false" >> $GITHUB_OUTPUT
+          echo "run_briefing=false" >> $GITHUB_OUTPUT
+          echo "run_weekly=false" >> $GITHUB_OUTPUT
+          echo "standalone_args=" >> $GITHUB_OUTPUT
+
+          if [ -n "$DISPATCH_MODE" ]; then
+            # Dashboard trigger
+            if [ "$DISPATCH_MODE" = "briefing" ]; then
+              echo "standalone_args=--brief" >> $GITHUB_OUTPUT
+            else
+              echo "run_sync=true" >> $GITHUB_OUTPUT
+            fi
+          elif [ "$INPUT" = "full" ] || [ -z "$INPUT" -a "$HOUR" = "11" ]; then
+            # Full pipeline: sync then briefing
+            echo "run_sync=true" >> $GITHUB_OUTPUT
+            echo "run_briefing=true" >> $GITHUB_OUTPUT
+          elif [ "$INPUT" = "sync" ] || [ -z "$INPUT" ]; then
+            # Intraday sync or default non-11 schedule
+            echo "run_sync=true" >> $GITHUB_OUTPUT
+          elif [ "$INPUT" = "novelty" ] || [ -z "$INPUT" -a "$HOUR" = "15" -a "$DOW" = "7" ]; then
+            echo "run_weekly=true" >> $GITHUB_OUTPUT
+          elif [ "$INPUT" = "review" ]; then
+            echo "standalone_args=--review" >> $GITHUB_OUTPUT
+          elif [ "$INPUT" = "collect" ]; then
+            echo "standalone_args=--collect" >> $GITHUB_OUTPUT
+          elif [ "$INPUT" = "process" ]; then
+            echo "standalone_args=--process" >> $GITHUB_OUTPUT
+          elif [ "$INPUT" = "brief" ]; then
+            echo "standalone_args=--brief" >> $GITHUB_OUTPUT
+          fi
+
+          # Handle scheduled Sunday 15 UTC (novelty + review)
+          if [ "${{ github.event.schedule }}" = "0 15 * * 0" ]; then
+            echo "run_sync=false" >> $GITHUB_OUTPUT
+            echo "run_briefing=false" >> $GITHUB_OUTPUT
+            echo "run_weekly=true" >> $GITHUB_OUTPUT
+          fi
+
+  # ── Job 1: Sync (collect → process → moments) ──────────────
+  sync:
+    needs: plan
+    if: needs.plan.outputs.run_sync == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         id: setup-python
@@ -48,7 +116,6 @@ jobs:
 
       - name: Cache venv
         uses: actions/cache@v4
-        id: cache-venv
         with:
           path: venv
           key: venv-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
@@ -66,47 +133,7 @@ jobs:
           source venv/bin/activate
           pip install -r requirements.txt
 
-      - name: Determine pipeline stage
-        id: stage
-        run: |
-          HOUR=$(date -u +%H)
-          INPUT="${{ github.event.inputs.stage }}"
-          DISPATCH_MODE="${{ github.event.client_payload.mode }}"
-
-          DOW=$(date -u +%u)  # 1=Mon ... 7=Sun
-
-          if [ -n "$DISPATCH_MODE" ]; then
-            # Triggered from dashboard via repository_dispatch
-            if [ "$DISPATCH_MODE" = "briefing" ]; then
-              echo "args=--brief" >> $GITHUB_OUTPUT
-            else
-              echo "args=--sync" >> $GITHUB_OUTPUT
-            fi
-          elif [ "$INPUT" = "collect" ]; then
-            echo "args=--collect" >> $GITHUB_OUTPUT
-          elif [ "$INPUT" = "process" ]; then
-            echo "args=--process" >> $GITHUB_OUTPUT
-          elif [ "$INPUT" = "brief" ]; then
-            echo "args=--brief" >> $GITHUB_OUTPUT
-          elif [ "$INPUT" = "sync" ]; then
-            echo "args=--sync" >> $GITHUB_OUTPUT
-          elif [ "$INPUT" = "novelty" ]; then
-            echo "args=--novelty" >> $GITHUB_OUTPUT
-          elif [ "$INPUT" = "review" ]; then
-            echo "args=--review" >> $GITHUB_OUTPUT
-          elif [ "$HOUR" = "15" ] && [ "$DOW" = "7" ]; then
-            # Sunday 3 PM: weekly novelty scan + prediction review
-            echo "args=--novelty" >> $GITHUB_OUTPUT
-            echo "weekly_review=true" >> $GITHUB_OUTPUT
-          elif [ "$HOUR" = "11" ]; then
-            # 11 UTC (6 AM ET): full pipeline with briefing (daily)
-            echo "args=" >> $GITHUB_OUTPUT
-          else
-            # Intraday: collect + process + moments (no tensions/briefing)
-            echo "args=--sync" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Run pipeline
+      - name: Run sync pipeline
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
@@ -121,10 +148,188 @@ jobs:
           REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
           REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
         run: |
-          source venv/bin/activate && cd scripts && python run_pipeline.py ${{ steps.stage.outputs.args }}
+          source venv/bin/activate && cd scripts && python run_pipeline.py --sync
 
-      - name: Run weekly prediction review (Sundays only)
-        if: steps.stage.outputs.weekly_review == 'true'
+      - name: Persist pipeline data
+        if: always()
+        run: |
+          git config user.name "flytrap-bot"
+          git config user.email "flytrap-bot@users.noreply.github.com"
+          git add -f data/signal_velocity.json data/collisions.json data/prediction_log.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "chore: update pipeline data [skip ci]"
+          git pull --rebase --autostash origin main || true
+          git push origin main || true
+
+      - name: Upload pipeline log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-log-sync-${{ github.run_id }}
+          path: pipeline.log
+          retention-days: 14
+
+  # ── Job 2: Briefing (tensions → briefing) ───────────────────
+  # Runs AFTER sync completes. Only at 11 UTC or manual "full"/"brief".
+  # Separate timeout — sync can't starve the briefing.
+  briefing:
+    needs: [plan, sync]
+    if: |
+      always() &&
+      needs.plan.outputs.run_briefing == 'true' &&
+      needs.sync.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache venv
+        uses: actions/cache@v4
+        with:
+          path: venv
+          key: venv-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Run tension evaluation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_TRENDS_DB: ${{ secrets.NOTION_TRENDS_DB }}
+          NOTION_TENSIONS_DB: ${{ secrets.NOTION_TENSIONS_DB }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+        run: |
+          source venv/bin/activate && cd scripts && python run_pipeline.py --tensions
+
+      - name: Run briefing generation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_TRENDS_DB: ${{ secrets.NOTION_TRENDS_DB }}
+          NOTION_TENSIONS_DB: ${{ secrets.NOTION_TENSIONS_DB }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+          NOTION_CALENDAR_DB: ${{ secrets.NOTION_CALENDAR_DB }}
+          NOTION_BRIEFING_DB: ${{ secrets.NOTION_BRIEFING_DB }}
+          NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
+        run: |
+          source venv/bin/activate && cd scripts && python run_pipeline.py --brief
+
+      - name: Upload pipeline log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-log-briefing-${{ github.run_id }}
+          path: pipeline.log
+          retention-days: 14
+
+  # ── Job 3: Standalone (manual single-stage runs) ────────────
+  standalone:
+    needs: plan
+    if: needs.plan.outputs.standalone_args != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache venv
+        uses: actions/cache@v4
+        with:
+          path: venv
+          key: venv-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-minilm-v2-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: hf-minilm-v2-
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Run pipeline stage
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_PARENT_PAGE_ID: ${{ secrets.NOTION_PARENT_PAGE_ID }}
+          NOTION_TRENDS_DB: ${{ secrets.NOTION_TRENDS_DB }}
+          NOTION_TENSIONS_DB: ${{ secrets.NOTION_TENSIONS_DB }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+          NOTION_CALENDAR_DB: ${{ secrets.NOTION_CALENDAR_DB }}
+          NOTION_BRIEFING_DB: ${{ secrets.NOTION_BRIEFING_DB }}
+          NOTION_MOMENTS_DB: ${{ secrets.NOTION_MOMENTS_DB }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+        run: |
+          source venv/bin/activate && cd scripts && python run_pipeline.py ${{ needs.plan.outputs.standalone_args }}
+
+      - name: Upload pipeline log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-log-standalone-${{ github.run_id }}
+          path: pipeline.log
+          retention-days: 14
+
+  # ── Job 4: Weekly maintenance (novelty + review) ────────────
+  weekly:
+    needs: plan
+    if: needs.plan.outputs.run_weekly == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache venv
+        uses: actions/cache@v4
+        with:
+          path: venv
+          key: venv-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Run novelty scan
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_TRENDS_DB: ${{ secrets.NOTION_TRENDS_DB }}
+          NOTION_EVIDENCE_DB: ${{ secrets.NOTION_EVIDENCE_DB }}
+        run: |
+          source venv/bin/activate && cd scripts && python run_pipeline.py --novelty
+
+      - name: Run prediction review
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
@@ -133,20 +338,10 @@ jobs:
         run: |
           source venv/bin/activate && cd scripts && python run_pipeline.py --review
 
-      - name: Persist pipeline data (velocity, collisions, prediction log)
-        if: always()
-        run: |
-          git config user.name "flytrap-bot"
-          git config user.email "flytrap-bot@users.noreply.github.com"
-          git add -f data/signal_velocity.json data/collisions.json data/prediction_log.json 2>/dev/null || true
-          git diff --cached --quiet || git commit -m "chore: update pipeline data [skip ci]"
-          git pull --rebase origin main || true
-          git push origin main || true
-
       - name: Upload pipeline log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pipeline-log-${{ github.run_id }}
+          name: pipeline-log-weekly-${{ github.run_id }}
           path: pipeline.log
           retention-days: 14
