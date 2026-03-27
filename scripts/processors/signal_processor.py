@@ -13,6 +13,7 @@ Called daily after signal collection.
 """
 
 import os
+import re
 import sys
 import json
 import time
@@ -55,6 +56,55 @@ client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 def _normalize(name: str) -> str:
     """Case-insensitive key for trend-name matching."""
     return name.lower().strip().replace("-", " ")
+
+
+def _repair_json(raw: str) -> list:
+    """Attempt to repair common Claude JSON issues before giving up.
+
+    Handles: trailing commas, missing closing brackets, surrounding text,
+    single-quoted strings, and incomplete final objects.
+    Returns parsed list on success, raises ValueError on failure.
+    """
+    # Step 1: Extract JSON array from surrounding text (Claude sometimes wraps it)
+    match = re.search(r'\[[\s\S]*\]', raw)
+    if match:
+        candidate = match.group(0)
+    else:
+        # Maybe missing the closing bracket
+        match = re.search(r'\[[\s\S]*', raw)
+        if match:
+            candidate = match.group(0).rstrip().rstrip(',') + ']'
+        else:
+            raise ValueError("No JSON array found in response")
+
+    # Step 2: Fix trailing commas before ] or }
+    candidate = re.sub(r',\s*([}\]])', r'\1', candidate)
+
+    # Step 3: Remove incomplete trailing object (truncated response)
+    # If the last object doesn't close properly, remove it
+    try:
+        result = json.loads(candidate)
+        if isinstance(result, list):
+            return result
+    except json.JSONDecodeError:
+        pass
+
+    # Step 4: Progressively trim from the end to find valid JSON
+    # (handles truncated responses where the last object is incomplete)
+    for trim_pos in range(len(candidate) - 1, 0, -1):
+        if candidate[trim_pos] == '}':
+            attempt = candidate[:trim_pos + 1]
+            # Remove any trailing comma and close the array
+            attempt = attempt.rstrip().rstrip(',') + ']'
+            try:
+                result = json.loads(attempt)
+                if isinstance(result, list):
+                    logger.warning(f"  JSON repaired by trimming {len(candidate) - trim_pos - 1} chars from end")
+                    return result
+            except json.JSONDecodeError:
+                continue
+
+    raise ValueError(f"JSON repair failed — could not parse response ({len(raw)} chars)")
 
 
 # ── Data loading ───────────────────────────────────────────────────────────────
@@ -228,7 +278,7 @@ def process_signals_batch(signals: list, tensions: list, trends: list) -> list:
     try:
         message = client.messages.create(
             model="claude-sonnet-4-5",
-            max_tokens=6000,
+            max_tokens=8000,
             messages=[{"role": "user", "content": prompt}],
         )
         # Token usage logging
@@ -244,11 +294,50 @@ def process_signals_batch(signals: list, tensions: list, trends: list) -> list:
             raw = raw.split("```")[1]
             if raw.startswith("json"):
                 raw = raw[4:]
-        results = json.loads(raw)
-        return results if isinstance(results, list) else []
-    except json.JSONDecodeError as e:
-        logger.error(f"Claude response not valid JSON: {e}")
-        return []
+
+        # Attempt 1: Direct parse
+        try:
+            results = json.loads(raw)
+            return results if isinstance(results, list) else []
+        except json.JSONDecodeError:
+            pass
+
+        # Attempt 2: Repair common JSON issues (trailing commas, truncation, etc.)
+        try:
+            results = _repair_json(raw)
+            logger.info(f"  JSON repaired successfully — recovered {len(results)} signal(s)")
+            return results
+        except ValueError:
+            pass
+
+        # Attempt 3: Retry the API call once (~$0.10 but saves the whole batch)
+        logger.warning(f"  JSON parse failed — retrying API call (batch of {len(signals)} signals)")
+        logger.debug(f"  Failed raw response (first 500 chars): {raw[:500]}")
+        try:
+            retry_msg = client.messages.create(
+                model="claude-sonnet-4-5",
+                max_tokens=8000,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            retry_usage = retry_msg.usage
+            logger.info(
+                f"  [TOKENS] signal_processor RETRY: "
+                f"input={retry_usage.input_tokens} output={retry_usage.output_tokens} "
+                f"cost=${retry_usage.input_tokens * 3 / 1_000_000 + retry_usage.output_tokens * 15 / 1_000_000:.4f}"
+            )
+            retry_raw = retry_msg.content[0].text.strip()
+            if retry_raw.startswith("```"):
+                retry_raw = retry_raw.split("```")[1]
+                if retry_raw.startswith("json"):
+                    retry_raw = retry_raw[4:]
+            results = json.loads(retry_raw)
+            logger.info(f"  Retry succeeded — recovered {len(results) if isinstance(results, list) else 0} signal(s)")
+            return results if isinstance(results, list) else []
+        except (json.JSONDecodeError, Exception) as retry_e:
+            logger.error(f"  Retry also failed: {retry_e}")
+            logger.error(f"  LOST BATCH: {len(signals)} signals dropped. Raw response logged above.")
+            return []
+
     except Exception as e:
         logger.error(f"Claude API call failed: {e}")
         return []
@@ -480,7 +569,7 @@ def update_linked_tensions(trend_id: str, trend_name: str, new_tension_names: se
 
 # ── Main loop ──────────────────────────────────────────────────────────────────
 
-def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
+def run(hours: int = 24, batch_size: int = 20, dry_run: bool = False) -> dict:
     """
     Full signal processing job (v3 — tiered processing):
     Tier 0: Embedding pre-filter (local, $0) → auto-link / discard / ambiguous
@@ -491,16 +580,22 @@ def run(hours: int = 24, batch_size: int = 10, dry_run: bool = False) -> dict:
     logger.info("Starting signal processing (v3 — tiered processing)...")
 
     # Safety cap: max signals per run to prevent runaway costs.
-    MAX_SIGNALS_PER_RUN = 300
+    # Temporarily raised from 300 → 500 to drain backlog (877 queued as of 2026-03-27).
+    # TODO: Lower back to 350 once backlog is cleared (target: 2026-03-29).
+    MAX_SIGNALS_PER_RUN = 500
 
     tensions = load_active_tensions()
     trends   = load_existing_trends()
     signals  = load_unprocessed_signals(hours=hours)
 
+    # Process oldest signals first to drain backlog (Notion returns newest-first).
+    # Without this, old signals starve forever as new ones keep jumping the queue.
+    signals.reverse()
+
     if len(signals) > MAX_SIGNALS_PER_RUN:
         logger.warning(
             f"⚠️ {len(signals)} unprocessed signals exceeds cap of {MAX_SIGNALS_PER_RUN}. "
-            f"Processing first {MAX_SIGNALS_PER_RUN} only — remainder will be caught next run."
+            f"Processing oldest {MAX_SIGNALS_PER_RUN} first — remainder will be caught next run."
         )
         signals = signals[:MAX_SIGNALS_PER_RUN]
 

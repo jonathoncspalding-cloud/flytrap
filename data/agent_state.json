@@ -1,11 +1,11 @@
 {
   "last_updated": "2026-03-27T14:12:57.637302+00:00",
   "pipeline": {
-    "last_success": "2026-03-06T14:09:15.703125+00:00",
+    "last_success": "2026-03-24T15:59:25.028127+00:00",
     "last_failure": null,
     "signals_24h": 0,
-    "last_duration_sec": 134,
-    "streak": 4
+    "last_duration_sec": 151,
+    "streak": 5
   },
   "agents": {
     "sentinel": {

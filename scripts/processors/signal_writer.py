@@ -105,8 +105,9 @@ def write_signals(signals: list, source_label: str = "") -> int:
             create_page(EVIDENCE_DB, properties)
             existing_titles.add(title)  # Prevent within-batch dupes
             written += 1
-            # Rate limit: ~2 writes/sec to stay within Notion's limits
-            time.sleep(0.5)
+            # Rate limit: ~3 writes/sec to stay within Notion's limits
+            # (Notion allows 3 req/s; 0.34s keeps us just under)
+            time.sleep(0.34)
         except Exception as e:
             logger.error(f"Failed to write signal '{title[:50]}': {e}")
 
@@ -126,8 +127,6 @@ def run_all_collectors() -> dict:
         rss_collector,
         wikipedia_trending,
         google_trends,
-        hn_collector,
-        bluesky_collector,
         youtube_collector,
         polymarket_collector,
         trends24_collector,
@@ -139,8 +138,6 @@ def run_all_collectors() -> dict:
         ("rss",           rss_collector.collect),
         ("wikipedia",     wikipedia_trending.collect),
         ("google_trends", google_trends.collect),
-        ("hacker_news",   hn_collector.collect),
-        ("bluesky",       bluesky_collector.collect),
         ("youtube",       youtube_collector.collect),
         ("polymarket",    polymarket_collector.collect),
         ("x_twitter",     trends24_collector.collect),
@@ -150,8 +147,7 @@ def run_all_collectors() -> dict:
     # Label mapping for write_signals log output
     write_labels = {
         "reddit": "Reddit", "rss": "RSS", "wikipedia": "Wikipedia",
-        "google_trends": "Google Trends", "hacker_news": "HN",
-        "bluesky": "Bluesky", "youtube": "YouTube",
+        "google_trends": "Google Trends", "youtube": "YouTube",
         "polymarket": "Polymarket", "x_twitter": "Trends24",
         "tiktok": "TikTok",
     }
