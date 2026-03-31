@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-03-30T16:25:47.321928+00:00",
+  "last_updated": "2026-03-31T14:28:38.647958+00:00",
   "pipeline": {
     "last_success": "2026-03-24T15:59:25.028127+00:00",
     "last_failure": null,
@@ -9,10 +9,10 @@
   },
   "agents": {
     "sentinel": {
-      "last_run": "2026-03-30T14:28:08.012054+00:00",
+      "last_run": "2026-03-31T14:28:38.276767+00:00",
       "status": "warning",
       "findings": [
-        "25 stale trends (no update >30 days)"
+        "44 stale trends (no update >30 days)"
       ],
       "next_scheduled": null
     },
@@ -65,15 +65,15 @@
     }
   },
   "digest": {
-    "last_generated": "2026-03-30T14:28:08.517157+00:00",
+    "last_generated": "2026-03-31T14:28:38.647945+00:00",
     "summary": "Pipeline: HEALTHY. 6 action items.",
     "action_items": [
-      "sentinel: 25 stale trends (no update >30 days)",
+      "sentinel: 44 stale trends (no update >30 days)",
       "scout: Missing sources: Hacker News, Bluesky",
       "architect has never run \u2014 check workflow",
       "optimize: Notion storage above 80% \u2014 consider archival",
       "isabel: Proposal generated: cancelled",
-      "Integrity: 25 stale trends (no update >30 days)"
+      "Integrity: 44 stale trends (no update >30 days)"
     ]
   }
 }
